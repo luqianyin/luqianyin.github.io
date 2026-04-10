@@ -1,0 +1,1166 @@
+      
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 用户群查询</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #1677FF;
+      --primary-light:#E6F0FF;
+      --primary-hover:#0958D9;
+      --sidebar-w:    220px;
+      --header-h:     52px;
+      --subbar-h:     44px;
+      --bg:           #F5F7FA;
+      --card:         #FFFFFF;
+      --border:       #E8ECF0;
+      --text:         #1D2129;
+      --sub:          #86909C;
+      --link:         #1677FF;
+    }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+
+    /* ══════════════════════════════════════════════
+       TOP HEADER
+    ══════════════════════════════════════════════ */
+    .header {
+      height: var(--header-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 0; flex-shrink: 0;
+      position: relative; z-index: 20;
+    }
+
+    .logo-wrap {
+      display: flex; align-items: center; gap: 8px;
+      min-width: var(--sidebar-w); padding-right: 16px;
+      border-right: 1px solid var(--border);
+    }
+    .logo-name {
+      font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .3px;
+    }
+
+    .header-nav {
+      display: flex; align-items: center; height: 100%; margin-left: 20px; gap: 4px;
+    }
+    .header-tab {
+      height: 100%; display: flex; align-items: center; padding: 0 18px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s;
+    }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+
+    .header-right {
+      margin-left: auto; display: flex; align-items: center; gap: 6px;
+    }
+    .hdr-action {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 4px 8px; border-radius: 4px; cursor: pointer;
+      color: var(--sub); background: none; border: none; transition: color .15s;
+    }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; cursor: pointer;
+      background: none; border: none; color: var(--text);
+    }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+
+    /* ══════════════════════════════════════════════
+       SUB-HEADER
+    ══════════════════════════════════════════════ */
+    .subbar {
+      height: var(--subbar-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 0 0 var(--sidebar-w);
+      flex-shrink: 0; z-index: 10;
+    }
+    .subbar-inner {
+      display: flex; align-items: center; gap: 14px; padding: 0 20px;
+    }
+    .breadcrumb {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 13px; color: var(--sub);
+    }
+    .breadcrumb a { color: var(--sub); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .product-select {
+      height: 30px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; color: var(--text); font-size: 12px;
+      padding: 0 28px 0 10px; outline: none; cursor: pointer;
+      min-width: 160px; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    .product-select:focus { border-color: var(--primary); }
+
+    /* ══════════════════════════════════════════════
+       BODY = SIDEBAR + CONTENT
+    ══════════════════════════════════════════════ */
+    .body-wrap {
+      flex: 1; display: flex; overflow: hidden;
+    }
+
+    /* ──── Sidebar ──── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: #fff; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto; height: 100%;
+    }
+
+    .nav-group { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .nav-group:last-child { border-bottom: none; }
+
+    .nav-l1 {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; user-select: none;
+      transition: background .12s;
+    }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron {
+      margin-left: auto; width: 14px; height: 14px;
+      transition: transform .2s; flex-shrink: 0;
+    }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+
+    .nav-l2-list { overflow: hidden; }
+    .nav-l2 {
+      display: flex; align-items: center;
+      padding: 9px 16px 9px 40px; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active {
+      color: var(--primary); font-weight: 500;
+      background: var(--primary-light);
+    }
+    .nav-l2.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+
+    /* ──── Content ──── */
+    .content {
+      flex: 1; overflow-y: auto; padding: 20px 24px;
+    }
+
+    /* ══════════════════════════════════════════════
+       QUERY PAGE STYLES
+    ══════════════════════════════════════════════ */
+
+    /* Filter box */
+    .filter-box {
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 16px; margin-bottom: 14px;
+    }
+    .filter-row {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .filter-row + .filter-row {
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    }
+    .filter-item {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .filter-lbl {
+      color: var(--sub); font-size: 12px; white-space: nowrap; min-width: fit-content;
+    }
+    .filter-input {
+      height: 32px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 10px; outline: none; width: 240px;
+      transition: border-color .15s;
+    }
+    .filter-input::placeholder { color: #C2C7CF; }
+    .filter-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.08); }
+    .filter-input.sm { width: 150px; }
+    .filter-input.xs { width: 120px; }
+
+    /* Date range */
+    .date-range {
+      display: flex; align-items: center; gap: 4px;
+    }
+    .date-range-sep { color: var(--sub); font-size: 12px; }
+    input[type="date"].filter-input {
+      width: 148px; padding: 0 8px; cursor: pointer;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 0 16px; height: 32px; border-radius: 5px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid transparent; transition: all .15s; white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-default { background: #fff; color: var(--text); border-color: var(--border); }
+    .btn-default:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* Result info bar */
+    .result-info-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .result-count {
+      font-size: 13px; color: var(--sub);
+    }
+    .result-count strong { color: var(--text); }
+    .result-actions {
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* Table card */
+    .table-card {
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #FAFBFC; }
+    th {
+      text-align: left; padding: 11px 14px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    td {
+      padding: 11px 14px; border-bottom: 1px solid var(--border);
+      vertical-align: middle; font-size: 13px; color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #F7F9FD; }
+
+    .mono { font-family: monospace; font-size: 12px; color: var(--sub); }
+    .link { color: var(--link); text-decoration: none; font-weight: 500; }
+    .link:hover { text-decoration: underline; }
+
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 3px;
+      font-size: 12px; font-weight: 500;
+    }
+    .tag-running  { background: #E6F0FF; color: #1677FF; }
+    .tag-ended    { background: #F5F7FA; color: #4E5969; }
+    .tag-draft    { background: #FFFBE6; color: #D48806; }
+    .tag-paused   { background: #FFF1F0; color: #CF1322; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 60px 20px;
+      color: var(--sub);
+    }
+    .empty-state svg { width: 56px; height: 56px; margin: 0 auto 12px; display: block; opacity: .35; }
+    .empty-state p { font-size: 13px; line-height: 1.7; }
+
+    /* Pagination */
+    .pagination {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 12px 16px; border-top: 1px solid var(--border); gap: 8px;
+    }
+    .page-info { color: var(--sub); font-size: 12px; margin-right: 4px; }
+    .page-btn {
+      min-width: 30px; height: 30px; border-radius: 4px;
+      border: 1px solid var(--border); background: #fff; color: var(--sub);
+      font-size: 12px; cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; padding: 0 8px;
+      transition: all .12s;
+    }
+    .page-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    .page-btn.disabled { opacity: .4; pointer-events: none; }
+    .page-size-select {
+      height: 30px; border: 1px solid var(--border); border-radius: 4px;
+      background: #fff; font-size: 12px; padding: 0 8px; color: var(--text); outline: none;
+    }
+
+    /* ══════════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════════ */
+    .toast {
+      position: fixed; top: 60px; right: 20px; z-index: 2000;
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.12); padding: 12px 14px;
+      display: flex; align-items: flex-start; gap: 10px;
+      min-width: 280px; max-width: 380px;
+      transform: translateX(120%); transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    }
+    .toast.show { transform: translateX(0); }
+    .toast-icon { width: 20px; height: 20px; flex-shrink: 0; }
+    .toast-body { flex: 1; }
+    .toast-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .toast-desc  { font-size: 12px; color: var(--sub); margin-top: 2px; line-height: 1.5; }
+
+    /* ══════════════════════════════════════════════
+       COLUMN PICKER
+    ══════════════════════════════════════════════ */
+    .col-picker-wrap {
+      position: relative;
+    }
+    .col-picker-btn {
+      display: inline-flex; align-items: center;
+      height: 30px; padding: 0 12px; border-radius: 5px;
+      border: 1px solid var(--border); background: #fff;
+      font-size: 12px; color: var(--text); cursor: pointer;
+      gap: 4px; transition: border-color .15s;
+    }
+    .col-picker-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .col-picker-dropdown {
+      display: none; position: absolute; top: calc(100% + 6px); right: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.1); z-index: 200;
+      min-width: 160px; padding: 6px 0;
+    }
+    .col-picker-dropdown.open { display: block; }
+    .col-picker-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px; font-size: 13px; color: var(--text);
+      cursor: pointer; user-select: none; transition: background .1s;
+    }
+    .col-picker-item:hover { background: var(--primary-light); }
+    .col-picker-item input[type=checkbox] { accent-color: var(--primary); width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* ══════════════════════════════════════════════
+       EXPORT DROPDOWN
+    ══════════════════════════════════════════════ */
+    .export-wrap {
+      position: relative;
+    }
+    .export-btn {
+      display: inline-flex; align-items: center;
+      height: 30px; padding: 0 12px; border-radius: 5px;
+      border: 1px solid var(--border); background: #fff;
+      font-size: 12px; color: var(--text); cursor: pointer;
+      gap: 4px; transition: border-color .15s;
+    }
+    .export-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .export-dropdown {
+      display: none; position: absolute; top: calc(100% + 6px); right: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.1); z-index: 200;
+      min-width: 130px; padding: 6px 0;
+    }
+    .export-dropdown.open { display: block; }
+    .export-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px; font-size: 13px; color: var(--text);
+      cursor: pointer; transition: background .1s;
+    }
+    .export-item:hover { background: var(--primary-light); color: var(--primary); }
+    .export-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ TOP HEADER ══════════════ -->
+<header class="header">
+  <div class="logo-wrap">
+    <span class="logo-name">Spark</span>
+  </div>
+
+  <nav class="header-nav">
+    <button class="header-tab active">AB测试</button>
+    <button class="header-tab">管理</button>
+  </nav>
+
+  <div class="header-right">
+    <button class="hdr-action" title="反馈">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+      <span>反馈</span>
+    </button>
+    <button class="hdr-action" title="消息" style="position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </svg>
+      <span>消息</span>
+      <span style="position:absolute;top:2px;right:6px;width:8px;height:8px;background:#FF4D4F;border-radius:50%;border:1.5px solid #fff;"></span>
+    </button>
+    <button class="hdr-action" title="帮助">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/>
+      </svg>
+      <span>帮助</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn" title="个人中心">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张三</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════ SUB-BAR ══════════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <nav class="breadcrumb" id="breadcrumbNav">
+      <a href="#">实验/用户群查询</a>
+      <span class="sep"> / </span>
+      <span class="current" id="breadcrumbCurrent">实验用户查询</span>
+    </nav>
+    <select class="product-select">
+      <option>9007-Polaris Game</option>
+      <option>9008-StarRacer</option>
+      <option>9009-MythicWorld</option>
+      <option>9010-ZenRun</option>
+    </select>
+  </div>
+</div>
+
+<!-- ══════════════ BODY ══════════════ -->
+<div class="body-wrap">
+
+  <!-- ──── Sidebar ──── -->
+  <aside class="sidebar">
+    <!-- Nav Group 1: AB测试 -->
+    <div class="nav-group">
+      <div class="nav-l1 open" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        AB测试
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:block;">
+        <div class="nav-l2">产品信息</div>
+        <div class="nav-l2">远程配置</div>
+        <div class="nav-l2">用户群配置</div>
+        <div class="nav-l2">实验管理</div>
+        <div class="nav-l2">用户群标签管理</div>
+        <div class="nav-l2">指标管理</div>
+      </div>
+    </div>
+
+    <!-- Nav Group 2: 实验/用户群查询 -->
+    <div class="nav-group">
+      <div class="nav-l1 open" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        实验/用户群查询
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:block;">
+        <div class="nav-l2 active" id="nav-exp-query" onclick="switchPage('exp-query', '实验用户查询', this)">实验用户查询</div>
+        <div class="nav-l2" id="nav-tag-query" onclick="switchPage('tag-query', '用户群/参数下发查询', this)">用户群/参数下发查询</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════
+       PAGE: 实验用户查询
+  ══════════════════════════════════════════════ -->
+  <main class="content" id="page-exp-query">
+
+    <!-- 筛选条件 -->
+    <div class="filter-box">
+      <!-- 第一行：基础查询 -->
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-lbl">用户ID</span>
+          <input class="filter-input" type="text" placeholder="请输入用户ID，多个用英文逗号分隔" style="width:280px;" />
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">实验ID / 名称</span>
+          <input class="filter-input" type="text" placeholder="请输入实验ID或实验名称" style="width:240px;" />
+        </div>
+        <button class="btn btn-default" onclick="resetExpQuery()">重置</button>
+        <button class="btn btn-primary" onclick="runExpQuery()">查询</button>
+      </div>
+      <!-- 第二行：时间筛选 -->
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-lbl">命中时间</span>
+          <div class="date-range">
+            <input class="filter-input" type="date" />
+            <span class="date-range-sep">~</span>
+            <input class="filter-input" type="date" />
+          </div>
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">实验开始时间</span>
+          <div class="date-range">
+            <input class="filter-input" type="date" />
+            <span class="date-range-sep">~</span>
+            <input class="filter-input" type="date" />
+          </div>
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">实验结束时间</span>
+          <div class="date-range">
+            <input class="filter-input" type="date" />
+            <span class="date-range-sep">~</span>
+            <input class="filter-input" type="date" />
+          </div>
+        </div>
+      </div>
+      <!-- 第三行：参数筛选 -->
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-lbl">参数名称</span>
+          <input class="filter-input sm" type="text" placeholder="请输入参数名称" />
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">参数字段</span>
+          <input class="filter-input sm" type="text" placeholder="请输入参数字段" />
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">下发值名称</span>
+          <input class="filter-input sm" type="text" placeholder="请输入下发值名称" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 结果区 -->
+    <div id="expResultArea">
+      <div class="result-info-bar">
+        <span class="result-count">共 <strong id="expTotal">12</strong> 条记录</span>
+        <div class="result-actions">
+          <!-- 显示列筛选器 -->
+          <div class="col-picker-wrap" id="expColPickerWrap">
+            <button class="col-picker-btn" onclick="toggleColPicker('expColPicker', event)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke-width="1.8"/></svg>
+              显示列
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="col-picker-dropdown" id="expColPicker">
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(0,this)"> 实验名称</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(1,this)"> 实验ID</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(2,this)"> 实验状态</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(3,this)"> 实验开始时间</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(4,this)"> 实验结束时间</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(5,this)"> 实验分组名称</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(6,this)"> 实验分组ID</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(7,this)"> 用户ID</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(8,this)"> 命中时间</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(9,this)"> 参数名称</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(10,this)"> 参数字段</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(11,this)"> 下发值名称</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(12,this)"> 下发值</label>
+            </div>
+          </div>
+          <!-- 导出按钮 -->
+          <div class="export-wrap" id="expExportWrap">
+            <button class="export-btn" onclick="toggleExportDropdown('expExportDropdown', event)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              导出数据
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="export-dropdown" id="expExportDropdown">
+              <div class="export-item" onclick="exportData('exp','excel')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12l2.5 2.5L16 9"/></svg>
+                导出为 Excel
+              </div>
+              <div class="export-item" onclick="exportData('exp','txt')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                导出为 TXT
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table id="expTable">
+          <thead>
+            <tr>
+              <th data-col="0">实验名称</th>
+              <th data-col="1">实验ID</th>
+              <th data-col="2">实验状态</th>
+              <th data-col="3">实验开始时间</th>
+              <th data-col="4">实验结束时间</th>
+              <th data-col="5">实验分组名称</th>
+              <th data-col="6">实验分组ID</th>
+              <th data-col="7">用户ID</th>
+              <th data-col="8">命中时间</th>
+              <th data-col="9">参数名称</th>
+              <th data-col="10">参数字段</th>
+              <th data-col="11">下发值名称</th>
+              <th data-col="12">下发值</th>
+            </tr>
+          </thead>
+          <tbody id="expTableBody">
+            <tr>
+              <td data-col="0">激励视频完播率优化实验</td>
+              <td data-col="1"><span class="mono">exp20251210001</span></td>
+              <td data-col="2"><span class="tag tag-running">进行中</span></td>
+              <td data-col="3">2025-12-10 10:00:00</td>
+              <td data-col="4">—</td>
+              <td data-col="5">实验组A</td>
+              <td data-col="6"><span class="mono">grp_a001</span></td>
+              <td data-col="7"><span class="mono">u_10086001</span></td>
+              <td data-col="8">2025-12-15 14:30:22</td>
+              <td data-col="9">激励视频配置</td>
+              <td data-col="10"><span class="mono">incentive_video_style</span></td>
+              <td data-col="11">实验版本A</td>
+              <td data-col="12"><span class="mono">style_a</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">新手引导流程优化</td>
+              <td data-col="1"><span class="mono">exp20251115002</span></td>
+              <td data-col="2"><span class="tag tag-ended">已结束</span></td>
+              <td data-col="3">2025-11-15 09:00:00</td>
+              <td data-col="4">2025-12-01 23:59:59</td>
+              <td data-col="5">对照组</td>
+              <td data-col="6"><span class="mono">grp_ctrl</span></td>
+              <td data-col="7"><span class="mono">u_10086001</span></td>
+              <td data-col="8">2025-11-16 09:12:05</td>
+              <td data-col="9">引导弹窗配置</td>
+              <td data-col="10"><span class="mono">guide_popup_style</span></td>
+              <td data-col="11">默认版本</td>
+              <td data-col="12"><span class="mono">default</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">关卡难度自适应算法</td>
+              <td data-col="1"><span class="mono">exp20251020003</span></td>
+              <td data-col="2"><span class="tag tag-ended">已结束</span></td>
+              <td data-col="3">2025-10-20 09:00:00</td>
+              <td data-col="4">2025-11-10 23:59:59</td>
+              <td data-col="5">实验组B</td>
+              <td data-col="6"><span class="mono">grp_b002</span></td>
+              <td data-col="7"><span class="mono">u_10086001</span></td>
+              <td data-col="8">2025-10-21 11:44:37</td>
+              <td data-col="9">难度算法配置</td>
+              <td data-col="10"><span class="mono">difficulty_algo</span></td>
+              <td data-col="11">自适应版本B</td>
+              <td data-col="12"><span class="mono">adaptive_b</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">商城首页改版测试</td>
+              <td data-col="1"><span class="mono">exp20251005004</span></td>
+              <td data-col="2"><span class="tag tag-ended">已结束</span></td>
+              <td data-col="3">2025-10-05 00:00:00</td>
+              <td data-col="4">2025-10-25 23:59:59</td>
+              <td data-col="5">实验组C</td>
+              <td data-col="6"><span class="mono">grp_c003</span></td>
+              <td data-col="7"><span class="mono">u_10086001</span></td>
+              <td data-col="8">2025-10-06 08:30:11</td>
+              <td data-col="9">商城页面配置</td>
+              <td data-col="10"><span class="mono">shop_home_layout</span></td>
+              <td data-col="11">新版布局C</td>
+              <td data-col="12"><span class="mono">layout_c</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">每日签到奖励机制优化</td>
+              <td data-col="1"><span class="mono">exp20250901005</span></td>
+              <td data-col="2"><span class="tag tag-ended">已结束</span></td>
+              <td data-col="3">2025-09-01 00:00:00</td>
+              <td data-col="4">2025-09-30 23:59:59</td>
+              <td data-col="5">对照组</td>
+              <td data-col="6"><span class="mono">grp_ctrl</span></td>
+              <td data-col="7"><span class="mono">u_10086001</span></td>
+              <td data-col="8">2025-09-02 07:15:00</td>
+              <td data-col="9">签到奖励配置</td>
+              <td data-col="10"><span class="mono">checkin_reward_mode</span></td>
+              <td data-col="11">原始版本</td>
+              <td data-col="12"><span class="mono">original</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">好友邀请裂变流程</td>
+              <td data-col="1"><span class="mono">exp20250810006</span></td>
+              <td data-col="2"><span class="tag tag-ended">已结束</span></td>
+              <td data-col="3">2025-08-10 00:00:00</td>
+              <td data-col="4">2025-08-31 23:59:59</td>
+              <td data-col="5">实验组A</td>
+              <td data-col="6"><span class="mono">grp_a001</span></td>
+              <td data-col="7"><span class="mono">u_10086001</span></td>
+              <td data-col="8">2025-08-11 16:22:48</td>
+              <td data-col="9">邀请奖励配置</td>
+              <td data-col="10"><span class="mono">invite_reward_amount</span></td>
+              <td data-col="11">高奖励版本</td>
+              <td data-col="12"><span class="mono">500</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">付费弹窗触发策略</td>
+              <td data-col="1"><span class="mono">exp20250720007</span></td>
+              <td data-col="2"><span class="tag tag-ended">已结束</span></td>
+              <td data-col="3">2025-07-20 00:00:00</td>
+              <td data-col="4">2025-08-05 23:59:59</td>
+              <td data-col="5">实验组B</td>
+              <td data-col="6"><span class="mono">grp_b002</span></td>
+              <td data-col="7"><span class="mono">u_10086001</span></td>
+              <td data-col="8">2025-07-21 20:05:33</td>
+              <td data-col="9">付费弹窗配置</td>
+              <td data-col="10"><span class="mono">paywall_trigger_delay</span></td>
+              <td data-col="11">延迟触发B</td>
+              <td data-col="12"><span class="mono">30</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="pagination">
+          <span class="page-info">共 12 条</span>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <button class="page-btn disabled">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin-left:8px;">
+            每页
+            <select class="page-size-select">
+              <option>10</option><option>20</option><option>50</option>
+            </select>
+            条
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════
+       PAGE: 用户群/参数下发查询
+  ══════════════════════════════════════════════ -->
+  <main class="content" id="page-tag-query" style="display:none;">
+
+    <!-- 筛选条件 -->
+    <div class="filter-box">
+      <!-- 第一行：基础查询 -->
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-lbl">用户ID</span>
+          <input class="filter-input" type="text" placeholder="请输入用户ID，多个用英文逗号分隔" style="width:280px;" />
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">用户群ID / 名称</span>
+          <input class="filter-input" type="text" placeholder="请输入用户群ID或用户群名称" style="width:240px;" />
+        </div>
+        <button class="btn btn-default" onclick="resetTagQuery()">重置</button>
+        <button class="btn btn-primary" onclick="runTagQuery()">查询</button>
+      </div>
+      <!-- 第二行：时间筛选 -->
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-lbl">命中时间</span>
+          <div class="date-range">
+            <input class="filter-input" type="date" />
+            <span class="date-range-sep">~</span>
+            <input class="filter-input" type="date" />
+          </div>
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">用户群创建时间</span>
+          <div class="date-range">
+            <input class="filter-input" type="date" />
+            <span class="date-range-sep">~</span>
+            <input class="filter-input" type="date" />
+          </div>
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">用户群删除时间</span>
+          <div class="date-range">
+            <input class="filter-input" type="date" />
+            <span class="date-range-sep">~</span>
+            <input class="filter-input" type="date" />
+          </div>
+        </div>
+      </div>
+      <!-- 第三行：参数筛选 -->
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-lbl">参数名称</span>
+          <input class="filter-input sm" type="text" placeholder="请输入参数名称" />
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">参数字段</span>
+          <input class="filter-input sm" type="text" placeholder="请输入参数字段" />
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">下发值名称</span>
+          <input class="filter-input sm" type="text" placeholder="请输入下发值名称" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 结果区 -->
+    <div id="tagResultArea">
+      <div class="result-info-bar">
+        <span class="result-count">共 <strong id="tagTotal">8</strong> 条记录</span>
+        <div class="result-actions">
+          <!-- 显示列筛选器 -->
+          <div class="col-picker-wrap" id="tagColPickerWrap">
+            <button class="col-picker-btn" onclick="toggleColPicker('tagColPicker', event)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke-width="1.8"/></svg>
+              显示列
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="col-picker-dropdown" id="tagColPicker">
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(0,this)"> 用户群名称</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(1,this)"> 用户群ID</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(2,this)"> 用户群创建时间</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(3,this)"> 用户群删除时间</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(4,this)"> 用户ID</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(5,this)"> 命中时间</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(6,this)"> 参数名称</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(7,this)"> 参数字段</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(8,this)"> 下发值名称</label>
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(9,this)"> 下发值</label>
+            </div>
+          </div>
+          <!-- 导出按钮 -->
+          <div class="export-wrap" id="tagExportWrap">
+            <button class="export-btn" onclick="toggleExportDropdown('tagExportDropdown', event)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              导出数据
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="export-dropdown" id="tagExportDropdown">
+              <div class="export-item" onclick="exportData('tag','excel')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12l2.5 2.5L16 9"/></svg>
+                导出为 Excel
+              </div>
+              <div class="export-item" onclick="exportData('tag','txt')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                导出为 TXT
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table id="tagTable">
+          <thead>
+            <tr>
+              <th data-col="0">用户群名称</th>
+              <th data-col="1">用户群ID</th>
+              <th data-col="2">用户群创建时间</th>
+              <th data-col="3">用户群删除时间</th>
+              <th data-col="4">用户ID</th>
+              <th data-col="5">命中时间</th>
+              <th data-col="6">参数名称</th>
+              <th data-col="7">参数字段</th>
+              <th data-col="8">下发值名称</th>
+              <th data-col="9">下发值</th>
+            </tr>
+          </thead>
+          <tbody id="tagTableBody">
+            <tr>
+              <td data-col="0">7日内活跃用户</td>
+              <td data-col="1"><span class="mono">seg_20250301_001</span></td>
+              <td data-col="2">2025-03-01 10:00:00</td>
+              <td data-col="3">—</td>
+              <td data-col="4"><span class="mono">u_10086001</span></td>
+              <td data-col="5">2025-03-05 10:30:44</td>
+              <td data-col="6">激励横幅配置</td>
+              <td data-col="7"><span class="mono">show_incentive_banner</span></td>
+              <td data-col="8">开启</td>
+              <td data-col="9"><span class="mono">true</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">高付费意愿用户</td>
+              <td data-col="1"><span class="mono">seg_20250215_002</span></td>
+              <td data-col="2">2025-02-15 09:30:00</td>
+              <td data-col="3">—</td>
+              <td data-col="4"><span class="mono">u_10086001</span></td>
+              <td data-col="5">2025-02-20 14:18:22</td>
+              <td data-col="6">折扣率配置</td>
+              <td data-col="7"><span class="mono">discount_rate</span></td>
+              <td data-col="8">八五折</td>
+              <td data-col="9"><span class="mono">0.85</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">流失预警用户群</td>
+              <td data-col="1"><span class="mono">seg_20250120_003</span></td>
+              <td data-col="2">2025-01-20 14:00:00</td>
+              <td data-col="3">2025-03-20 14:00:00</td>
+              <td data-col="4"><span class="mono">u_10086001</span></td>
+              <td data-col="5">2025-01-22 09:05:17</td>
+              <td data-col="6">召回推送频率</td>
+              <td data-col="7"><span class="mono">recall_push_freq</span></td>
+              <td data-col="8">高频次</td>
+              <td data-col="9"><span class="mono">3</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">首充引导目标群</td>
+              <td data-col="1"><span class="mono">seg_20241201_004</span></td>
+              <td data-col="2">2024-12-01 09:00:00</td>
+              <td data-col="3">2025-01-01 09:00:00</td>
+              <td data-col="4"><span class="mono">u_10086001</span></td>
+              <td data-col="5">2024-12-03 11:40:09</td>
+              <td data-col="6">首充礼包配置</td>
+              <td data-col="7"><span class="mono">first_pay_gift_id</span></td>
+              <td data-col="8">豪华礼包</td>
+              <td data-col="9"><span class="mono">gift_pack_001</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">关卡卡顿用户</td>
+              <td data-col="1"><span class="mono">seg_20241110_005</span></td>
+              <td data-col="2">2024-11-10 11:00:00</td>
+              <td data-col="3">2024-12-10 11:00:00</td>
+              <td data-col="4"><span class="mono">u_10086001</span></td>
+              <td data-col="5">2024-11-11 15:22:31</td>
+              <td data-col="6">渲染质量配置</td>
+              <td data-col="7"><span class="mono">render_quality</span></td>
+              <td data-col="8">低质量</td>
+              <td data-col="9"><span class="mono">low</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">新手期未付费用户</td>
+              <td data-col="1"><span class="mono">seg_20241025_006</span></td>
+              <td data-col="2">2024-10-25 08:00:00</td>
+              <td data-col="3">2024-11-25 08:00:00</td>
+              <td data-col="4"><span class="mono">u_10086001</span></td>
+              <td data-col="5">2024-10-26 10:03:55</td>
+              <td data-col="6">引导弹窗配置</td>
+              <td data-col="7"><span class="mono">guide_popup_style</span></td>
+              <td data-col="8">风格B</td>
+              <td data-col="9"><span class="mono">style_b</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">社交高活跃用户</td>
+              <td data-col="1"><span class="mono">seg_20240901_007</span></td>
+              <td data-col="2">2024-09-01 00:00:00</td>
+              <td data-col="3">2024-10-01 00:00:00</td>
+              <td data-col="4"><span class="mono">u_10086001</span></td>
+              <td data-col="5">2024-09-02 08:17:44</td>
+              <td data-col="6">好友邀请奖励</td>
+              <td data-col="7"><span class="mono">friend_invite_reward</span></td>
+              <td data-col="8">高奖励</td>
+              <td data-col="9"><span class="mono">200</span></td>
+            </tr>
+            <tr>
+              <td data-col="0">广告敏感用户</td>
+              <td data-col="1"><span class="mono">seg_20240801_008</span></td>
+              <td data-col="2">2024-08-01 00:00:00</td>
+              <td data-col="3">2024-09-01 00:00:00</td>
+              <td data-col="4"><span class="mono">u_10086001</span></td>
+              <td data-col="5">2024-08-03 19:55:02</td>
+              <td data-col="6">广告频率上限</td>
+              <td data-col="7"><span class="mono">ad_frequency_cap</span></td>
+              <td data-col="8">低频次</td>
+              <td data-col="9"><span class="mono">2</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="pagination">
+          <span class="page-info">共 8 条</span>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <button class="page-btn disabled">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin-left:8px;">
+            每页
+            <select class="page-size-select">
+              <option>10</option><option>20</option><option>50</option>
+            </select>
+            条
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+</div><!-- /body-wrap -->
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div class="toast" id="toast">
+  <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2">
+    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+  </svg>
+  <div class="toast-body">
+    <div class="toast-title" id="toastTitle">查询成功</div>
+    <div class="toast-desc" id="toastDesc">已返回匹配结果</div>
+  </div>
+</div>
+
+<script>
+  /* ── Sidebar nav toggle ── */
+  function toggleNav(el) {
+    el.classList.toggle('open');
+    var list = el.nextElementSibling;
+    list.style.display = el.classList.contains('open') ? 'block' : 'none';
+  }
+
+  /* ── Page switch ── */
+  function switchPage(pageId, title, navEl) {
+    document.getElementById('page-exp-query').style.display = 'none';
+    document.getElementById('page-tag-query').style.display = 'none';
+    document.getElementById('page-' + pageId).style.display = 'block';
+    document.getElementById('breadcrumbCurrent').textContent = title;
+    document.querySelectorAll('.nav-l2').forEach(function(n) { n.classList.remove('active'); });
+    if (navEl) navEl.classList.add('active');
+  }
+
+  /* ════════════════════════
+     实验用户查询 逻辑
+  ════════════════════════ */
+  function resetExpQuery() {
+    document.querySelectorAll('#page-exp-query .filter-input').forEach(function(i) { i.value = ''; });
+  }
+
+  function runExpQuery() {
+    showToast('查询成功', '已返回实验用户匹配结果');
+  }
+
+  function toggleExpCol(colIdx, cb) {
+    var table = document.getElementById('expTable');
+    var cells = table.querySelectorAll('[data-col="' + colIdx + '"]');
+    cells.forEach(function(c) { c.style.display = cb.checked ? '' : 'none'; });
+  }
+
+  /* ════════════════════════
+     用户群/参数下发查询 逻辑
+  ════════════════════════ */
+  function toggleTagCol(colIdx, cb) {
+    var table = document.getElementById('tagTable');
+    var cells = table.querySelectorAll('[data-col="' + colIdx + '"]');
+    cells.forEach(function(c) { c.style.display = cb.checked ? '' : 'none'; });
+  }
+
+  function resetTagQuery() {
+    document.querySelectorAll('#page-tag-query .filter-input').forEach(function(i) { i.value = ''; });
+  }
+
+  function runTagQuery() {
+    showToast('查询成功', '已返回用户群匹配结果');
+  }
+
+  /* ════════════════════════
+     列筛选器下拉开关
+  ════════════════════════ */
+  function toggleColPicker(id, event) {
+    if (event) event.stopPropagation();
+    var el = document.getElementById(id);
+    var isOpen = el.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) el.classList.add('open');
+  }
+
+  /* ════════════════════════
+     导出下拉开关
+  ════════════════════════ */
+  function toggleExportDropdown(id, event) {
+    if (event) event.stopPropagation();
+    var el = document.getElementById(id);
+    var isOpen = el.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) el.classList.add('open');
+  }
+
+  function closeAllDropdowns() {
+    document.querySelectorAll('.col-picker-dropdown, .export-dropdown').forEach(function(d) {
+      d.classList.remove('open');
+    });
+  }
+
+  document.addEventListener('click', function() { closeAllDropdowns(); });
+
+  /* ════════════════════════
+     导出数据功能
+  ════════════════════════ */
+  function exportData(tableType, format) {
+    closeAllDropdowns();
+    var tableId = tableType === 'exp' ? 'expTable' : 'tagTable';
+    var table = document.getElementById(tableId);
+
+    // 收集可见列的表头和数据
+    var headers = [];
+    var headerCells = table.querySelectorAll('thead th');
+    headerCells.forEach(function(th) {
+      if (th.style.display !== 'none') headers.push(th.textContent.trim());
+    });
+
+    var rows = [];
+    var bodyRows = table.querySelectorAll('tbody tr');
+    bodyRows.forEach(function(tr) {
+      var rowData = [];
+      tr.querySelectorAll('td').forEach(function(td) {
+        if (td.style.display !== 'none') {
+          rowData.push(td.textContent.trim().replace(/\s+/g, ' '));
+        }
+      });
+      if (rowData.length > 0) rows.push(rowData);
+    });
+
+    var filename = tableType === 'exp' ? '实验用户查询' : '用户群参数下发查询';
+    var dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '');
+
+    if (format === 'excel') {
+      // 生成 CSV（可用 Excel 打开）
+      var sep = ',';
+      var bom = '\uFEFF'; // UTF-8 BOM，确保 Excel 中文显示正常
+      var content = bom + headers.join(sep) + '\n';
+      rows.forEach(function(r) {
+        content += r.map(function(v) { return '"' + v.replace(/"/g, '""') + '"'; }).join(sep) + '\n';
+      });
+      downloadFile(filename + '_' + dateStr + '.csv', content, 'text/csv;charset=utf-8;');
+    } else {
+      // 生成 TXT（Tab 分隔）
+      var content = headers.join('\t') + '\n';
+      rows.forEach(function(r) { content += r.join('\t') + '\n'; });
+      downloadFile(filename + '_' + dateStr + '.txt', content, 'text/plain;charset=utf-8;');
+    }
+
+    showToast('导出成功', '文件已开始下载');
+  }
+
+  function downloadFile(filename, content, mimeType) {
+    var blob = new Blob([content], { type: mimeType });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /* ── Toast ── */
+  function showToast(title, desc) {
+    var t = document.getElementById('toast');
+    document.getElementById('toastTitle').textContent = title;
+    document.getElementById('toastDesc').textContent  = desc;
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2500);
+  }
+</script>
+
+</body>
+</html>
+
+    
