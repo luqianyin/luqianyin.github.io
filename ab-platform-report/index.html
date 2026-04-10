@@ -1,1 +1,1238 @@
+      
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 实验列表</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --primary:      #1677FF;
+      --primary-light:#E6F0FF;
+      --primary-hover:#0958D9;
+      --green:        #00B42A;
+      --green-light:  #E8FFEA;
+      --red:          #F53F3F;
+      --red-light:    #FFECE8;
+      --orange:       #FF7D00;
+      --orange-light: #FFF3E8;
+      --gray-light:   #F7F8FA;
+      --sidebar-w:    220px;
+      --header-h:     52px;
+      --subbar-h:     44px;
+      --bg:           #F5F7FA;
+      --card:         #FFFFFF;
+      --border:       #E8ECF0;
+      --text:         #1D2129;
+      --sub:          #86909C;
+      --link:         #1677FF;
+    }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+      display: flex; flex-direction: column; min-height: 100vh; overflow-y: auto;
+    }
+
+    /* ══ TOP HEADER ══ */
+    .header {
+      height: var(--header-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 0; flex-shrink: 0;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .logo-wrap {
+      display: flex; align-items: center; gap: 8px;
+      min-width: var(--sidebar-w); padding-right: 16px;
+      border-right: 1px solid var(--border);
+    }
+    .logo-star { width: 28px; height: 28px; color: var(--primary); flex-shrink: 0; }
+    .logo-name { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+    .header-nav { display: flex; align-items: center; height: 100%; margin-left: 20px; gap: 4px; }
+    .header-tab {
+      height: 100%; display: flex; align-items: center; padding: 0 18px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s;
+    }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 4px 8px; border-radius: 4px; cursor: pointer;
+      color: var(--sub); background: none; border: none; transition: color .15s;
+    }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; cursor: pointer;
+      background: none; border: none; color: var(--text);
+    }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+
+    /* ══ SUB-HEADER ══ */
+    .subbar {
+      height: var(--subbar-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 0 0 var(--sidebar-w);
+      flex-shrink: 0;
+      position: sticky; top: var(--header-h); z-index: 10;
+    }
+    .subbar-inner { display: flex; align-items: center; gap: 14px; padding: 0 20px; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+    /* ══ BODY = SIDEBAR + CONTENT ══ */
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: #fff; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      position: sticky; top: calc(var(--header-h) + var(--subbar-h));
+      height: calc(100vh - var(--header-h) - var(--subbar-h));
+    }
+    .nav-group { padding: 8px 0; }
+    .nav-l1 {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; user-select: none;
+      transition: background .12s;
+    }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron {
+      margin-left: auto; width: 14px; height: 14px;
+      transition: transform .2s; flex-shrink: 0;
+    }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+    .nav-l2 {
+      display: flex; align-items: center;
+      padding: 9px 16px 9px 40px; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active {
+      color: var(--primary); font-weight: 500;
+      background: var(--primary-light);
+    }
+    .nav-l2.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+    .nav-l3 {
+      display: flex; align-items: center;
+      padding: 8px 16px 8px 56px; font-size: 12px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l3:hover { background: var(--bg); color: var(--text); }
+    .nav-l3.active {
+      color: var(--primary); font-weight: 600;
+      background: var(--primary-light);
+    }
+    .nav-l3.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+
+    /* Content */
+    .content {
+      flex: 1; min-width: 0; padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    /* ══ BUTTONS ══ */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 32px; padding: 0 14px; border-radius: 6px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: #fff; color: var(--text);
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-primary {
+      background: var(--primary); border-color: var(--primary); color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+    .btn-link {
+      border: none; background: none; color: var(--primary); padding: 0 4px; height: auto;
+      font-size: 12px;
+    }
+    .btn-link:hover { color: var(--primary-hover); border: none; text-decoration: underline; }
+    .btn-link-danger {
+      border: none; background: none; color: var(--red); padding: 0 4px; height: auto;
+      font-size: 12px;
+    }
+    .btn-link-danger:hover { color: #CF1322; border: none; text-decoration: underline; }
+
+    /* ══ FILTER CARD ══ */
+    .filter-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px 20px;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px 16px;
+    }
+    .filter-item {
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .filter-label {
+      font-size: 12px; color: var(--sub); font-weight: 500;
+    }
+    .filter-input {
+      height: 32px; border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; color: var(--text); font-size: 13px;
+      padding: 0 10px; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      width: 100%;
+    }
+    .filter-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .filter-input::placeholder { color: #C2C7CF; }
+    .filter-select {
+      height: 32px; border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; color: var(--text); font-size: 13px;
+      padding: 0 28px 0 10px; outline: none; cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+      width: 100%;
+      transition: border-color .15s;
+    }
+    .filter-select:focus { border-color: var(--primary); }
+    .filter-date-range {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .filter-date-range .filter-input { flex: 1; }
+    .filter-date-sep { font-size: 12px; color: var(--sub); flex-shrink: 0; }
+    .filter-footer {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 8px; margin-top: 14px; padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ══ LIST CARD ══ */
+    .list-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+    }
+
+    /* Status tabs + actions bar */
+    .list-header {
+      display: flex; align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px 0 0;
+    }
+    .status-tabs {
+      display: flex; align-items: center; flex: 0 0 auto;
+    }
+    .status-tab {
+      height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 18px;
+      font-size: 13px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s; white-space: nowrap;
+    }
+    .status-tab:hover { color: var(--text); }
+    .status-tab.active { color: var(--primary); font-weight: 600; }
+    .status-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .status-tab-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 18px; height: 18px; padding: 0 5px;
+      border-radius: 9px; font-size: 10px; font-weight: 700;
+      background: #F0F3F6; color: var(--sub);
+    }
+    .status-tab.active .status-tab-count {
+      background: var(--primary-light); color: var(--primary);
+    }
+    .list-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table.exp-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .exp-table th {
+      background: #FAFBFC; border-bottom: 1px solid var(--border);
+      padding: 10px 14px; text-align: left;
+      font-size: 12px; font-weight: 600; color: var(--sub);
+      white-space: nowrap; user-select: none;
+    }
+    .exp-table th.sortable { cursor: pointer; }
+    .exp-table th.sortable:hover { color: var(--text); }
+    .sort-icon { display: inline-flex; flex-direction: column; gap: 1px; margin-left: 4px; vertical-align: middle; }
+    .sort-icon svg { width: 8px; height: 5px; fill: #C2C7CF; }
+    .sort-icon svg.asc { fill: var(--primary); }
+    .exp-table td {
+      padding: 12px 14px; border-bottom: 1px solid #F0F3F6;
+      vertical-align: middle;
+    }
+    .exp-table tr:last-child td { border-bottom: none; }
+    .exp-table tr:hover td { background: #FAFBFC; }
+
+    /* Drag handle */
+    .drag-handle {
+      display: flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: 4px; cursor: grab;
+      color: #C2C7CF; transition: color .12s;
+    }
+    .drag-handle:hover { color: var(--sub); background: var(--bg); }
+
+    /* Experiment ID */
+    .exp-id { font-size: 12px; color: var(--sub); font-family: monospace; }
+
+    /* Experiment name */
+    .exp-name-cell { display: flex; flex-direction: column; gap: 3px; max-width: 200px; }
+    .exp-name { font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .exp-desc { font-size: 11px; color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Type tags */
+    .type-tag {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .type-tag.orthogonal { background: #F0F0FF; color: #6B6EBF; }
+    .type-tag.non-orthogonal { background: #FFF3E8; color: var(--orange); }
+
+    /* Status badges */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .status-badge.running { background: var(--green-light); color: var(--green); border: 1px solid #A3E8B0; }
+    .status-badge.pending { background: var(--primary-light); color: var(--primary); border: 1px solid #ADC6FF; }
+    .status-badge.ended   { background: #F5F5F5; color: var(--sub); border: 1px solid #E0E0E0; }
+
+    /* Conclusion badge */
+    .conclusion-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .conclusion-badge.positive { background: var(--green-light); color: var(--green); }
+    .conclusion-badge.negative { background: var(--red-light); color: var(--red); }
+    .conclusion-badge.neutral  { background: #F5F5F5; color: var(--sub); }
+    .conclusion-badge.pending  { background: var(--orange-light); color: var(--orange); }
+
+    /* Time cell */
+    .time-cell { display: flex; flex-direction: column; gap: 2px; }
+    .time-start { font-size: 12px; color: var(--text); }
+    .time-end   { font-size: 11px; color: var(--sub); }
+
+    /* Param cell */
+    .param-cell { display: flex; flex-direction: column; gap: 3px; max-width: 160px; }
+    .param-key {
+      display: inline-flex; align-items: center;
+      background: #EEF5FF; color: var(--primary);
+      padding: 1px 6px; border-radius: 3px; font-size: 11px;
+      font-family: monospace; white-space: nowrap; width: fit-content;
+    }
+    .param-val {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; color: var(--sub);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .param-val .val-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--sub); flex-shrink: 0; }
+
+    /* Modifier cell */
+    .modifier-cell { display: flex; align-items: center; gap: 5px; }
+    .modifier-avatar {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      background: #7B61FF; color: #fff; font-size: 9px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modifier-name { font-size: 12px; color: var(--text); }
+
+    /* Operation links */
+    .op-links { display: flex; align-items: center; gap: 2px; }
+    .op-divider { color: var(--border); font-size: 12px; }
+
+    /* ══ PAGINATION ══ */
+    .pagination-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      background: #fff;
+    }
+    .page-info { font-size: 12px; color: var(--sub); }
+    .page-controls { display: flex; align-items: center; gap: 6px; }
+    .page-size-select {
+      height: 28px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 12px; color: var(--text);
+      padding: 0 22px 0 8px; outline: none; cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 5px center;
+    }
+    .page-btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 5px; background: #fff;
+      font-size: 12px; color: var(--sub); cursor: pointer;
+      transition: all .12s;
+    }
+    .page-btn:hover:not(.disabled) { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .page-btn.disabled { opacity: .4; cursor: not-allowed; }
+    .page-jump { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--sub); }
+    .page-jump-input {
+      width: 44px; height: 28px; border: 1px solid var(--border); border-radius: 5px;
+      text-align: center; font-size: 12px; color: var(--text);
+      outline: none; background: #fff;
+    }
+    .page-jump-input:focus { border-color: var(--primary); }
+
+    /* Tab panels */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 60px 20px; gap: 12px;
+    }
+    .empty-icon { color: #C2C7CF; }
+    .empty-text { font-size: 13px; color: var(--sub); }
+
+    /* Tooltip-style tag overflow */
+    .more-tag {
+      display: inline-flex; align-items: center;
+      padding: 1px 5px; border-radius: 3px; font-size: 10px;
+      background: #F0F3F6; color: var(--sub); cursor: default;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════ TOP HEADER ═══════════ -->
+<header class="header">
+  <div class="logo-wrap">
+    <span class="logo-name">Spark</span>
+  </div>
+  <nav class="header-nav">
+    <button class="header-tab active">实验管理</button>
+    <button class="header-tab">指标管理</button>
+    <button class="header-tab">用户群管理</button>
+    <button class="header-tab">系统配置</button>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      <span>通知</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span>设置</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张晓明</span>
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════ SUB-HEADER ═══════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <div class="breadcrumb">
+      <a href="#">实验管理</a>
+      <span class="sep">›</span>
+      <span class="current">实验列表</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ BODY ═══════════ -->
+<div class="body-wrap">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l1 open">
+        <svg class="l1-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        实验管理
+        <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
+      </div>
+      <div class="nav-l2 active">实验列表</div>
+      <div class="nav-l2">实验报告</div>
+      <div class="nav-l2">流量分组</div>
+      <div class="nav-l2">白名单管理</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-l1">
+        <svg class="l1-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2 14 5 8 8 11 11 5 14 9"/></svg>
+        指标管理
+        <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
+      </div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-l1">
+        <svg class="l1-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6"/></svg>
+        用户群管理
+        <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="content">
+
+    <!-- ─── 筛选器 ─── -->
+    <div class="filter-card">
+      <div class="filter-grid">
+        <div class="filter-item">
+          <label class="filter-label">实验ID</label>
+          <input class="filter-input" type="text" placeholder="请输入实验ID" />
+        </div>
+        <div class="filter-item">
+          <label class="filter-label">实验名称</label>
+          <input class="filter-input" type="text" placeholder="请输入实验名称" />
+        </div>
+        <div class="filter-item">
+          <label class="filter-label">用户群</label>
+          <select class="filter-select">
+            <option value="">全部用户群</option>
+            <option>全量用户</option>
+            <option>新用户</option>
+            <option>活跃用户</option>
+            <option>付费用户</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label class="filter-label">创建时间</label>
+          <div class="filter-date-range">
+            <input class="filter-input" type="date" style="font-size:12px;" />
+            <span class="filter-date-sep">至</span>
+            <input class="filter-input" type="date" style="font-size:12px;" />
+          </div>
+        </div>
+        <div class="filter-item">
+          <label class="filter-label">参数字段</label>
+          <input class="filter-input" type="text" placeholder="请输入参数字段名" />
+        </div>
+        <div class="filter-item">
+          <label class="filter-label">下发值名称</label>
+          <input class="filter-input" type="text" placeholder="请输入下发值名称" />
+        </div>
+        <div class="filter-item">
+          <label class="filter-label">实验类型</label>
+          <select class="filter-select">
+            <option value="">全部类型</option>
+            <option value="orthogonal">正交</option>
+            <option value="non-orthogonal">非正交</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-footer">
+        <button class="btn" onclick="resetFilter()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 1l4 4m0 0l4-4M5 5l4 4M5 5l-4 4"/></svg>
+          重置
+        </button>
+        <button class="btn btn-primary" onclick="doSearch()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+          查询
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── 实验列表 ─── -->
+    <div class="list-card">
+
+      <!-- 列表头：状态tab + 操作按钮 -->
+      <div class="list-header">
+        <div class="status-tabs">
+          <button class="status-tab active" onclick="switchTab('running', this)">
+            实验中
+            <span class="status-tab-count">12</span>
+          </button>
+          <button class="status-tab" onclick="switchTab('pending', this)">
+            未开始
+            <span class="status-tab-count">5</span>
+          </button>
+          <button class="status-tab" onclick="switchTab('ended', this)">
+            已结束
+            <span class="status-tab-count">38</span>
+          </button>
+        </div>
+        <div class="list-actions">
+          <button class="btn" onclick="doSearch()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+            查询
+          </button>
+          <button class="btn" onclick="doRefresh()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 4c1-2 3.5-3 6-3a7 7 0 110 14 7 7 0 01-6-3"/><polyline points="1 1 1 4 4 4"/></svg>
+            刷新
+          </button>
+          <button class="btn btn-primary" onclick="newExp()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+            新增实验
+          </button>
+        </div>
+      </div>
+
+      <!-- ══ 实验中 TAB ══ -->
+      <div id="tab-running" class="tab-panel active">
+        <div class="table-wrap">
+          <table class="exp-table">
+            <thead>
+              <tr>
+                <th style="width:40px;">排序</th>
+                <th style="width:90px;">实验ID</th>
+                <th style="min-width:160px;">实验名称</th>
+                <th style="width:90px;">实验类型</th>
+                <th style="width:90px;">实验状态</th>
+                <th style="width:100px;">实验结论</th>
+                <th style="min-width:160px;">实验时间</th>
+                <th style="min-width:150px;">参数字段/下发值</th>
+                <th style="width:100px;">修改人</th>
+                <th style="min-width:130px;" class="sortable">
+                  修改时间
+                  <span class="sort-icon">
+                    <svg viewBox="0 0 8 5"><path d="M4 0L8 5H0L4 0Z"/></svg>
+                    <svg viewBox="0 0 8 5" class="asc" style="transform:rotate(180deg)"><path d="M4 0L8 5H0L4 0Z"/></svg>
+                  </span>
+                </th>
+                <th style="width:140px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Row 1 -->
+              <tr>
+                <td>
+                  <div class="drag-handle">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="4.5" cy="3" r="1.2" fill="currentColor"/><circle cx="9.5" cy="3" r="1.2" fill="currentColor"/><circle cx="4.5" cy="7" r="1.2" fill="currentColor"/><circle cx="9.5" cy="7" r="1.2" fill="currentColor"/><circle cx="4.5" cy="11" r="1.2" fill="currentColor"/><circle cx="9.5" cy="11" r="1.2" fill="currentColor"/></svg>
+                  </div>
+                </td>
+                <td><span class="exp-id">EXP-20240312</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">首页Banner点击率优化实验</a>
+                    <span class="exp-desc">对照组 vs 大图版式</span>
+                  </div>
+                </td>
+                <td><span class="type-tag non-orthogonal">非正交</span></td>
+                <td><span class="status-badge running"><span class="dot"></span>实验中</span></td>
+                <td><span class="conclusion-badge pending">观察中</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2024-03-12 10:00</span>
+                    <span class="time-end">至 2024-04-12 10:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">banner_style</span>
+                    <span class="param-val"><span class="val-dot"></span>large_image / control</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="modifier-cell">
+                    <div class="modifier-avatar">李</div>
+                    <span class="modifier-name">李明</span>
+                  </div>
+                </td>
+                <td style="font-size:12px;color:var(--sub);">2024-03-15 14:22</td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link" onclick="viewReport()">查看报告</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">编辑</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">停止</button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 2 -->
+              <tr>
+                <td>
+                  <div class="drag-handle">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="4.5" cy="3" r="1.2" fill="currentColor"/><circle cx="9.5" cy="3" r="1.2" fill="currentColor"/><circle cx="4.5" cy="7" r="1.2" fill="currentColor"/><circle cx="9.5" cy="7" r="1.2" fill="currentColor"/><circle cx="4.5" cy="11" r="1.2" fill="currentColor"/><circle cx="9.5" cy="11" r="1.2" fill="currentColor"/></svg>
+                  </div>
+                </td>
+                <td><span class="exp-id">EXP-20240308</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">商品详情页价格展示优化</a>
+                    <span class="exp-desc">原始价格 vs 折扣标注</span>
+                  </div>
+                </td>
+                <td><span class="type-tag orthogonal">正交</span></td>
+                <td><span class="status-badge running"><span class="dot"></span>实验中</span></td>
+                <td><span class="conclusion-badge positive">显著提升</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2024-03-08 09:00</span>
+                    <span class="time-end">至 2024-04-08 09:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">price_display</span>
+                    <span class="param-val"><span class="val-dot"></span>discount_tag / origin</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="modifier-cell">
+                    <div class="modifier-avatar" style="background:#00B42A;">王</div>
+                    <span class="modifier-name">王芳</span>
+                  </div>
+                </td>
+                <td style="font-size:12px;color:var(--sub);">2024-03-14 09:41</td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link" onclick="viewReport()">查看报告</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">编辑</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">停止</button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 3 -->
+              <tr>
+                <td>
+                  <div class="drag-handle">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="4.5" cy="3" r="1.2" fill="currentColor"/><circle cx="9.5" cy="3" r="1.2" fill="currentColor"/><circle cx="4.5" cy="7" r="1.2" fill="currentColor"/><circle cx="9.5" cy="7" r="1.2" fill="currentColor"/><circle cx="4.5" cy="11" r="1.2" fill="currentColor"/><circle cx="9.5" cy="11" r="1.2" fill="currentColor"/></svg>
+                  </div>
+                </td>
+                <td><span class="exp-id">EXP-20240305</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">搜索结果排序算法对比</a>
+                    <span class="exp-desc">相关性排序 vs 综合排序</span>
+                  </div>
+                </td>
+                <td><span class="type-tag orthogonal">正交</span></td>
+                <td><span class="status-badge running"><span class="dot"></span>实验中</span></td>
+                <td><span class="conclusion-badge negative">无显著差异</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2024-03-05 00:00</span>
+                    <span class="time-end">至 2024-04-05 00:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">search_rank_algo</span>
+                    <span class="param-val"><span class="val-dot"></span>comprehensive / relevance</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="modifier-cell">
+                    <div class="modifier-avatar" style="background:#FF7D00;">张</div>
+                    <span class="modifier-name">张晓明</span>
+                  </div>
+                </td>
+                <td style="font-size:12px;color:var(--sub);">2024-03-12 16:05</td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link" onclick="viewReport()">查看报告</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">编辑</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">停止</button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 4 -->
+              <tr>
+                <td>
+                  <div class="drag-handle">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="4.5" cy="3" r="1.2" fill="currentColor"/><circle cx="9.5" cy="3" r="1.2" fill="currentColor"/><circle cx="4.5" cy="7" r="1.2" fill="currentColor"/><circle cx="9.5" cy="7" r="1.2" fill="currentColor"/><circle cx="4.5" cy="11" r="1.2" fill="currentColor"/><circle cx="9.5" cy="11" r="1.2" fill="currentColor"/></svg>
+                  </div>
+                </td>
+                <td><span class="exp-id">EXP-20240301</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">推送通知文案A/B测试</a>
+                    <span class="exp-desc">情感化文案 vs 功能性文案</span>
+                  </div>
+                </td>
+                <td><span class="type-tag non-orthogonal">非正交</span></td>
+                <td><span class="status-badge running"><span class="dot"></span>实验中</span></td>
+                <td><span class="conclusion-badge pending">观察中</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2024-03-01 08:00</span>
+                    <span class="time-end">至 2024-03-31 08:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">push_copy_style</span>
+                    <span class="param-val"><span class="val-dot"></span>emotional / functional</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="modifier-cell">
+                    <div class="modifier-avatar" style="background:#7B61FF;">陈</div>
+                    <span class="modifier-name">陈晓</span>
+                  </div>
+                </td>
+                <td style="font-size:12px;color:var(--sub);">2024-03-10 11:30</td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link" onclick="viewReport()">查看报告</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">编辑</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">停止</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-bar">
+          <span class="page-info">共 12 条记录，每页显示</span>
+          <div class="page-controls" style="margin-left:8px;">
+            <select class="page-size-select">
+              <option>10</option>
+              <option>20</option>
+              <option>50</option>
+            </select>
+          </div>
+          <div class="page-controls" style="margin-left:auto;">
+            <button class="page-btn disabled">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg>
+            </button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 2 9 6 5 10"/></svg>
+            </button>
+            <div class="page-jump">
+              前往
+              <input class="page-jump-input" type="number" min="1" value="1" />
+              页
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 未开始 TAB ══ -->
+      <div id="tab-pending" class="tab-panel">
+        <div class="table-wrap">
+          <table class="exp-table">
+            <thead>
+              <tr>
+                <th style="width:90px;">实验ID</th>
+                <th style="min-width:160px;">实验名称</th>
+                <th style="width:90px;">实验类型</th>
+                <th style="width:90px;">实验状态</th>
+                <th style="width:100px;">实验结论</th>
+                <th style="min-width:160px;">实验时间</th>
+                <th style="min-width:150px;">参数字段/下发值</th>
+                <th style="width:140px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="exp-id">EXP-20240320</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">个人中心页面改版实验</a>
+                    <span class="exp-desc">新版UI vs 旧版UI</span>
+                  </div>
+                </td>
+                <td><span class="type-tag orthogonal">正交</span></td>
+                <td><span class="status-badge pending"><span class="dot"></span>未开始</span></td>
+                <td><span class="conclusion-badge neutral">待观察</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2024-03-25 10:00</span>
+                    <span class="time-end">至 2024-04-25 10:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">profile_ui_version</span>
+                    <span class="param-val"><span class="val-dot"></span>v2 / v1</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link">编辑</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">启动</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">删除</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="exp-id">EXP-20240319</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">购物车结算流程简化</a>
+                    <span class="exp-desc">一键结算 vs 多步确认</span>
+                  </div>
+                </td>
+                <td><span class="type-tag non-orthogonal">非正交</span></td>
+                <td><span class="status-badge pending"><span class="dot"></span>未开始</span></td>
+                <td><span class="conclusion-badge neutral">待观察</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2024-03-22 00:00</span>
+                    <span class="time-end">至 2024-04-22 00:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">checkout_flow</span>
+                    <span class="param-val"><span class="val-dot"></span>one_click / multi_step</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link">编辑</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">启动</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">删除</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="exp-id">EXP-20240318</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">评论区默认排序策略测试</a>
+                    <span class="exp-desc">热度排序 vs 时间排序</span>
+                  </div>
+                </td>
+                <td><span class="type-tag orthogonal">正交</span></td>
+                <td><span class="status-badge pending"><span class="dot"></span>未开始</span></td>
+                <td><span class="conclusion-badge neutral">待观察</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2024-03-21 08:00</span>
+                    <span class="time-end">至 2024-04-21 08:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">comment_sort</span>
+                    <span class="param-val"><span class="val-dot"></span>hot / time_desc</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link">编辑</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">启动</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination-bar">
+          <span class="page-info">共 5 条记录，每页显示</span>
+          <div class="page-controls" style="margin-left:8px;">
+            <select class="page-size-select">
+              <option>10</option>
+              <option>20</option>
+              <option>50</option>
+            </select>
+          </div>
+          <div class="page-controls" style="margin-left:auto;">
+            <button class="page-btn disabled">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg>
+            </button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn disabled">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 2 9 6 5 10"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 已结束 TAB ══ -->
+      <div id="tab-ended" class="tab-panel">
+        <div class="table-wrap">
+          <table class="exp-table">
+            <thead>
+              <tr>
+                <th style="width:90px;">实验ID</th>
+                <th style="min-width:160px;">实验名称</th>
+                <th style="width:90px;">实验类型</th>
+                <th style="width:90px;">实验状态</th>
+                <th style="width:100px;">实验结论</th>
+                <th style="min-width:160px;">实验时间</th>
+                <th style="min-width:150px;">参数字段/下发值</th>
+                <th style="width:100px;">修改人</th>
+                <th style="width:140px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="exp-id">EXP-20240201</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">新用户引导流程优化</a>
+                    <span class="exp-desc">简化引导 vs 全量引导</span>
+                  </div>
+                </td>
+                <td><span class="type-tag orthogonal">正交</span></td>
+                <td><span class="status-badge ended"><span class="dot"></span>已结束</span></td>
+                <td><span class="conclusion-badge positive">显著提升</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2024-02-01 00:00</span>
+                    <span class="time-end">至 2024-03-01 00:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">onboarding_flow</span>
+                    <span class="param-val"><span class="val-dot"></span>simplified / full</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="modifier-cell">
+                    <div class="modifier-avatar">李</div>
+                    <span class="modifier-name">李明</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link" onclick="viewReport()">查看报告</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">复制</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">删除</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="exp-id">EXP-20240115</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">首页推荐算法升级</a>
+                    <span class="exp-desc">协同过滤 vs 内容推荐</span>
+                  </div>
+                </td>
+                <td><span class="type-tag non-orthogonal">非正交</span></td>
+                <td><span class="status-badge ended"><span class="dot"></span>已结束</span></td>
+                <td><span class="conclusion-badge negative">无显著差异</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2024-01-15 10:00</span>
+                    <span class="time-end">至 2024-02-15 10:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">rec_algo</span>
+                    <span class="param-val"><span class="val-dot"></span>collab / content</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="modifier-cell">
+                    <div class="modifier-avatar" style="background:#7B61FF;">陈</div>
+                    <span class="modifier-name">陈晓</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link" onclick="viewReport()">查看报告</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">复制</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">删除</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="exp-id">EXP-20231220</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">支付流程安全验证优化</a>
+                    <span class="exp-desc">指纹验证 vs 密码验证</span>
+                  </div>
+                </td>
+                <td><span class="type-tag orthogonal">正交</span></td>
+                <td><span class="status-badge ended"><span class="dot"></span>已结束</span></td>
+                <td><span class="conclusion-badge positive">显著提升</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2023-12-20 00:00</span>
+                    <span class="time-end">至 2024-01-20 00:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">pay_verify_mode</span>
+                    <span class="param-val"><span class="val-dot"></span>biometric / password</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="modifier-cell">
+                    <div class="modifier-avatar" style="background:#00B42A;">王</div>
+                    <span class="modifier-name">王芳</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link" onclick="viewReport()">查看报告</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">复制</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">删除</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="exp-id">EXP-20231201</span></td>
+                <td>
+                  <div class="exp-name-cell">
+                    <a href="#" class="exp-name" style="color:var(--primary);text-decoration:none;">搜索框位置布局测试</a>
+                    <span class="exp-desc">顶部固定 vs 悬浮搜索</span>
+                  </div>
+                </td>
+                <td><span class="type-tag non-orthogonal">非正交</span></td>
+                <td><span class="status-badge ended"><span class="dot"></span>已结束</span></td>
+                <td><span class="conclusion-badge neutral">结论存疑</span></td>
+                <td>
+                  <div class="time-cell">
+                    <span class="time-start">2023-12-01 08:00</span>
+                    <span class="time-end">至 2023-12-31 08:00</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="param-cell">
+                    <span class="param-key">search_bar_pos</span>
+                    <span class="param-val"><span class="val-dot"></span>fixed_top / float</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="modifier-cell">
+                    <div class="modifier-avatar" style="background:#FF7D00;">张</div>
+                    <span class="modifier-name">张晓明</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="op-links">
+                    <button class="btn btn-link" onclick="viewReport()">查看报告</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link">复制</button>
+                    <span class="op-divider">|</span>
+                    <button class="btn btn-link-danger">删除</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination-bar">
+          <span class="page-info">共 38 条记录，每页显示</span>
+          <div class="page-controls" style="margin-left:8px;">
+            <select class="page-size-select">
+              <option>10</option>
+              <option>20</option>
+              <option>50</option>
+            </select>
+          </div>
+          <div class="page-controls" style="margin-left:auto;">
+            <button class="page-btn disabled">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg>
+            </button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <button class="page-btn">4</button>
+            <button class="page-btn">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 2 9 6 5 10"/></svg>
+            </button>
+            <div class="page-jump">
+              前往
+              <input class="page-jump-input" type="number" min="1" value="1" />
+              页
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /list-card -->
+
+  </main>
+</div>
+
+<script>
+  function switchTab(name, btn) {
+    // Update tab button styles
+    document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    // Show/hide panels
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  function doSearch() {
+    // Placeholder: integrate with backend search
+    console.log('search triggered');
+  }
+
+  function doRefresh() {
+    console.log('refresh triggered');
+  }
+
+  function newExp() {
+    alert('新增实验 — 跳转到创建页面');
+  }
+
+  function resetFilter() {
+    document.querySelectorAll('.filter-input').forEach(el => el.value = '');
+    document.querySelectorAll('.filter-select').forEach(el => el.selectedIndex = 0);
+  }
+
+  function viewReport() {
+    window.location.href = 'ab-platform-report.html?from=list';
+  }
+
+  // Sidebar collapse toggle
+  document.querySelectorAll('.nav-l1').forEach(el => {
+    el.addEventListener('click', () => el.classList.toggle('open'));
+  });
+</script>
+</body>
+</html>
+
+    
