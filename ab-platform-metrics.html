@@ -1,0 +1,3074 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 指标管理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #1677FF;
+      --primary-light:#E6F0FF;
+      --primary-hover:#0958D9;
+      --sidebar-w:    220px;
+      --header-h:     52px;
+      --subbar-h:     44px;
+      --bg:           #F5F7FA;
+      --card:         #FFFFFF;
+      --border:       #E8ECF0;
+      --text:         #1D2129;
+      --sub:          #86909C;
+      --link:         #1677FF;
+    }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+
+    /* ══════════════════════════════════════════════
+       TOP HEADER
+    ══════════════════════════════════════════════ */
+    .header {
+      height: var(--header-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 0; flex-shrink: 0;
+      position: relative; z-index: 20;
+    }
+
+    /* Logo */
+    .logo-wrap {
+      display: flex; align-items: center; gap: 8px;
+      min-width: var(--sidebar-w); padding-right: 16px;
+      border-right: 1px solid var(--border);
+    }
+    .logo-star {
+      width: 28px; height: 28px; color: var(--primary); flex-shrink: 0;
+    }
+    .logo-name {
+      font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .3px;
+    }
+
+    /* Top nav tabs */
+    .header-nav {
+      display: flex; align-items: center; height: 100%; margin-left: 20px; gap: 4px;
+    }
+    .header-tab {
+      height: 100%; display: flex; align-items: center; padding: 0 18px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s;
+    }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+
+    /* Right actions */
+    .header-right {
+      margin-left: auto; display: flex; align-items: center; gap: 6px;
+    }
+    .hdr-action {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 4px 8px; border-radius: 4px; cursor: pointer;
+      color: var(--sub); background: none; border: none; transition: color .15s;
+    }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; cursor: pointer;
+      background: none; border: none; color: var(--text);
+    }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+
+    /* ══════════════════════════════════════════════
+       SUB-HEADER (breadcrumb + product selector)
+    ══════════════════════════════════════════════ */
+    .subbar {
+      height: var(--subbar-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 0 0 var(--sidebar-w);
+      flex-shrink: 0; z-index: 10;
+    }
+    .subbar-inner {
+      display: flex; align-items: center; gap: 14px; padding: 0 20px;
+    }
+    .breadcrumb {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 13px; color: var(--sub);
+    }
+    .breadcrumb a { color: var(--sub); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .product-select {
+      height: 30px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; color: var(--text); font-size: 12px;
+      padding: 0 28px 0 10px; outline: none; cursor: pointer;
+      min-width: 160px; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    .product-select:focus { border-color: var(--primary); }
+
+    /* ══════════════════════════════════════════════
+       BODY = SIDEBAR + CONTENT
+    ══════════════════════════════════════════════ */
+    .body-wrap {
+      flex: 1; display: flex; overflow: hidden;
+    }
+
+    /* ──── Sidebar ──── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: #fff; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto; height: 100%;
+    }
+
+    .nav-group { padding: 8px 0; }
+
+    /* Level-1 item */
+    .nav-l1 {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; user-select: none;
+      transition: background .12s;
+    }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron {
+      margin-left: auto; width: 14px; height: 14px;
+      transition: transform .2s; flex-shrink: 0;
+    }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+
+    /* Level-2 items */
+    .nav-l2-list { overflow: hidden; }
+    .nav-l2 {
+      display: flex; align-items: center;
+      padding: 9px 16px 9px 40px; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active {
+      color: var(--primary); font-weight: 500;
+      background: var(--primary-light);
+    }
+    .nav-l2.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+
+    /* ──── Content ──── */
+    .content {
+      flex: 1; overflow-y: auto; padding: 20px 24px;
+    }
+
+    /* Filter row */
+    .filter-row {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .filter-field {
+      display: flex; align-items: center; gap: 6px; font-size: 13px;
+    }
+    .filter-field label { color: var(--text); white-space: nowrap; }
+    .filter-input {
+      height: 32px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 10px; outline: none; width: 200px;
+    }
+    .filter-input::placeholder { color: #C2C7CF; }
+    .filter-input:focus { border-color: var(--primary); }
+    .filter-sep { flex: 1; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 0 16px; height: 32px; border-radius: 5px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid transparent; transition: all .15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-default { background: #fff; color: var(--text); border-color: var(--border); }
+    .btn-default:hover { border-color: var(--primary); color: var(--primary); }
+    .btn svg { width: 14px; height: 14px; }
+
+    /* Create button row */
+    .action-row {
+      display: flex; justify-content: flex-end; margin-bottom: 12px;
+    }
+    .btn-create {
+      background: var(--primary); color: #fff; border: none;
+      padding: 0 18px; height: 34px; border-radius: 5px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: background .15s;
+    }
+    .btn-create:hover { background: var(--primary-hover); }
+    .btn-create svg { width: 14px; height: 14px; }
+
+    /* Table card */
+    .table-card {
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #FAFBFC; }
+    th {
+      text-align: left; padding: 11px 14px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    td {
+      padding: 12px 14px; border-bottom: 1px solid var(--border);
+      vertical-align: middle; font-size: 13px; color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #F7F9FD; }
+
+    .mtr-id { font-size: 12px; color: var(--sub); font-family: monospace; }
+    .mtr-link { color: var(--link); text-decoration: none; font-weight: 500; }
+    .mtr-link:hover { text-decoration: underline; }
+
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 3px;
+      font-size: 12px; font-weight: 500;
+    }
+    .tag-event  { background: #E6F0FF; color: #1677FF; }
+    .tag-retain { background: #E8F5E9; color: #2E7D32; }
+    .tag-ratio  { background: #FFF3E0; color: #E65100; }
+    .tag-sum    { background: #F3E5F5; color: #6A1B9A; }
+
+    .op-btns { display: flex; align-items: center; gap: 0; white-space: nowrap; }
+    .op-link {
+      color: var(--link); background: none; border: none;
+      font-size: 13px; cursor: pointer; padding: 0 4px;
+      text-decoration: none; transition: color .12s;
+    }
+    .op-link:hover { color: var(--primary-hover); text-decoration: underline; }
+    .op-link.del { color: #FF4D4F; }
+    .op-link.del:hover { color: #CF1322; }
+    .op-sep { color: var(--border); margin: 0 2px; }
+
+    .exp-count { color: var(--text); font-size: 13px; }
+
+    /* Stats strip */
+    .stats-strip { display: flex; gap: 12px; margin-bottom: 16px; }
+    .stat-card {
+      flex: 1; background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+    }
+    .stat-icon {
+      width: 38px; height: 38px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stat-icon svg { width: 20px; height: 20px; }
+    .stat-num { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+    .stat-lbl { font-size: 11px; color: var(--sub); margin-top: 3px; }
+
+    /* Full filter bar */
+    .filter-bar {
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+      flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .filter-item { display: flex; align-items: center; gap: 6px; }
+    .filter-lbl { color: var(--sub); font-size: 12px; white-space: nowrap; }
+    .filter-select {
+      height: 32px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; color: var(--text); font-size: 12px; padding: 0 10px;
+      outline: none; cursor: pointer; min-width: 110px;
+    }
+    .filter-select:focus { border-color: var(--primary); }
+    .filter-text {
+      height: 32px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; color: var(--text); font-size: 12px; padding: 0 10px;
+      outline: none; min-width: 180px;
+    }
+    .filter-text::placeholder { color: #C2C7CF; }
+    .filter-text:focus { border-color: var(--primary); }
+
+    /* Extra tag styles for 指标类型/状态 */
+    .tag-core    { background: #FFF1F0; color: #CF1322; }
+    .tag-minor   { background: #E6F0FF; color: #1677FF; }
+    .tag-guard   { background: #FFFBE6; color: #D48806; }
+    .tag-aux     { background: #F6FFED; color: #389E0D; }
+    .tag-mean    { background: #F3E8FF; color: #6A1B9A; }
+    .tag-domain  { background: #F5F7FA; color: #4E5969; }
+    .tag-on      { background: #F6FFED; color: #389E0D; }
+    .tag-off     { background: #FFF1F0; color: #CF1322; }
+
+    /* Pagination */
+    .pagination {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 12px 16px; border-top: 1px solid var(--border); gap: 8px;
+    }
+    .page-info { color: var(--sub); font-size: 12px; margin-right: 4px; }
+    .page-btn {
+      min-width: 30px; height: 30px; border-radius: 4px;
+      border: 1px solid var(--border); background: #fff; color: var(--sub);
+      font-size: 12px; cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; padding: 0 8px;
+      transition: all .12s;
+    }
+    .page-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    .page-btn.disabled { opacity: .4; pointer-events: none; }
+    .page-size-select {
+      height: 30px; border: 1px solid var(--border); border-radius: 4px;
+      background: #fff; font-size: 12px; padding: 0 8px; color: var(--text); outline: none;
+    }
+
+    /* ══════════════════════════════════════════════
+       MODAL OVERLAY + DIALOG
+    ══════════════════════════════════════════════ */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .overlay.show { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: #fff; border-radius: 8px; width: 800px; max-width: 96vw;
+      max-height: 90vh; display: flex; flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+      transform: translateY(20px); transition: transform .22s;
+    }
+    .overlay.show .modal { transform: none; }
+
+    .modal-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .modal-title { font-size: 15px; font-weight: 600; color: var(--text); }
+    .modal-close {
+      width: 28px; height: 28px; border-radius: 4px; border: none;
+      background: none; cursor: pointer; color: var(--sub);
+      display: flex; align-items: center; justify-content: center; transition: background .12s;
+    }
+    .modal-close:hover { background: var(--bg); color: var(--text); }
+    .modal-close svg { width: 16px; height: 16px; }
+
+    .modal-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 22px; }
+
+    .form-section-title {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .form-section-title::before { content:''; width:3px; height:14px; background:var(--primary); border-radius:2px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
+    .form-field { display: flex; flex-direction: column; gap: 5px; }
+    .form-field.full { grid-column: 1 / -1; }
+    .form-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .form-label .req { color: #FF4D4F; margin-left: 2px; }
+    .form-control {
+      height: 34px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 10px; outline: none; transition: border-color .15s, box-shadow .15s; width: 100%;
+    }
+    .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .form-control.err { border-color: #FF4D4F; }
+    textarea.form-control { height: 68px; padding: 8px 10px; resize: none; line-height: 1.6; }
+    .err-msg { font-size: 11px; color: #FF4D4F; display: none; }
+    .form-field.has-err .err-msg { display: block; }
+
+    .radio-group { display: flex; align-items: center; gap: 18px; height: 34px; }
+    .radio-item { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; color: var(--text); }
+    .radio-item input[type=radio] { accent-color: var(--primary); width: 14px; height: 14px; }
+    .field-tip-wrap { position: relative; display: inline-flex; align-items: center; margin-left: 3px; vertical-align: middle; }
+    .field-tip {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; border-radius: 50%; border: 1px solid #A0A7B4;
+      font-size: 10px; color: #A0A7B4; cursor: default;
+      line-height: 1;
+    }
+    .field-tip:hover { border-color: var(--primary); color: var(--primary); }
+    .field-tip-bubble {
+      display: none; position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+      background: rgba(30,30,30,.88); color: #fff; font-size: 12px; font-weight: 400;
+      white-space: nowrap; padding: 6px 10px; border-radius: 5px; pointer-events: none; z-index: 999;
+      line-height: 1.5;
+    }
+    .field-tip-bubble::before {
+      content: ''; position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
+      border: 5px solid transparent; border-right-color: rgba(30,30,30,.88);
+    }
+    .field-tip-wrap:hover .field-tip-bubble { display: block; }
+    .field-tip-bubble-lg {
+      white-space: normal !important; width: 320px; top: 0; transform: none; line-height: 1.6;
+    }
+    .field-tip-bubble-lg::before { top: 8px; transform: none; }
+
+    /* 计算口径 */
+    .calc-box {
+      background: #F8FAFF; border: 1px solid #D0E0FF; border-radius: 6px; padding: 14px;
+    }
+    .calc-part { margin-bottom: 12px; }
+    .calc-part:last-child { margin-bottom: 0; }
+    .calc-part-label {
+      font-size: 11px; font-weight: 700; color: var(--primary); letter-spacing: .5px;
+      text-transform: uppercase; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .calc-part-label .badge {
+      background: var(--primary); color: #fff; font-size: 10px;
+      padding: 0 5px; border-radius: 3px;
+    }
+    .calc-row { display: flex; gap: 10px; align-items: flex-start; }
+    .calc-row .form-field { flex: 1; }
+    .calc-divider { font-size: 20px; color: #AAC0F0; font-weight: 700; padding-top: 22px; flex-shrink: 0; }
+
+    /* Number format tabs */
+    .fmt-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .fmt-tab {
+      padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border);
+      font-size: 12px; cursor: pointer; color: var(--sub); background: #fff; transition: all .12s;
+    }
+    .fmt-tab.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 500; }
+    .fmt-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .fmt-dec-wrap { display: flex; align-items: center; gap: 5px; }
+    .fmt-stepper {
+      width: 54px; height: 28px; border: 1px solid var(--border); border-radius: 4px;
+      text-align: center; font-size: 13px; color: var(--text); outline: none;
+      padding: 0 4px; transition: border-color .15s;
+    }
+    .fmt-stepper:focus { border-color: var(--primary); }
+    .fmt-dec-label { font-size: 12px; color: var(--sub); }
+    .fmt-preview {
+      font-size: 12px; color: #4E5969; background: #F5F7FA; border-radius: 3px;
+      padding: 3px 8px; border: 1px solid var(--border);
+    }
+
+    /* Retain days checkboxes */
+    .retain-days { display: flex; gap: 12px; height: 34px; align-items: center; }
+    .retain-day-item { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; }
+    .retain-day-item input[type=checkbox] { accent-color: var(--primary); width: 14px; height: 14px; }
+
+    /* Help icon + tooltip */
+    .help-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--sub); color: #fff;
+      font-size: 10px; font-weight: 700; cursor: default;
+      position: relative; flex-shrink: 0; font-style: normal;
+    }
+    .help-icon::after {
+      content: attr(data-tip);
+      position: absolute; bottom: calc(100% + 7px); left: 0; transform: none;
+      background: #1D2129; color: #fff; font-size: 12px; font-weight: 400;
+      padding: 7px 10px; border-radius: 5px; line-height: 1.6;
+      width: 280px; white-space: normal; text-transform: none; letter-spacing: 0;
+      opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 700;
+    }
+    .help-icon:hover::after { opacity: 1; }
+
+    /* Day stepper */
+    .day-stepper-ctrl { display: flex; align-items: center; }
+    .stepper-btn {
+      width: 28px; height: 28px; border: 1px solid var(--border); background: #fff;
+      color: var(--text); font-size: 15px; cursor: pointer; line-height: 1;
+      display: flex; align-items: center; justify-content: center; transition: all .12s;
+    }
+    .stepper-btn:first-child { border-radius: 4px 0 0 4px; }
+    .stepper-btn:last-child  { border-radius: 0 4px 4px 0; }
+    .stepper-btn:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+    .stepper-num-input {
+      width: 52px; height: 28px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      border-left: none; border-right: none; text-align: center;
+      font-size: 13px; color: var(--text); outline: none;
+    }
+    .stepper-num-input:focus { border-color: var(--primary); }
+    .stepper-add-btn {
+      height: 28px; padding: 0 10px; background: var(--primary); color: #fff;
+      border: none; border-radius: 4px; font-size: 12px; cursor: pointer; margin-left: 8px;
+    }
+    .stepper-add-btn:hover { background: var(--primary-hover); }
+    .stepper-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 0; }
+    .stepper-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--primary-light); color: var(--primary);
+      border-radius: 4px; padding: 2px 8px; font-size: 12px;
+    }
+    .stepper-tag-del {
+      background: none; border: none; cursor: pointer; color: var(--primary);
+      font-size: 13px; padding: 0; line-height: 1; display: flex; align-items: center;
+    }
+    .stepper-tag-del:hover { color: #FF4D4F; }
+
+    /* Delete popover */
+    .del-wrap { position: relative; display: inline-flex; align-items: center; }
+    .del-popover {
+      position: absolute; top: calc(100% + 6px); right: 0; left: auto; transform: none;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.14); padding: 12px 14px; width: 210px;
+      z-index: 200; display: none;
+    }
+    .del-popover.show { display: block; }
+    .del-popover::before {
+      content: ''; position: absolute; bottom: 100%; right: 12px; left: auto; transform: none;
+      border: 5px solid transparent; border-bottom-color: var(--border);
+    }
+    .del-popover::after {
+      content: ''; position: absolute; bottom: 100%; right: 12px; left: auto; transform: translateY(1px);
+      border: 5px solid transparent; border-bottom-color: #fff;
+      z-index: 1;
+    }
+    .pop-msg { font-size: 12px; color: var(--text); margin-bottom: 10px; line-height: 1.6; }
+    .pop-warn { font-size: 12px; color: #D48806; line-height: 1.6; }
+    .pop-btns { display: flex; gap: 6px; justify-content: flex-end; }
+    .pop-btn { padding: 3px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); transition: all .12s; }
+    .pop-btn.primary { background: #FF4D4F; border-color: #FF4D4F; color: #fff; }
+    .pop-btn:hover { opacity: .85; }
+
+    /* ── Event searchable select ── */
+    .ev-select-wrap { position: relative; width: 100%; }
+    .ev-select-trigger {
+      height: 34px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text); padding: 0 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none; transition: border-color .15s; gap: 6px;
+    }
+    .ev-select-trigger:hover { border-color: var(--primary); }
+    .ev-select-wrap.open .ev-select-trigger { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .ev-chevron { width: 12px; height: 12px; color: var(--sub); flex-shrink: 0; transition: transform .15s; }
+    .ev-select-wrap.open .ev-chevron { transform: rotate(180deg); }
+    .ev-sel-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .ev-sel-text.ph { color: #C2C7CF; }
+    .ev-dropdown {
+      position: fixed; z-index: 500;
+      background: #fff; border: 1px solid var(--border); border-radius: 5px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.12); display: none; overflow: hidden;
+    }
+    .ev-select-wrap.open .ev-dropdown { display: block; }
+    .ev-search-wrap { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    .ev-search {
+      width: 100%; height: 28px; border: 1px solid var(--border); border-radius: 4px;
+      padding: 0 8px; font-size: 12px; color: var(--text); outline: none;
+    }
+    .ev-search:focus { border-color: var(--primary); }
+    .ev-list { max-height: 200px; overflow-y: auto; }
+    .ev-option {
+      padding: 7px 10px; font-size: 12px; cursor: pointer;
+      display: flex; gap: 8px; align-items: center;
+      border-bottom: 1px solid var(--bg); transition: background .1s;
+    }
+    .ev-option:last-child { border-bottom: none; }
+    .ev-option:hover { background: var(--primary-light); }
+    .ev-option.ev-opt-sel { background: #E6F0FF; }
+    .ev-opt-cn { color: var(--text); font-weight: 500; white-space: nowrap; }
+    .ev-opt-en { color: var(--sub); font-size: 11px; font-family: monospace; }
+    .ev-no-result { padding: 12px 10px; text-align: center; color: var(--sub); font-size: 12px; }
+
+    /* Event detail tooltip */
+    .ev-tooltip {
+      position: fixed; z-index: 600;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15); padding: 10px 12px; width: 268px;
+      display: none; pointer-events: none;
+    }
+    .ev-tt-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 7px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .ev-tt-row { display: flex; gap: 6px; margin-bottom: 4px; font-size: 12px; line-height: 1.5; }
+    .ev-tt-row:last-child { margin-bottom: 0; }
+    .ev-tt-key { color: var(--sub); white-space: nowrap; flex-shrink: 0; min-width: 50px; }
+    .ev-tt-val { color: var(--text); }
+    .ev-tt-mono { font-family: monospace; color: var(--primary); font-size: 11px; }
+
+    /* Filter builder */
+    .filter-section { margin-top: 6px; }
+    .filter-section-label { font-size: 12px; color: var(--sub); font-weight: 500; margin-bottom: 4px; }
+    .filter-group { display: flex; align-items: stretch; gap: 0; margin-bottom: 2px; }
+    .filter-bracket {
+      width: 26px; flex-shrink: 0; margin-right: 8px; position: relative;
+    }
+    .filter-bracket::before {
+      content: '';
+      position: absolute; top: 0; bottom: 0; left: 12px;
+      width: 10px;
+      border-top: 2px solid var(--primary);
+      border-left: 2px solid var(--primary);
+      border-bottom: 2px solid var(--primary);
+      border-radius: 3px 0 0 3px;
+      pointer-events: none;
+    }
+    .filter-logic-btn {
+      position: absolute; top: 50%; left: 6px; transform: translateY(-50%);
+      z-index: 1; background: #fff; color: var(--primary);
+      border: 1.5px solid var(--primary); border-radius: 3px;
+      font-size: 11px; width: 18px; padding: 4px 2px; cursor: pointer;
+      writing-mode: vertical-rl; text-align: center; line-height: 1;
+    }
+    .filter-logic-btn:hover { background: var(--primary-light); }
+    .filter-group .filter-box { flex: 1; min-width: 0; }
+    .filter-box { display: flex; flex-direction: column; gap: 5px; }
+    .filter-row {
+      display: flex; align-items: center; gap: 6px;
+      background: #F8F9FC; border-radius: 5px; padding: 6px 8px;
+    }
+    .filter-attr-sel, .filter-op-sel {
+      height: 28px; border: 1px solid var(--border); border-radius: 4px;
+      padding: 0 6px; font-size: 12px; color: var(--text); background: #fff;
+      cursor: pointer; outline: none; flex-shrink: 0;
+    }
+    .filter-attr-sel { width: 120px; }
+    .filter-op-sel { width: 88px; }
+    .filter-attr-sel:focus, .filter-op-sel:focus { border-color: var(--primary); }
+    .filter-tag-wrap {
+      flex: 1; min-height: 28px; border: 1px solid var(--border); border-radius: 4px;
+      background: #fff; display: flex; flex-wrap: wrap; align-items: center;
+      gap: 4px; padding: 2px 6px; cursor: text; min-width: 0;
+    }
+    .filter-tag-wrap:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .filter-tag {
+      display: inline-flex; align-items: center; gap: 2px;
+      background: var(--primary-light); color: var(--primary);
+      border-radius: 3px; padding: 1px 6px; font-size: 12px; white-space: nowrap;
+    }
+    .filter-tag-del {
+      background: none; border: none; cursor: pointer; color: var(--primary);
+      font-size: 13px; line-height: 1; padding: 0 0 0 2px; display: flex; align-items: center;
+    }
+    .filter-tag-input {
+      border: none; outline: none; font-size: 12px; color: var(--text);
+      min-width: 50px; flex: 1; background: transparent; height: 22px;
+    }
+    .filter-date-wrap { display: flex; align-items: center; gap: 6px; flex: 1; }
+    .filter-date-input {
+      height: 28px; border: 1px solid var(--border); border-radius: 4px;
+      padding: 0 8px; font-size: 12px; color: var(--text); outline: none; background: #fff;
+    }
+    .filter-date-input:focus { border-color: var(--primary); }
+    .filter-date-sep { color: var(--sub); font-size: 12px; }
+    .filter-del-btn {
+      width: 22px; height: 22px; border: none; background: none; cursor: pointer;
+      color: var(--sub); display: flex; align-items: center; justify-content: center;
+      border-radius: 4px; flex-shrink: 0; padding: 0;
+    }
+    .filter-del-btn:hover { background: #FFF1F0; color: #FF4D4F; }
+    .filter-add-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      color: var(--primary); font-size: 12px; cursor: pointer;
+      background: none; border: none; padding: 4px 0; margin-top: 2px;
+    }
+    .filter-add-btn:hover { opacity: .75; }
+
+    /* SQL Preview */
+    .sql-wrap { background: #1A1B2E; border-radius: 6px; overflow: hidden; }
+    .sql-bar {
+      background: #252640; padding: 7px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sql-bar-label { font-size: 11px; color: #7C80A8; font-family: monospace; }
+    .sql-copy {
+      background: none; border: 1px solid #3A3C58; color: #7C80A8;
+      font-size: 11px; padding: 2px 8px; border-radius: 3px; cursor: pointer; transition: all .12s;
+    }
+    .sql-copy:hover { border-color: var(--primary); color: var(--primary); }
+    .sql-code {
+      padding: 12px 14px; font-family: 'Consolas','SF Mono',monospace;
+      font-size: 12px; line-height: 1.75; color: #CDD6F4;
+      white-space: pre; overflow-x: auto; min-height: 90px; max-height: 220px;
+    }
+    .kw { color: #89B4FA; } .fn { color: #CBA6F7; } .str { color: #A6E3A1; }
+    .cm { color: #585B70; } .num { color: #FAB387; }
+
+    .modal-footer {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-shrink: 0;
+    }
+    /* Alert dialog */
+    .alert-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1200; opacity: 0; pointer-events: none; transition: opacity .18s;
+    }
+    .alert-overlay.show { opacity: 1; pointer-events: auto; }
+    .alert-dialog {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      padding: 28px 28px 20px; width: 380px; max-width: 90vw;
+      transform: translateY(10px); transition: transform .18s;
+    }
+    .alert-overlay.show .alert-dialog { transform: none; }
+    .alert-dialog-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: #FFF7E6; margin: 0 auto 14px;
+    }
+    .alert-dialog-title {
+      text-align: center; font-size: 15px; font-weight: 600;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .alert-dialog-msg {
+      text-align: center; font-size: 13px; color: var(--sub);
+      line-height: 1.7; margin-bottom: 20px;
+    }
+    .alert-dialog-btns { display: flex; justify-content: center; }
+    .alert-dialog-btn {
+      height: 34px; padding: 0 28px; border-radius: 5px;
+      font-size: 13px; cursor: pointer; border: none;
+      background: var(--primary); color: #fff; transition: background .12s;
+    }
+    .alert-dialog-btn:hover { background: var(--primary-hover); }
+
+    /* ══════════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════════ */
+    .toast {
+      position: fixed; top: 60px; right: 20px; z-index: 2000;
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.12); padding: 12px 14px;
+      display: flex; align-items: flex-start; gap: 10px;
+      min-width: 300px; max-width: 380px;
+      transform: translateX(120%); transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    }
+    .toast.show { transform: translateX(0); }
+    .toast-icon { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
+    .toast-body { flex: 1; }
+    .toast-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .toast-desc  { font-size: 12px; color: var(--sub); margin-top: 2px; line-height: 1.5; }
+    .toast-x { background: none; border: none; cursor: pointer; color: var(--sub); padding: 0; flex-shrink: 0; }
+    .toast-x:hover { color: var(--text); }
+    .toast-x svg { width: 14px; height: 14px; }
+
+    /* ══════════════════════════════════════════════
+       NOTIFICATION DROPDOWN
+    ══════════════════════════════════════════════ */
+    .notif-panel {
+      position: fixed; top: calc(var(--header-h) + 4px); right: 100px; z-index: 500;
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.12); width: 320px;
+      display: none; overflow: hidden;
+    }
+    .notif-panel.show { display: block; }
+    .notif-panel-hdr {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .notif-panel-hdr span { font-size: 13px; font-weight: 600; }
+    .notif-clear { font-size: 12px; color: var(--primary); background: none; border: none; cursor: pointer; }
+    .notif-list { max-height: 320px; overflow-y: auto; }
+    .notif-empty { padding: 24px; text-align: center; color: var(--sub); font-size: 13px; }
+    .notif-row {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; gap: 8px; align-items: flex-start;
+    }
+    .notif-row:last-child { border-bottom: none; }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0; margin-top: 4px; }
+    .notif-row-title { font-size: 12px; font-weight: 500; color: var(--text); }
+    .notif-row-time  { font-size: 11px; color: var(--sub); margin-top: 2px; }
+
+    /* ══════════════════════════════════════════════
+       EXPERIMENT PAGE
+    ══════════════════════════════════════════════ */
+    .exp-wrap {
+      padding: 20px 24px 200px; overflow-y: auto; flex: 1;
+    }
+    .exp-step {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 16px; overflow: visible;
+    }
+    .exp-step-hdr {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+      background: #FAFBFC; border-radius: 8px 8px 0 0;
+    }
+    .exp-step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .exp-step-hdr-title {
+      font-size: 14px; font-weight: 600; color: var(--text);
+    }
+    .exp-step-body { padding: 18px; }
+    .exp-form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px;
+    }
+    .exp-form-grid .full { grid-column: 1 / -1; }
+    .exp-label {
+      font-size: 12px; color: var(--sub); margin-bottom: 5px; font-weight: 500;
+    }
+    .exp-label .req { color: #FF4D4F; margin-left: 2px; }
+    .exp-field { display: flex; flex-direction: column; }
+    .exp-hint { font-size: 11px; color: var(--sub); margin-top: 4px; }
+
+    /* Version cards */
+    .exp-versions-row {
+      display: flex; gap: 16px; align-items: flex-start;
+    }
+    .exp-versions-left { flex: 1; min-width: 0; }
+    .exp-group-card {
+      border: 1px solid var(--border); border-radius: 6px;
+      overflow: hidden; margin-bottom: 10px;
+    }
+    .exp-group-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 14px; color: #fff; font-weight: 600; font-size: 13px;
+    }
+    .exp-group-hdr-ctrl { background: #0B7A6E; }
+    .exp-group-hdr-exp  { background: #389E0D; }
+    .exp-group-remove {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(255,255,255,.2); border: none; color: #fff;
+      font-size: 16px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; line-height: 1; transition: background .12s;
+    }
+    .exp-group-remove:hover { background: rgba(255,0,0,.4); }
+    .exp-group-body {
+      padding: 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start;
+    }
+    .exp-group-field {
+      display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px;
+    }
+    .exp-param-row {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .exp-json-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--primary-light); color: var(--primary);
+      border-radius: 4px; padding: 3px 8px; font-size: 11px;
+      font-family: monospace; max-width: 180px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      cursor: default;
+    }
+    .exp-add-param {
+      width: 24px; height: 24px; border-radius: 4px;
+      background: var(--primary); color: #fff;
+      border: none; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+    .exp-add-param:hover { background: var(--primary-hover); }
+    .exp-add-group-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--primary); border: 1px dashed var(--primary);
+      background: var(--primary-light); border-radius: 5px;
+      padding: 7px 16px; font-size: 13px; cursor: pointer;
+      transition: all .15s; margin-top: 4px;
+    }
+    .exp-add-group-btn:hover { background: #D0E5FF; }
+
+    /* Comparison panel */
+    .exp-compare {
+      width: 280px; flex-shrink: 0; border: 1px solid var(--border);
+      border-radius: 6px; background: #fff;
+      position: sticky; top: 20px; overflow: hidden;
+    }
+    .exp-compare-title {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      font-weight: 600; font-size: 12px; color: var(--text);
+      background: #FAFBFC;
+    }
+    .exp-compare-tabs {
+      display: flex; border-bottom: 1px solid var(--border);
+    }
+    .exp-compare-tab {
+      flex: 1; padding: 7px 4px; text-align: center;
+      font-size: 11px; color: var(--sub); cursor: pointer;
+      border-right: 1px solid var(--border); background: #FAFBFC;
+    }
+    .exp-compare-tab:last-child { border-right: none; }
+    .exp-compare-tab.active { color: var(--primary); background: #fff; font-weight: 600; }
+    .exp-compare-cols { display: flex; }
+    .exp-compare-col {
+      flex: 1; padding: 10px 10px; border-right: 1px solid var(--border);
+      font-size: 11px; line-height: 1.6;
+    }
+    .exp-compare-col:last-child { border-right: none; }
+    .exp-compare-col-hdr {
+      font-weight: 600; color: var(--text); margin-bottom: 6px;
+      font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .exp-compare-val {
+      color: var(--sub); font-family: monospace; font-size: 10px;
+      word-break: break-all; line-height: 1.5;
+    }
+
+    /* Step 4 – Metrics */
+    .msel-wrap {
+      position: relative;
+    }
+    .msel-trigger {
+      min-height: 34px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+      padding: 4px 28px 4px 8px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; cursor: pointer; position: relative;
+      font-size: 13px; color: var(--text); transition: border-color .15s;
+    }
+    .msel-trigger:hover, .msel-trigger.open { border-color: var(--primary); }
+    .msel-placeholder { color: var(--sub); font-size: 13px; }
+    .msel-arrow {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      width: 14px; height: 14px; color: var(--sub); pointer-events: none;
+      transition: transform .15s;
+    }
+    .msel-trigger.open .msel-arrow { transform: translateY(-50%) rotate(180deg); }
+    .msel-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--primary-light); color: var(--primary);
+      border-radius: 3px; padding: 1px 6px; font-size: 12px; max-width: 200px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .msel-tag-del {
+      background: none; border: none; cursor: pointer;
+      color: var(--primary); font-size: 13px; padding: 0; line-height: 1;
+      flex-shrink: 0;
+    }
+    .msel-tag-del:hover { color: #FF4D4F; }
+    .msel-dropdown {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.1); z-index: 50;
+      max-height: 220px; overflow-y: auto;
+    }
+    .msel-dropdown.open { display: block; }
+    .msel-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; cursor: pointer; font-size: 13px;
+      transition: background .1s;
+    }
+    .msel-option:hover { background: var(--primary-light); }
+    .msel-option input[type=checkbox] { accent-color: var(--primary); flex-shrink: 0; }
+    .msel-opt-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .msel-opt-id { font-size: 11px; color: var(--sub); font-family: monospace; flex-shrink: 0; }
+
+    .exp-new-metric-btn {
+      background: none; border: none; cursor: pointer; padding: 0;
+      color: var(--primary); font-size: 12px; font-weight: 500;
+      display: inline-flex; align-items: center; gap: 2px;
+      transition: color .15s; line-height: 1;
+    }
+    .exp-new-metric-btn:hover { color: var(--primary-hover); }
+
+    /* Audience step */
+    .exp-traffic-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
+    }
+    .exp-traffic-slider { flex: 1; accent-color: var(--primary); }
+    .exp-traffic-val {
+      width: 40px; text-align: right; font-size: 13px; font-weight: 600;
+      color: var(--primary); flex-shrink: 0;
+    }
+    .exp-traffic-bar {
+      display: flex; height: 18px; border-radius: 4px;
+      overflow: hidden; width: 100%; margin-top: 4px;
+    }
+    .exp-traffic-seg {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #fff; font-weight: 500;
+    }
+
+    /* Weight table */
+    .weight-table {
+      width: 100%; border-collapse: collapse;
+      border: 1px solid var(--border); border-radius: 5px; overflow: hidden;
+      margin-top: 8px;
+    }
+    .weight-table th {
+      background: #FAFBFC; padding: 9px 12px;
+      font-size: 12px; font-weight: 600; color: var(--text);
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .weight-table th:last-child { border-right: none; }
+    .weight-table td {
+      padding: 9px 12px; font-size: 12px; color: var(--text);
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .weight-table td:last-child { border-right: none; }
+    .weight-table tr:last-child td { border-bottom: none; }
+    .weight-table tr:hover td { background: #F7F9FD; }
+    .weight-table .row-label {
+      font-weight: 600; color: var(--sub); font-size: 11px;
+      background: #FAFBFC; white-space: nowrap;
+    }
+    .weight-input {
+      width: 52px; height: 28px; border: 1px solid var(--border);
+      border-radius: 4px; text-align: center; font-size: 12px;
+      color: var(--text); outline: none; padding: 0 4px;
+    }
+    .weight-input:focus { border-color: var(--primary); }
+    .ver-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; margin-right: 4px; vertical-align: middle;
+    }
+    .exp-intro { font-size: 12px; color: var(--sub); margin-bottom: 14px; line-height: 1.7; }
+    .exp-footer {
+      display: flex; justify-content: center; gap: 10px; padding-top: 20px; padding-bottom: 10px;
+    }
+    .exp-type-row {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .exp-type-hint {
+      font-size: 11px; color: var(--sub); line-height: 1.5; max-width: 280px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ TOP HEADER ══════════════ -->
+<header class="header">
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <span class="logo-name">Spark</span>
+  </div>
+
+  <!-- Top nav -->
+  <nav class="header-nav">
+    <button class="header-tab active">AB测试</button>
+    <button class="header-tab">管理</button>
+  </nav>
+
+  <!-- Right actions -->
+  <div class="header-right">
+    <button class="hdr-action" title="反馈">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+      <span>反馈</span>
+    </button>
+    <button class="hdr-action" title="消息" style="position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </svg>
+      <span>消息</span>
+      <span style="position:absolute;top:2px;right:6px;width:8px;height:8px;background:#FF4D4F;border-radius:50%;border:1.5px solid #fff;"></span>
+    </button>
+    <button class="hdr-action" title="帮助">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/>
+      </svg>
+      <span>帮助</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn" title="个人中心">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张三</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════ SUB-BAR ══════════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <nav class="breadcrumb" id="breadcrumbNav">
+      <a href="#">指标管理</a>
+      <span class="sep"> / </span>
+      <span class="current">指标列表</span>
+    </nav>
+    <select class="product-select">
+      <option>9007-Polaris Game</option>
+      <option>9008-StarRacer</option>
+      <option>9009-MythicWorld</option>
+      <option>9010-ZenRun</option>
+    </select>
+  </div>
+</div>
+
+<!-- ══════════════ BODY ══════════════ -->
+<div class="body-wrap">
+
+  <!-- ──── Sidebar ──── -->
+  <aside class="sidebar">
+    <div class="nav-group">
+      <!-- Level-1: AB测试 -->
+      <div class="nav-l1 open" onclick="this.classList.toggle('open');this.nextElementSibling.style.display=this.classList.contains('open')?'block':'none'">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        AB测试
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+
+      <div class="nav-l2-list" style="display:block;">
+        <div class="nav-l2">产品信息</div>
+        <div class="nav-l2">远程配置</div>
+        <div class="nav-l2">用户群配置</div>
+        <div class="nav-l2" onclick="switchPage('exp')">实验管理</div>
+        <div class="nav-l2">用户群标签管理</div>
+        <div class="nav-l2 active" onclick="switchPage('metrics')">指标管理</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ──── Content ──── -->
+  <main class="content" id="page-metrics">
+
+
+    <!-- Full filter bar -->
+    <div class="filter-bar">
+      <div class="filter-item">
+        <span class="filter-lbl">配置类型</span>
+        <select class="filter-select">
+          <option>全部类型</option>
+          <option>事件指标</option>
+          <option>留存指标</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <span class="filter-lbl">业务域</span>
+        <select class="filter-select">
+          <option>全部域</option>
+          <option>留存增长</option>
+          <option>货币化</option>
+          <option>玩法参与</option>
+          <option>广告变现</option>
+          <option>社交</option>
+          <option>性能体验</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <span class="filter-lbl">状态</span>
+        <select class="filter-select" style="min-width:90px;">
+          <option>全部状态</option>
+          <option>已启用</option>
+          <option>已停用</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <input class="filter-text" type="text" placeholder="搜索指标名称 / ID…" />
+      </div>
+      <button class="btn btn-default" style="height:32px;">重置</button>
+      <button class="btn btn-primary" style="height:32px;">查询</button>
+    </div>
+
+    <!-- Create button -->
+    <div class="action-row">
+      <button class="btn-create">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        创建指标
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>指标ID</th>
+            <th>指标名称</th>
+            <th>配置类型</th>
+            <th>业务域</th>
+            <th>在投实验数/关联实验数</th>
+            <th>创建人</th>
+            <th>修改人</th>
+            <th>修改时间</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr id="row-mtr000001" data-id="mtr000001" data-name="次日留存率（D1）" data-mtype="核心指标" data-ctype="retain" data-domain="留存增长" data-status="on" data-active="3" data-related="34">
+            <td><span class="mtr-id">mtr000001</span></td>
+            <td><a class="mtr-link" href="#">次日留存率（D1）</a></td>
+            <td><span class="tag tag-retain">留存指标</span></td>
+            <td><span class="tag tag-domain">留存增长</span></td>
+            <td><span class="exp-count">3 / 34</span></td>
+            <td>张三</td>
+            <td>张三</td>
+            <td>2026-03-07 17:00:09</td>
+            <td><span class="tag tag-on">启用</span></td>
+            <td><div class="op-btns">
+              <button class="op-link">编辑</button><span class="op-sep">|</span><button class="op-link">复制</button><span class="op-sep">|</span>
+              <div class="del-wrap"><button class="op-link del">删除</button>
+                <div class="del-popover" id="pop-mtr000001">
+                  <div class="pop-msg"></div><div class="pop-warn" style="display:none;"></div>
+                  <div class="pop-btns"><button class="pop-btn">取消</button><button class="pop-btn primary">确认</button></div>
+                </div>
+              </div>
+            </div></td>
+          </tr>
+
+          <tr id="row-mtr000002" data-id="mtr000002" data-name="付费用户人均收入（ARPPU）" data-mtype="核心指标" data-ctype="event" data-domain="货币化" data-status="on" data-active="1" data-related="21">
+            <td><span class="mtr-id">mtr000002</span></td>
+            <td><a class="mtr-link" href="#">付费用户人均收入（ARPPU）</a></td>
+            <td><span class="tag tag-event">事件指标</span></td>
+            <td><span class="tag tag-domain">货币化</span></td>
+            <td><span class="exp-count">1 / 21</span></td>
+            <td>李四</td>
+            <td>李四</td>
+            <td>2026-03-06 17:00:09</td>
+            <td><span class="tag tag-on">启用</span></td>
+            <td><div class="op-btns">
+              <button class="op-link">编辑</button><span class="op-sep">|</span><button class="op-link">复制</button><span class="op-sep">|</span>
+              <div class="del-wrap"><button class="op-link del">删除</button>
+                <div class="del-popover" id="pop-mtr000002">
+                  <div class="pop-msg"></div><div class="pop-warn" style="display:none;"></div>
+                  <div class="pop-btns"><button class="pop-btn">取消</button><button class="pop-btn primary">确认</button></div>
+                </div>
+              </div>
+            </div></td>
+          </tr>
+
+          <tr id="row-mtr000003" data-id="mtr000003" data-name="首次付费转化率" data-mtype="核心指标" data-ctype="event" data-domain="货币化" data-status="on" data-active="0" data-related="18">
+            <td><span class="mtr-id">mtr000003</span></td>
+            <td><a class="mtr-link" href="#">首次付费转化率</a></td>
+            <td><span class="tag tag-event">事件指标</span></td>
+            <td><span class="tag tag-domain">货币化</span></td>
+            <td><span class="exp-count">0 / 18</span></td>
+            <td>李四</td>
+            <td>王五</td>
+            <td>2026-03-05 17:00:09</td>
+            <td><span class="tag tag-on">启用</span></td>
+            <td><div class="op-btns">
+              <button class="op-link">编辑</button><span class="op-sep">|</span><button class="op-link">复制</button><span class="op-sep">|</span>
+              <div class="del-wrap"><button class="op-link del">删除</button>
+                <div class="del-popover" id="pop-mtr000003">
+                  <div class="pop-msg"></div><div class="pop-warn" style="display:none;"></div>
+                  <div class="pop-btns"><button class="pop-btn">取消</button><button class="pop-btn primary">确认</button></div>
+                </div>
+              </div>
+            </div></td>
+          </tr>
+
+          <tr id="row-mtr000004" data-id="mtr000004" data-name="日均游戏时长" data-mtype="次要指标" data-ctype="event" data-domain="玩法参与" data-status="on" data-active="2" data-related="27">
+            <td><span class="mtr-id">mtr000004</span></td>
+            <td><a class="mtr-link" href="#">日均游戏时长</a></td>
+            <td><span class="tag tag-event">事件指标</span></td>
+            <td><span class="tag tag-domain">玩法参与</span></td>
+            <td><span class="exp-count">2 / 27</span></td>
+            <td>张三</td>
+            <td>张三</td>
+            <td>2026-03-03 17:00:09</td>
+            <td><span class="tag tag-on">启用</span></td>
+            <td><div class="op-btns">
+              <button class="op-link">编辑</button><span class="op-sep">|</span><button class="op-link">复制</button><span class="op-sep">|</span>
+              <div class="del-wrap"><button class="op-link del">删除</button>
+                <div class="del-popover" id="pop-mtr000004">
+                  <div class="pop-msg"></div><div class="pop-warn" style="display:none;"></div>
+                  <div class="pop-btns"><button class="pop-btn">取消</button><button class="pop-btn primary">确认</button></div>
+                </div>
+              </div>
+            </div></td>
+          </tr>
+
+          <tr id="row-mtr000005" data-id="mtr000005" data-name="关卡通过率" data-mtype="次要指标" data-ctype="event" data-domain="玩法参与" data-status="on" data-active="0" data-related="15">
+            <td><span class="mtr-id">mtr000005</span></td>
+            <td><a class="mtr-link" href="#">关卡通过率</a></td>
+            <td><span class="tag tag-event">事件指标</span></td>
+            <td><span class="tag tag-domain">玩法参与</span></td>
+            <td><span class="exp-count">0 / 15</span></td>
+            <td>王五</td>
+            <td>王五</td>
+            <td>2026-02-28 17:00:09</td>
+            <td><span class="tag tag-on">启用</span></td>
+            <td><div class="op-btns">
+              <button class="op-link">编辑</button><span class="op-sep">|</span><button class="op-link">复制</button><span class="op-sep">|</span>
+              <div class="del-wrap"><button class="op-link del">删除</button>
+                <div class="del-popover" id="pop-mtr000005">
+                  <div class="pop-msg"></div><div class="pop-warn" style="display:none;"></div>
+                  <div class="pop-btns"><button class="pop-btn">取消</button><button class="pop-btn primary">确认</button></div>
+                </div>
+              </div>
+            </div></td>
+          </tr>
+
+          <tr id="row-mtr000006" data-id="mtr000006" data-name="激励视频完播率" data-mtype="核心指标" data-ctype="event" data-domain="广告变现" data-status="off" data-active="1" data-related="9">
+            <td><span class="mtr-id">mtr000006</span></td>
+            <td><a class="mtr-link" href="#">激励视频完播率</a></td>
+            <td><span class="tag tag-event">事件指标</span></td>
+            <td><span class="tag tag-domain">广告变现</span></td>
+            <td><span class="exp-count">1 / 9</span></td>
+            <td>赵六</td>
+            <td>赵六</td>
+            <td>2026-02-22 17:00:09</td>
+            <td><span class="tag tag-off">停用</span></td>
+            <td><div class="op-btns">
+              <button class="op-link">编辑</button><span class="op-sep">|</span><button class="op-link">复制</button><span class="op-sep">|</span>
+              <div class="del-wrap"><button class="op-link del">删除</button>
+                <div class="del-popover" id="pop-mtr000006">
+                  <div class="pop-msg"></div><div class="pop-warn" style="display:none;"></div>
+                  <div class="pop-btns"><button class="pop-btn">取消</button><button class="pop-btn primary">确认</button></div>
+                </div>
+              </div>
+            </div></td>
+          </tr>
+
+          <tr id="row-mtr000007" data-id="mtr000007" data-name="客户端崩溃率" data-mtype="护栏指标" data-ctype="event" data-domain="性能体验" data-status="on" data-active="5" data-related="42">
+            <td><span class="mtr-id">mtr000007</span></td>
+            <td><a class="mtr-link" href="#">客户端崩溃率</a></td>
+            <td><span class="tag tag-event">事件指标</span></td>
+            <td><span class="tag tag-domain">性能体验</span></td>
+            <td><span class="exp-count">5 / 42</span></td>
+            <td>吴七</td>
+            <td>吴七</td>
+            <td>2026-02-18 17:00:09</td>
+            <td><span class="tag tag-on">启用</span></td>
+            <td><div class="op-btns">
+              <button class="op-link">编辑</button><span class="op-sep">|</span><button class="op-link">复制</button><span class="op-sep">|</span>
+              <div class="del-wrap"><button class="op-link del">删除</button>
+                <div class="del-popover" id="pop-mtr000007">
+                  <div class="pop-msg"></div><div class="pop-warn" style="display:none;"></div>
+                  <div class="pop-btns"><button class="pop-btn">取消</button><button class="pop-btn primary">确认</button></div>
+                </div>
+              </div>
+            </div></td>
+          </tr>
+
+        </tbody>
+      </table>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <span class="page-info">共 128 条</span>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <button class="page-btn disabled">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn" style="letter-spacing:1px;">···</button>
+          <button class="page-btn">13</button>
+          <button class="page-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin-left:8px;">
+          每页
+          <select class="page-size-select">
+            <option>10</option><option>20</option><option>50</option>
+          </select>
+          条
+        </div>
+      </div>
+    </div><!-- /table-card -->
+
+  </main>
+
+  <!-- ──── Experiment Page ──── -->
+  <main class="content" id="page-exp" style="display:none; padding:0; overflow-y:auto;">
+  <div class="exp-wrap">
+
+    <!-- Step 1: Basic Info -->
+    <div class="exp-step">
+      <div class="exp-step-hdr">
+        <div class="exp-step-num">1</div>
+        <span class="exp-step-hdr-title">填写基本信息</span>
+      </div>
+      <div class="exp-step-body">
+        <div class="exp-form-grid">
+
+          <div class="exp-field">
+            <div class="exp-label"><span class="req">*</span>实验ID</div>
+            <input class="form-control" type="text" value="exp20251210123412345" readonly style="background:#F5F7FA;color:var(--sub);cursor:not-allowed;" />
+            <div class="exp-hint">自动生成序列号，不可改变</div>
+          </div>
+
+          <div class="exp-field">
+            <div class="exp-label"><span class="req">*</span>实验名称</div>
+            <input class="form-control" type="text" placeholder="请输入实验名称" />
+          </div>
+
+          <div class="exp-field">
+            <div class="exp-label"><span class="req">*</span>实验标签</div>
+            <select class="form-control">
+              <option value="">请选择</option>
+              <option>功能测试</option>
+              <option>性能优化</option>
+              <option>UI改版</option>
+              <option>算法优化</option>
+            </select>
+          </div>
+
+          <div class="exp-field">
+            <div class="exp-label"><span class="req">*</span>目标产品</div>
+            <input class="form-control" type="text" value="9007-Bingoxxx" />
+          </div>
+
+          <div class="exp-field">
+            <div class="exp-label"><span class="req">*</span>实验负责人</div>
+            <select class="form-control">
+              <option selected>张三</option>
+              <option>李四</option>
+              <option>王五</option>
+            </select>
+          </div>
+
+          <div class="exp-field full">
+            <div class="exp-label"><span class="req">*</span>实验描述</div>
+            <textarea class="form-control" style="height:80px;" placeholder="基于【指定xxx数据】，xxx调研】做出假设；如何【修改xxx功能】，预期可达到【提高用户粘性】的效果，此次实验可以用【数据指标】来量化。"></textarea>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Experiment Versions -->
+    <div class="exp-step">
+      <div class="exp-step-hdr">
+        <div class="exp-step-num">2</div>
+        <span class="exp-step-hdr-title">设置实验版本</span>
+      </div>
+      <div class="exp-step-body">
+        <div class="exp-intro">不同的实验参数对应不同的业务策略，主要用来支持此实验参数的下发，AA实验需要保持每组参数配置一致，AB实验需要每组配置不同的参数。</div>
+
+        <div class="exp-versions-row">
+          <!-- Left: group cards -->
+          <div class="exp-versions-left">
+
+            <!-- Control group card -->
+            <div class="exp-group-card">
+              <div class="exp-group-hdr exp-group-hdr-ctrl">
+                <span>对照组：无激励</span>
+              </div>
+              <div class="exp-group-body">
+                <div class="exp-group-field">
+                  <div class="exp-label"><span class="req">*</span>版本名称</div>
+                  <input class="form-control" type="text" value="无激励" />
+                </div>
+                <div class="exp-group-field">
+                  <div class="exp-label"><span class="req">*</span>版本ID</div>
+                  <input class="form-control" type="text" value="exp20251210123412345a" readonly style="background:#F5F7FA;color:var(--sub);cursor:not-allowed;" />
+                </div>
+                <div class="exp-group-field" style="flex:2; min-width:200px;">
+                  <div class="exp-label">参数配置</div>
+                  <div class="exp-param-row">
+                    <select class="form-control" style="width:100px;height:32px;">
+                      <option value="">请选择</option>
+                      <option>1</option>
+                      <option>2</option>
+                      <option>3</option>
+                      <option>4</option>
+                      <option>5</option>
+                    </select>
+                    <span style="font-size:12px;color:var(--sub);flex-shrink:0;">下发值</span>
+                    <span class="exp-json-tag" title='默认: [{"id":1,"vip":0,"reward":1}]'>默认: [{"id":1,"vip":0,"r...</span>
+                    <button class="exp-add-param" title="添加参数">+</button>
+                  </div>
+                </div>
+                <div class="exp-group-field" style="flex:2;">
+                  <div class="exp-label">版本描述</div>
+                  <input class="form-control" type="text" placeholder="请输入版本描述" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Experiment group 1 -->
+            <div class="exp-group-card">
+              <div class="exp-group-hdr exp-group-hdr-exp">
+                <span>实验组：奖励乘数2倍</span>
+                <button class="exp-group-remove" onclick="removeExpGroup(this)" title="删除此分组">&#8722;</button>
+              </div>
+              <div class="exp-group-body">
+                <div class="exp-group-field">
+                  <div class="exp-label"><span class="req">*</span>版本名称</div>
+                  <input class="form-control" type="text" value="奖励乘数2倍" />
+                </div>
+                <div class="exp-group-field">
+                  <div class="exp-label"><span class="req">*</span>版本ID</div>
+                  <input class="form-control" type="text" value="exp20251210123412345b" readonly style="background:#F5F7FA;color:var(--sub);cursor:not-allowed;" />
+                </div>
+                <div class="exp-group-field" style="flex:2; min-width:200px;">
+                  <div class="exp-label">参数配置</div>
+                  <div class="exp-param-row">
+                    <select class="form-control" style="width:100px;height:32px;">
+                      <option value="">请选择</option>
+                      <option>1</option>
+                      <option>2</option>
+                      <option>3</option>
+                      <option>4</option>
+                      <option>5</option>
+                    </select>
+                    <span style="font-size:12px;color:var(--sub);flex-shrink:0;">下发值</span>
+                    <span class="exp-json-tag" title='配置: [{"id":1,"vip":1,"reward":2}]'>配置: [  {  "id": 1...</span>
+                    <button class="exp-add-param" title="添加参数">+</button>
+                  </div>
+                </div>
+                <div class="exp-group-field" style="flex:2;">
+                  <div class="exp-label">版本描述</div>
+                  <input class="form-control" type="text" placeholder="请输入版本描述" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Experiment group 2 -->
+            <div class="exp-group-card">
+              <div class="exp-group-hdr exp-group-hdr-exp">
+                <span>实验组：奖励乘数3倍</span>
+                <button class="exp-group-remove" onclick="removeExpGroup(this)" title="删除此分组">&#8722;</button>
+              </div>
+              <div class="exp-group-body">
+                <div class="exp-group-field">
+                  <div class="exp-label"><span class="req">*</span>版本名称</div>
+                  <input class="form-control" type="text" value="奖励乘数3倍" />
+                </div>
+                <div class="exp-group-field">
+                  <div class="exp-label"><span class="req">*</span>版本ID</div>
+                  <input class="form-control" type="text" value="exp20251210123412345c" readonly style="background:#F5F7FA;color:var(--sub);cursor:not-allowed;" />
+                </div>
+                <div class="exp-group-field" style="flex:2; min-width:200px;">
+                  <div class="exp-label">参数配置</div>
+                  <div class="exp-param-row">
+                    <select class="form-control" style="width:100px;height:32px;">
+                      <option value="">请选择</option>
+                      <option>1</option>
+                      <option>2</option>
+                      <option>3</option>
+                      <option>4</option>
+                      <option>5</option>
+                    </select>
+                    <span style="font-size:12px;color:var(--sub);flex-shrink:0;">下发值</span>
+                    <span class="exp-json-tag" title='测试: [{"id":1,"vip":0,"reward":3}]'>测试: [{"id":1,"vip":0,"r...</span>
+                    <button class="exp-add-param" title="添加参数">+</button>
+                  </div>
+                </div>
+                <div class="exp-group-field" style="flex:2;">
+                  <div class="exp-label">版本描述</div>
+                  <input class="form-control" type="text" placeholder="请输入版本描述" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Add group button -->
+            <button class="exp-add-group-btn">
+              <span style="font-size:18px;line-height:1;">+</span> 添加分组
+            </button>
+
+          </div><!-- /exp-versions-left -->
+
+          <!-- Right: comparison panel -->
+          <div class="exp-compare">
+            <div class="exp-compare-title">下发值对比区</div>
+            <div class="exp-compare-tabs">
+              <div class="exp-compare-tab active">对照组</div>
+              <div class="exp-compare-tab">实验组1</div>
+              <div class="exp-compare-tab">实验组2</div>
+            </div>
+            <div class="exp-compare-cols">
+              <div class="exp-compare-col">
+                <div class="exp-compare-col-hdr" style="color:#0B7A6E;">对照组</div>
+                <div class="exp-compare-val">参数值：<br/>[{<br/>&nbsp;"id": 1,<br/>&nbsp;"vip": 0,<br/>&nbsp;"reward": 1<br/>}]</div>
+              </div>
+              <div class="exp-compare-col">
+                <div class="exp-compare-col-hdr" style="color:#389E0D;">实验组1</div>
+                <div class="exp-compare-val">参数值：<br/>[{<br/>&nbsp;"id": 1,<br/>&nbsp;"vip": 1,<br/>&nbsp;"reward": 2<br/>}]</div>
+              </div>
+              <div class="exp-compare-col">
+                <div class="exp-compare-col-hdr" style="color:#389E0D;">实验组2</div>
+                <div class="exp-compare-val">参数值：<br/>[{<br/>&nbsp;"id": 1,<br/>&nbsp;"vip": 0,<br/>&nbsp;"reward": 3<br/>}]</div>
+              </div>
+            </div>
+          </div><!-- /exp-compare -->
+
+        </div><!-- /exp-versions-row -->
+      </div>
+    </div>
+
+    <!-- Step 3: Audience -->
+    <div class="exp-step">
+      <div class="exp-step-hdr">
+        <div class="exp-step-num">3</div>
+        <span class="exp-step-hdr-title">设置受众</span>
+      </div>
+      <div class="exp-step-body">
+        <div class="exp-intro">基于设置的层级信息，选择你希望参与此实验的受众群体以及流量比例</div>
+
+        <div class="exp-form-grid">
+
+          <div class="exp-field">
+            <div class="exp-label"><span class="req">*</span>实验类型</div>
+            <div class="exp-type-row">
+              <select class="form-control" style="width:160px;">
+                <option selected>基准实验</option>
+                <option>AA实验</option>
+                <option>互斥实验</option>
+                <option>独立实验</option>
+              </select>
+              <span class="exp-type-hint">提示：独立实验无法复用流量可能受其他实验的排斥，影响实验效果，这又实验...</span>
+            </div>
+          </div>
+
+          <div class="exp-field">
+            <div class="exp-label"><span class="req">*</span>目标用户群</div>
+            <select class="form-control">
+              <option selected>默认产品全体用户中抽样</option>
+              <option>自定义用户群</option>
+            </select>
+          </div>
+
+          <div class="exp-field full">
+            <div class="exp-label"><span class="req">*</span>实验流量</div>
+            <div class="exp-traffic-row">
+              <input type="range" class="exp-traffic-slider" min="0" max="100" value="50"
+                     oninput="document.getElementById('trafficVal').textContent=this.value+'%'" />
+              <span class="exp-traffic-val" id="trafficVal">50%</span>
+            </div>
+            <div class="exp-traffic-bar">
+              <div class="exp-traffic-seg" style="width:50%;background:var(--primary);">50%</div>
+              <div class="exp-traffic-seg" style="width:50%;background:#E8ECF0;color:var(--sub);">50%</div>
+            </div>
+            <div class="exp-hint">设置可用流量比例 50%-100%</div>
+          </div>
+
+          <div class="exp-field full">
+            <div class="exp-label"><span class="req">*</span>版本流量分配</div>
+            <table class="weight-table">
+              <thead>
+                <tr>
+                  <th class="row-label">版本名称</th>
+                  <th><span class="ver-dot" style="background:var(--primary);"></span>对照组1版本名</th>
+                  <th><span class="ver-dot" style="background:var(--primary);"></span>实验组1版本名</th>
+                  <th><span class="ver-dot" style="background:#389E0D;"></span>实验组2版本名</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="row-label">版本ID</td>
+                  <td><span style="font-family:monospace;font-size:11px;">exp202512101234b</span></td>
+                  <td><span style="font-family:monospace;font-size:11px;">exp202512101234b</span></td>
+                  <td><span style="font-family:monospace;font-size:11px;">exp202512101234c</span></td>
+                </tr>
+                <tr>
+                  <td class="row-label">权重值</td>
+                  <td><input class="weight-input" type="number" value="1" min="0" /></td>
+                  <td>
+                    <span style="color:var(--sub);font-size:12px;margin-right:4px;">:</span>
+                    <input class="weight-input" type="number" value="1" min="0" />
+                  </td>
+                  <td>
+                    <span style="color:var(--sub);font-size:12px;margin-right:4px;">:</span>
+                    <input class="weight-input" type="number" value="1" min="0" />
+                  </td>
+                </tr>
+                <tr>
+                  <td class="row-label">流量比例</td>
+                  <td colspan="3" style="padding:8px 12px;">
+                    <div style="display:flex;height:20px;border-radius:4px;overflow:hidden;width:100%;">
+                      <div style="flex:1;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:500;">33.33%</div>
+                      <div style="flex:1;background:#52C41A;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:500;">33.33%</div>
+                      <div style="flex:1;background:#73D13D;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:500;">33.33%</div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="exp-hint" style="margin-top:8px;line-height:1.6;">提示：按照平均分配所有流量，如果实验组对应对照组的流量分配不平等，实验统计效力可能下降；方差增大，实验结果差异性会升高；请参考代表性标记。</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: 设置指标 -->
+    <div class="exp-step">
+      <div class="exp-step-hdr">
+        <div class="exp-step-num">4</div>
+        <span class="exp-step-hdr-title">设置指标</span>
+      </div>
+      <div class="exp-step-body">
+        <div class="exp-intro">为实验绑定评估指标，核心指标决定实验成败，关注指标用于辅助分析</div>
+
+        <div class="exp-form-grid" style="margin-top:14px;">
+
+          <!-- 核心指标：单选 -->
+          <div class="exp-field">
+            <div class="exp-label" style="display:flex;align-items:center;justify-content:space-between;">
+              <span><span class="req">*</span>核心指标</span>
+              <button type="button" class="exp-new-metric-btn" onclick="openModalFromExpStep4()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                新建指标
+              </button>
+            </div>
+            <select id="exp-primary-metric" class="form-control">
+              <option value="">请选择核心指标</option>
+            </select>
+            <div class="exp-hint">每个实验只能设置一个核心指标，作为判定实验成败的唯一标准</div>
+          </div>
+
+          <!-- 关注指标：多选 -->
+          <div class="exp-field">
+            <div class="exp-label" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>关注指标</span>
+              <button type="button" class="exp-new-metric-btn" onclick="openModalFromExpStep4()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                新建指标
+              </button>
+            </div>
+            <div class="msel-wrap" id="msel-focus-wrap">
+              <div class="msel-trigger" id="msel-focus-trigger" onclick="toggleMsel()">
+                <span class="msel-placeholder" id="msel-focus-placeholder">请选择关注指标（可多选）</span>
+                <svg class="msel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
+              <div class="msel-dropdown" id="msel-focus-dropdown"></div>
+            </div>
+            <div class="exp-hint">可选择多个指标作为辅助观测指标</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer buttons -->
+    <div class="exp-footer">
+      <button class="btn btn-primary" style="padding:0 32px;height:36px;">保存</button>
+      <button class="btn btn-default" style="padding:0 32px;height:36px;" onclick="switchPage('metrics')">关闭</button>
+    </div>
+
+  </div><!-- /exp-wrap -->
+  </main><!-- /page-exp -->
+
+</div><!-- /body-wrap -->
+
+<!-- ══════════════ NOTIFICATION PANEL ══════════════ -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-panel-hdr">
+    <span>消息通知</span>
+    <button class="notif-clear" onclick="clearNotifs()">全部已读</button>
+  </div>
+  <div class="notif-list" id="notifList">
+    <div class="notif-empty" id="notifEmpty">暂无消息</div>
+  </div>
+</div>
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div class="toast" id="toast">
+  <svg class="toast-icon" viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="10" fill="#F6FFED" stroke="#389E0D" stroke-width="1.5"/>
+    <polyline points="8 12 11 15 16 9" stroke="#389E0D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="toast-body">
+    <div class="toast-title" id="toastTitle">创建成功</div>
+    <div class="toast-desc"  id="toastDesc">指标已创建，可在列表中查看</div>
+  </div>
+  <button class="toast-x" onclick="hideToast()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</div>
+
+<!-- ══════════════ CREATE METRIC MODAL ══════════════ -->
+<div class="overlay" id="createOverlay" onclick="overlayClick(event)">
+ <div class="modal" id="createModal">
+
+  <!-- Header -->
+  <div class="modal-header">
+    <span class="modal-title" id="modalTitle">创建指标</span>
+    <button class="modal-close" onclick="closeModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- Body -->
+  <div class="modal-body">
+
+    <!-- ① 基本信息 -->
+    <div>
+      <div class="form-section-title">基本信息</div>
+      <div class="form-grid">
+
+        <div class="form-field" id="ff-name">
+          <label class="form-label">指标名称<span class="req">*</span></label>
+          <input id="f-name" class="form-control" type="text" placeholder="请输入指标名称" oninput="onFieldChange()" />
+          <span class="err-msg">请输入指标名称</span>
+        </div>
+
+        <div class="form-field full" id="ff-desc">
+          <label class="form-label">指标描述</label>
+          <textarea id="f-desc" class="form-control" placeholder="请输入指标描述，说明该指标的业务含义和使用场景" oninput="onFieldChange()"></textarea>
+        </div>
+
+        <div class="form-field" id="ff-dtype">
+          <label class="form-label">配置类型<span class="req">*</span></label>
+          <select id="f-dtype" class="form-control" onchange="onDtypeChange()">
+            <option value="">请选择</option>
+            <option value="event">事件指标</option>
+            <option value="retain">留存指标</option>
+          </select>
+          <span class="err-msg">请选择配置类型</span>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">业务域</label>
+          <select id="f-domain" class="form-control" onchange="onFieldChange()">
+            <option value="">请选择</option>
+            <option>留存增长</option>
+            <option>货币化</option>
+            <option>玩法参与</option>
+            <option>广告变现</option>
+            <option>社交</option>
+            <option>性能体验</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">数字格式</label>
+          <div class="fmt-row">
+            <div class="fmt-tabs" id="fmtTabs">
+              <span class="fmt-tab active" onclick="setFmt(this,'%')">百分比 (%)</span>
+              <span class="fmt-tab" onclick="setFmt(this,'dec')">小数</span>
+            </div>
+            <div class="fmt-dec-wrap" id="fmtDecWrap" style="display:none;">
+              <input type="number" id="decPlaces" class="fmt-stepper" min="0" max="6" value="2" oninput="onDecChange()">
+              <span class="fmt-dec-label">位小数</span>
+            </div>
+            <span class="fmt-preview" id="fmtPreview">示例：12.34%</span>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">状态</label>
+          <div class="radio-group">
+            <label class="radio-item"><input type="radio" name="f-status" value="on" checked onchange="onFieldChange()" /> 启用</label>
+            <label class="radio-item"><input type="radio" name="f-status" value="off" onchange="onFieldChange()" /> 停用</label>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">
+            是否反向指标
+            <span class="field-tip-wrap">
+              <span class="field-tip">?</span>
+              <span class="field-tip-bubble">反向指标指数值的优化方向是下降，期望数值越小越好的指标</span>
+            </span>
+          </label>
+          <div class="radio-group">
+            <label class="radio-item"><input type="radio" name="f-directional" value="no" checked /> 否</label>
+            <label class="radio-item"><input type="radio" name="f-directional" value="yes" /> 是</label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ② 计算口径 -->
+    <div>
+      <div class="form-section-title">计算口径</div>
+      <div class="calc-box" id="calcBox"><!-- dynamic --></div>
+    </div>
+
+    <!-- ③ SQL 预览 -->
+    <div>
+      <div class="form-section-title">SQL 预览</div>
+      <div class="sql-wrap">
+        <div class="sql-bar">
+          <span class="sql-bar-label">🔍 实时预览 · 根据当前配置自动生成</span>
+          <button class="sql-copy" onclick="copySql()">复制</button>
+        </div>
+        <div class="sql-code" id="sqlCode"></div>
+      </div>
+    </div>
+
+  </div><!-- /modal-body -->
+
+  <!-- Footer -->
+  <div class="modal-footer">
+    <button class="btn btn-default" onclick="closeModal()">取消</button>
+    <button class="btn btn-primary" onclick="submitForm()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><polyline points="20 6 9 17 4 12"/></svg>
+      <span id="modalSubmitText">确认创建</span>
+    </button>
+  </div>
+
+ </div><!-- /modal -->
+</div><!-- /overlay -->
+
+<!-- ══════════════ JAVASCRIPT ══════════════ -->
+<script>
+/* ── Events catalogue (mock data) ── */
+var EVENTS_DATA = [
+  { cn:'应用启动',        en:'app_open',                protocol:'Client SDK',            trigger:'用户冷启动或前台热启动应用时触发',              desc:'标记用户本次会话起点，用于 DAU、留存等核心指标计算' },
+  { cn:'购买成功',        en:'purchase_success',        protocol:'Server-Side HTTP',       trigger:'订单状态变更为已支付且扣款成功时由服务端触发',  desc:'记录有效付费行为，字段含 order_id、amount、currency、item_id' },
+  { cn:'结账开始',        en:'checkout_start',          protocol:'Client SDK',             trigger:'用户点击购买按钮进入支付确认页时触发',          desc:'标记购买漏斗入口，与 purchase_success 配合计算购买转化率' },
+  { cn:'关卡开始',        en:'level_start',             protocol:'Client SDK',             trigger:'玩家进入关卡场景加载完成后触发',                desc:'记录玩家开始挑战某一关卡，字段含 level_id、chapter、difficulty' },
+  { cn:'关卡完成',        en:'level_complete',          protocol:'Client SDK',             trigger:'玩家通关后结算界面弹出时触发',                  desc:'记录通关行为，字段含 level_id、stars、time_spent、attempts' },
+  { cn:'关卡失败',        en:'level_fail',              protocol:'Client SDK',             trigger:'玩家失败并点击退出或重试时触发',                desc:'记录失败行为，字段含 level_id、fail_reason、attempts' },
+  { cn:'广告展示',        en:'ad_impression',           protocol:'Client SDK / Ad SDK',    trigger:'广告素材渲染完成并进入用户视野时由渲染引擎回调',desc:'记录一次广告曝光，字段含 ad_type、placement_id、ad_network' },
+  { cn:'广告点击',        en:'ad_click',                protocol:'Client SDK / Ad SDK',    trigger:'用户主动点击广告区域时触发',                    desc:'记录与广告的互动行为，用于计算点击率 CTR' },
+  { cn:'激励视频完成',    en:'rewarded_video_complete', protocol:'Ad SDK 回调',            trigger:'激励视频播放进度达 100% 时由广告 SDK 回调',    desc:'标记用户完整观看激励广告以获取奖励，字段含 placement_id、reward_type' },
+  { cn:'登录成功',        en:'login_success',           protocol:'Server-Side HTTP',       trigger:'服务端鉴权通过并下发 token 时触发',            desc:'记录登录行为，字段含 channel、login_type、account_type' },
+  { cn:'页面加载完成',    en:'page_load',               protocol:'Client SDK',             trigger:'页面首屏渲染完成（LCP 节点触发）时记录',        desc:'性能指标，字段含 load_time_ms、page_name、network_type' },
+  { cn:'商品浏览',        en:'item_view',               protocol:'Client SDK',             trigger:'商品卡片在视口内停留超 500ms 时触发',           desc:'记录商品曝光行为，用于计算商品点击率与购买转化率' },
+  { cn:'客户端崩溃',      en:'app_crash',               protocol:'Crash SDK 自动上报',    trigger:'应用发生未捕获异常或 ANR 时自动采集上报',      desc:'记录崩溃堆栈与设备信息，用于稳定性护栏指标' },
+  { cn:'分享行为',        en:'share_action',            protocol:'Client SDK',             trigger:'用户完成分享操作（系统分享面板调用成功）时触发',desc:'记录分享渠道与内容类型，用于社交传播分析' },
+];
+
+var PROPS_DATA = [
+  { cn:'设备ID',        en:'device_id',      type:'STRING',  desc:'用户设备的唯一标识符，用于跨会话识别同一设备' },
+  { cn:'用户ID',        en:'user_id',         type:'STRING',  desc:'登录用户的唯一标识符，未登录时为空' },
+  { cn:'渠道',          en:'channel',         type:'STRING',  desc:'用户来源渠道，如 organic、facebook、google 等' },
+  { cn:'应用版本号',    en:'app_version',     type:'STRING',  desc:'触发事件时的应用版本号，格式如 1.2.3' },
+  { cn:'操作系统',      en:'os',              type:'STRING',  desc:'用户设备操作系统，取值为 iOS 或 Android' },
+  { cn:'操作系统版本',  en:'os_version',      type:'STRING',  desc:'操作系统版本号，如 iOS 17.2' },
+  { cn:'国家/地区',     en:'country',         type:'STRING',  desc:'用户所在国家或地区，ISO 3166-1 alpha-2 编码' },
+  { cn:'语言',          en:'language',        type:'STRING',  desc:'用户设备语言设置，如 zh-CN、en-US' },
+  { cn:'付款金额',      en:'revenue',         type:'DOUBLE',  desc:'本次交易的付款金额，单位为美元' },
+  { cn:'关卡编号',      en:'level_id',        type:'INTEGER', desc:'关卡的唯一数字编号，从 1 开始递增' },
+  { cn:'广告类型',      en:'ad_type',         type:'STRING',  desc:'广告展示形式，如 rewarded、interstitial、banner' },
+  { cn:'网络类型',      en:'network_type',    type:'STRING',  desc:'用户当前网络连接类型，如 WiFi、4G、5G' },
+  { cn:'设备型号',      en:'device_model',    type:'STRING',  desc:'用户设备型号，如 iPhone 15 Pro、Samsung Galaxy S24' },
+  { cn:'会话ID',        en:'session_id',      type:'STRING',  desc:'当前用户会话的唯一标识，用于会话级别分析' },
+];
+
+/* ── State ── */
+var notifCount = 3;
+var notifItems = [];
+var sqlFmt = '%';
+var decPlaces = 2;
+var modalMode = 'create'; // 'create' | 'edit'
+var editRowId = null;
+var modalCalledFrom = 'metrics'; // 'metrics' | 'exp-step4'
+
+/* ── Open / Close modal ── */
+function openModal() {
+  modalCalledFrom = 'metrics';
+  modalMode = 'create';
+  editRowId = null;
+  document.getElementById('modalTitle').textContent = '创建指标';
+  document.getElementById('modalSubmitText').textContent = '确认创建';
+  document.getElementById('createOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  resetForm();
+  onDtypeChange();
+}
+
+function openModalFromExpStep4() {
+  openModal();
+  modalCalledFrom = 'exp-step4'; // override after openModal resets it
+}
+
+function openEditModal(rowId) {
+  modalMode = 'edit';
+  editRowId = rowId;
+  document.getElementById('modalTitle').textContent = '编辑指标';
+  document.getElementById('modalSubmitText').textContent = '确认保存';
+  document.getElementById('createOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  resetForm();
+  var row = document.getElementById('row-' + rowId);
+  if (row) {
+    document.getElementById('f-name').value = row.dataset.name || '';
+    // config type
+    document.getElementById('f-dtype').value = row.dataset.ctype || '';
+    // domain
+    document.getElementById('f-domain').value = row.dataset.domain || '';
+    // status
+    var status = row.dataset.status || 'on';
+    document.querySelectorAll('[name=f-status]').forEach(function(r) { r.checked = (r.value === status); });
+  }
+  onDtypeChange();
+}
+
+function closeAlert(e) {
+  if (e && e.target !== document.getElementById('alertOverlay') && e.type === 'click') return;
+  document.getElementById('alertOverlay').classList.remove('show');
+}
+
+function closeModal() {
+  document.getElementById('createOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+  closeAllPopovers();
+  closeAllEvSelects();
+  hideEvTooltip();
+}
+
+function overlayClick(e) {
+  if (e.target === document.getElementById('createOverlay')) closeModal();
+}
+
+function resetForm() {
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-dtype').value = '';
+  document.getElementById('f-domain').value = '';
+  document.querySelectorAll('[name=f-status]')[0].checked = true;
+  document.querySelectorAll('.form-field').forEach(function(f){ f.classList.remove('has-err'); });
+  document.querySelectorAll('.form-control').forEach(function(f){ f.classList.remove('err'); });
+  // reset format to %
+  document.querySelectorAll('.fmt-tab').forEach(function(t){ t.classList.remove('active'); });
+  var firstTab = document.querySelector('.fmt-tab');
+  if (firstTab) firstTab.classList.add('active');
+  sqlFmt = '%';
+  decPlaces = 2;
+  document.getElementById('decPlaces').value = 2;
+  document.getElementById('fmtDecWrap').style.display = 'none';
+  document.getElementById('fmtPreview').textContent = '示例：12.34%';
+}
+
+/* ── Number format tabs ── */
+function setFmt(el, val) {
+  document.querySelectorAll('.fmt-tab').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  sqlFmt = val;
+  document.getElementById('fmtDecWrap').style.display = (val === 'dec') ? 'flex' : 'none';
+  updateFmtPreview();
+  renderSQL();
+}
+
+function onDecChange() {
+  var v = parseInt(document.getElementById('decPlaces').value, 10);
+  if (isNaN(v) || v < 0) v = 0;
+  if (v > 6) v = 6;
+  decPlaces = v;
+  document.getElementById('decPlaces').value = v;
+  updateFmtPreview();
+  renderSQL();
+}
+
+function updateFmtPreview() {
+  var prev = document.getElementById('fmtPreview');
+  if (sqlFmt === '%') {
+    prev.textContent = '示例：12.34%';
+  } else {
+    prev.textContent = '示例：' + (1234.5678).toFixed(decPlaces);
+  }
+}
+
+/* ── 计算口径 dynamic rendering ── */
+function onDtypeChange() {
+  var ctype = document.getElementById('f-dtype').value;
+  renderCalcBox(ctype);
+  renderSQL();
+}
+
+function onFieldChange() { renderSQL(); }
+
+function renderCalcBox(ctype) {
+  var box = document.getElementById('calcBox');
+  if (!ctype) {
+    box.innerHTML = '<div style="color:var(--sub);font-size:12px;padding:6px 0;">请先选择配置类型</div>';
+    return;
+  }
+  if (ctype === 'event') {
+    box.innerHTML = '<div class="calc-part">'
+      + '<div class="calc-part-label">计算方式<span class="field-tip-wrap"><span class="field-tip">?</span><span class="field-tip-bubble field-tip-bubble-lg"><div style="margin-bottom:6px;"><b>比例指标</b>：每个用户只有 0/1 两种结果（付费 / 未付费、点击 / 未点击、使用、未使用等），如按用户级别统计的点击率、转化率、渗透率、完成率等</div><div style="margin-bottom:6px;"><b>均值指标</b>：一个用户一个连续值求平均，金额 / 时长 / 次数 ÷ 去重用户数，金额 / 时长 / 次数 ÷ 总次数，如人均游戏时长、人均通关数、平均每次付费金额等</div><div><b>比率指标</b>：比值，分子分母是两个随机变量，均值 A ÷ 均值 B，总和 A ÷ 总和 B，如 ROI 等</div></span></span></div>'
+      + '<div style="margin-bottom:14px;">'
+      + '<select id="c-subtype" class="form-control" style="max-width:240px;" onchange="onSubtypeChange()">'
+      + '<option value="ratio">比率指标（A/B）</option>'
+      + '<option value="mean">均值指标（AVG）</option>'
+      + '<option value="proportion">比例指标（占比）</option>'
+      + '</select></div>'
+      + '<div id="subCalcBox"></div>'
+      + '</div>';
+    onSubtypeChange();
+  } else if (ctype === 'retain') {
+    box.innerHTML = '<div class="calc-part">'
+      + '<div class="calc-part-label">初始行为</div>'
+      + '<div class="calc-row">'
+      + '<div class="form-field"><label class="form-label">事件名<span class="req">*</span></label>' + buildEvSelect('c-start-event','请选择事件') + '</div>'
+      + '<div class="form-field"><label class="form-label">事件属性</label>' + buildPropSelect('c-start-prop','请选择属性') + '</div>'
+      + '</div>'
+      + buildFilterSection('fb-start')
+      + '</div>'
+      + '<div class="calc-part">'
+      + '<div class="calc-part-label">回访行为</div>'
+      + '<div class="calc-row">'
+      + '<div class="form-field"><label class="form-label">事件名<span class="req">*</span></label>' + buildEvSelect('c-return-event','请选择事件') + '</div>'
+      + '<div class="form-field"><label class="form-label">事件属性</label>' + buildPropSelect('c-return-prop','请选择属性') + '</div>'
+      + '</div>'
+      + buildFilterSection('fb-return')
+      + '</div>'
+      + '<div class="calc-part">'
+      + '<div class="calc-part-label">留存配置'
+      + '<i class="help-icon" data-tip="第 N 天留存 = 在起始日之后恰好第 N 天回来的用户 / 起始日用户总数">?</i>'
+      + '</div>'
+      + '<div class="form-field"><label class="form-label">统计窗口</label>'
+      + '<div style="display:flex;align-items:center;">'
+      + '<div class="day-stepper-ctrl">'
+      + '<button type="button" class="stepper-btn" onclick="stepRetainDay(-1)">−</button>'
+      + '<input type="number" id="c-retain-day-input" class="stepper-num-input" value="7" min="1" max="365">'
+      + '<button type="button" class="stepper-btn" onclick="stepRetainDay(1)">+</button>'
+      + '</div>'
+      + '<button type="button" class="stepper-add-btn" onclick="addRetainDay()">添加</button>'
+      + '</div>'
+      + '<div id="c-retain-day-tags" class="stepper-tags">'
+      + '<span class="stepper-tag" data-val="1">D1<button type="button" class="stepper-tag-del" onclick="removeRetainDay(this)">×</button></span>'
+      + '<span class="stepper-tag" data-val="7">D7<button type="button" class="stepper-tag-del" onclick="removeRetainDay(this)">×</button></span>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+}
+
+function onSubtypeChange() {
+  var subEl = document.getElementById('c-subtype');
+  if (!subEl) return;
+  renderSubCalc(subEl.value);
+  renderSQL();
+}
+
+function stepRetainDay(delta) {
+  var input = document.getElementById('c-retain-day-input');
+  if (!input) return;
+  var v = Math.max(1, Math.min(365, (parseInt(input.value, 10) || 1) + delta));
+  input.value = v;
+}
+
+function addRetainDay() {
+  var input = document.getElementById('c-retain-day-input');
+  var tagsEl = document.getElementById('c-retain-day-tags');
+  if (!input || !tagsEl) return;
+  var v = Math.max(1, Math.min(365, parseInt(input.value, 10) || 1));
+  var already = false;
+  tagsEl.querySelectorAll('.stepper-tag').forEach(function(t) { if (parseInt(t.dataset.val) === v) already = true; });
+  if (already) return;
+  var tag = document.createElement('span');
+  tag.className = 'stepper-tag'; tag.dataset.val = v;
+  tag.innerHTML = 'D' + v + '<button type="button" class="stepper-tag-del" onclick="removeRetainDay(this)">×</button>';
+  tagsEl.appendChild(tag);
+  var tags = Array.from(tagsEl.querySelectorAll('.stepper-tag'));
+  tags.sort(function(a, b) { return parseInt(a.dataset.val) - parseInt(b.dataset.val); });
+  tags.forEach(function(t) { tagsEl.appendChild(t); });
+  renderSQL();
+}
+
+function removeRetainDay(btn) {
+  var tag = btn.closest('.stepper-tag');
+  if (tag) { tag.parentNode.removeChild(tag); renderSQL(); }
+}
+
+function buildAggSelect(inputId, proportionMode) {
+  return '<select id="'+inputId+'" class="form-control" style="max-width:130px;" onchange="renderSQL()">'
+    + (proportionMode
+        ? '<option value="count_distinct">去重计数</option>'
+        : '<option value="count">计数</option><option value="count_distinct">去重计数</option><option value="avg">均值</option><option value="sum">求和</option>')
+    + '</select>';
+}
+
+function renderSubCalc(subtype) {
+  var box = document.getElementById('subCalcBox');
+  if (!box) return;
+  var h = '';
+  if (subtype === 'ratio') {
+    h = '<div class="calc-row">'
+      + '<div class="form-field" style="flex:none;width:32px;padding-top:22px;text-align:center;font-size:11px;color:var(--sub);">分子</div>'
+      + '<div class="form-field"><label class="form-label">事件名<span class="req">*</span></label>' + buildEvSelect('c-num-event','请选择事件') + '</div>'
+      + '<div class="form-field"><label class="form-label">事件属性</label>' + buildPropSelect('c-num-prop','请选择属性') + '</div>'
+      + '<div class="form-field"><label class="form-label">计算函数</label>' + buildAggSelect('c-num-agg') + '</div>'
+      + '</div>'
+      + '<div style="padding-left:42px;margin-top:6px;">' + buildFilterSection('fb-num') + '</div>'
+      + '<div class="calc-row" style="margin-top:12px;">'
+      + '<div class="form-field" style="flex:none;width:32px;padding-top:22px;text-align:center;font-size:11px;color:var(--sub);">分母</div>'
+      + '<div class="form-field"><label class="form-label">事件名<span class="req">*</span></label>' + buildEvSelect('c-den-event','请选择事件') + '</div>'
+      + '<div class="form-field"><label class="form-label">事件属性</label>' + buildPropSelect('c-den-prop','请选择属性') + '</div>'
+      + '<div class="form-field"><label class="form-label">计算函数</label>' + buildAggSelect('c-den-agg') + '</div>'
+      + '</div>'
+      + '<div style="padding-left:42px;margin-top:6px;">' + buildFilterSection('fb-den') + '</div>';
+  } else if (subtype === 'proportion') {
+    h = '<div class="calc-row">'
+      + '<div class="form-field"><label class="form-label">目标事件<span class="req">*</span></label>' + buildEvSelect('c-num-event','请选择事件') + '</div>'
+      + '<div class="form-field"><label class="form-label">事件属性</label>' + buildPropSelect('c-num-prop','请选择属性') + '</div>'
+      + '<div class="form-field"><label class="form-label">计算函数</label>' + buildAggSelect('c-num-agg', true) + '</div>'
+      + '</div>'
+      + '<div style="margin-top:6px;">' + buildFilterSection('fb-num') + '</div>'
+      + '<div class="calc-row" style="margin-top:12px;">'
+      + '<div class="form-field"><label class="form-label">总体范围<span class="req">*</span></label>' + buildEvSelect('c-den-event','请选择事件') + '</div>'
+      + '<div class="form-field"><label class="form-label">事件属性</label>' + buildPropSelect('c-den-prop','请选择属性') + '</div>'
+      + '<div class="form-field"><label class="form-label">计算函数</label>' + buildAggSelect('c-den-agg', true) + '</div>'
+      + '</div>'
+      + '<div style="margin-top:6px;">' + buildFilterSection('fb-den') + '</div>';
+  } else if (subtype === 'mean') {
+    h = '<div class="calc-row">'
+      + '<div class="form-field"><label class="form-label">事件名<span class="req">*</span></label>' + buildEvSelect('c-event','请选择事件') + '</div>'
+      + '<div class="form-field"><label class="form-label">事件属性</label>' + buildPropSelect('c-prop','请选择属性') + '</div>'
+      + '<div class="form-field"><label class="form-label">数值字段<span class="req">*</span></label><input id="c-field" class="form-control" placeholder="如：order_amount" oninput="renderSQL()"/></div>'
+      + '<div class="form-field"><label class="form-label">均值方式</label>'
+      + '<select id="c-grain" class="form-control" style="max-width:180px;" onchange="renderSQL()">'
+      + '<option value="user">用户级别（人均）</option><option value="session">会话级别（次均）</option>'
+      + '</select></div>'
+      + '</div>'
+      + '<div style="margin-top:6px;">' + buildFilterSection('fb-event') + '</div>';
+  }
+  box.innerHTML = h;
+}
+
+/* ── SQL Generation ── */
+function gv(id) { var el=document.getElementById(id); return el?el.value.trim():''; }
+
+function renderSQL() {
+  var name  = gv('f-name') || 'metric_name';
+  var ctype = gv('f-dtype') || 'event';
+  var dp = decPlaces;
+  var fmtComment = sqlFmt === '%' ? '-- 结果 × 100 转为百分比' : ('-- 保留' + dp + '位小数');
+  var HL = function(t,cls){ return '<span class="'+cls+'">'+t+'</span>'; };
+  var KW=function(t){return HL(t,'kw');}, FN=function(t){return HL(t,'fn');};
+  var STR=function(t){return HL(t,'str');}, CM=function(t){return HL(t,'cm');}, NUM=function(t){return HL(t,'num');};
+
+  var sql = '';
+  if (ctype === 'event') {
+    var subtype = gv('c-subtype') || 'ratio';
+    if (subtype === 'ratio' || subtype === 'proportion') {
+      var ne=gv('c-num-event')||'event_a', nf=gv('c-num-filter');
+      var de=gv('c-den-event')||'event_b', df=gv('c-den-filter');
+      var nCond=nf?' AND '+nf:'', dCond=df?' AND '+df:'';
+      sql = CM('-- '+name+'  |  '+(subtype==='ratio'?'比率指标':'比例指标')+'  '+fmtComment)+'\n'
+          + KW('SELECT')+'\n  experiment_id,\n  variant_id,\n'
+          + '  '+FN('COUNT')+'('+KW('DISTINCT')+' '+KW('CASE')+' '+KW('WHEN')+' event_name = '+STR("'"+ne+"'")
+          + nCond+' '+KW('THEN')+' user_id '+KW('END')+') '+KW('AS')+' numerator,\n'
+          + '  '+FN('COUNT')+'('+KW('DISTINCT')+' '+KW('CASE')+' '+KW('WHEN')+' event_name = '+STR("'"+de+"'")
+          + dCond+' '+KW('THEN')+' user_id '+KW('END')+') '+KW('AS')+' denominator,\n'
+          + '  '+FN('ROUND')+'(numerator * '+NUM('1.0')+' / '+FN('NULLIF')+'(denominator, '+NUM('0')+'), '+NUM('4')+') '+KW('AS')+' '+STR('"'+name+'"')+'\n'
+          + KW('FROM')+' dws_experiment_events\n'
+          + KW('GROUP BY')+' experiment_id, variant_id';
+    } else if (subtype === 'mean') {
+      var ev=gv('c-event')||'event_name', fld=gv('c-field')||'value_field', grain=gv('c-grain')||'user';
+      if (grain==='user') {
+        sql=CM('-- '+name+'  |  均值指标（人均）  '+fmtComment)+'\n'
+          +KW('SELECT')+'\n  experiment_id,\n  variant_id,\n'
+          +'  '+FN('AVG')+'(user_sum) '+KW('AS')+' '+STR('"'+name+'"')+'\n'
+          +KW('FROM')+' (\n'
+          +'  '+KW('SELECT')+' experiment_id, variant_id, user_id, '+FN('SUM')+'('+fld+') '+KW('AS')+' user_sum\n'
+          +'  '+KW('FROM')+' dws_experiment_events\n'
+          +'  '+KW('WHERE')+' event_name = '+STR("'"+ev+"'")+'\n'
+          +'  '+KW('GROUP BY')+' experiment_id, variant_id, user_id\n) t\n'
+          +KW('GROUP BY')+' experiment_id, variant_id';
+      } else {
+        sql=CM('-- '+name+'  |  均值指标（会话级）  '+fmtComment)+'\n'
+          +KW('SELECT')+'\n  experiment_id,\n  variant_id,\n'
+          +'  '+FN('AVG')+'('+fld+') '+KW('AS')+' '+STR('"'+name+'"')+'\n'
+          +KW('FROM')+' dws_experiment_events\n'
+          +KW('WHERE')+' event_name = '+STR("'"+ev+"'")+'\n'
+          +KW('GROUP BY')+' experiment_id, variant_id';
+      }
+    }
+  } else if (ctype === 'retain') {
+    var se=gv('c-start-event')||'app_open';
+    var re=gv('c-return-event')||'app_open';
+    var days=[];
+    document.querySelectorAll('#c-retain-day-tags .stepper-tag').forEach(function(t){ days.push(t.dataset.val); });
+    if (days.length===0) days=['1'];
+    var sql_comment = CM('-- '+name+'  |  留存指标（经典留存）D['+days.join(',')+']  '+fmtComment)+'\n';
+    sql = sql_comment
+      +KW('SELECT')+'\n  experiment_id,\n  variant_id,\n  day_offset,\n'
+      +'  '+FN('COUNT')+'('+KW('DISTINCT')+' r.user_id) * '+NUM('1.0')+' / '+FN('NULLIF')+'('+FN('COUNT')+'('+KW('DISTINCT')+' s.user_id), '+NUM('0')+') '+KW('AS')+' '+STR('"'+name+'"')+'\n'
+      +KW('FROM')+' (\n'
+      +'  '+KW('SELECT')+' '+KW('DISTINCT')+' user_id, experiment_id, variant_id, event_date '+KW('AS')+' start_date\n'
+      +'  '+KW('FROM')+' dws_experiment_events\n'
+      +'  '+KW('WHERE')+' event_name = '+STR("'"+se+"'")+'\n) s\n'
+      +KW('JOIN')+' (\n'
+      +'  '+KW('SELECT')+' user_id, experiment_id, variant_id, event_date, DATEDIFF(event_date, start_date) '+KW('AS')+' day_offset\n'
+      +'  '+KW('FROM')+' dws_experiment_events\n'
+      +'  '+KW('WHERE')+' event_name = '+STR("'"+re+"'")+'\n) r '+KW('ON')+' s.user_id = r.user_id '+KW('AND')+' r.day_offset '+KW('IN')+' ('+days.map(function(d){return NUM(d);}).join(', ')+')\n'
+      +KW('GROUP BY')+' experiment_id, variant_id, day_offset';
+  }
+  document.getElementById('sqlCode').innerHTML = sql;
+}
+
+/* ── Validation ── */
+function validate() {
+  var ok = true;
+  function chk(ffId, fieldId) {
+    var ff=document.getElementById(ffId), f=document.getElementById(fieldId);
+    if (!f || !f.value.trim()) { if(ff) ff.classList.add('has-err'); if(f) f.classList.add('err'); ok=false; }
+    else { if(ff) ff.classList.remove('has-err'); if(f) f.classList.remove('err'); }
+  }
+  chk('ff-name','f-name');
+  chk('ff-dtype','f-dtype');
+  return ok;
+}
+
+/* ── Submit ── */
+function submitForm() {
+  if (!validate()) return;
+  // block edit when active experiments exist
+  if (modalMode === 'edit' && editRowId) {
+    var editRow = document.getElementById('row-' + editRowId);
+    if (editRow && parseInt(editRow.dataset.active || '0', 10) > 0) {
+      document.getElementById('alertOverlay').classList.add('show');
+      return;
+    }
+  }
+  var name = document.getElementById('f-name').value.trim();
+  if (modalMode === 'create') {
+    var newId   = nextMtrId();
+    var ctype   = document.getElementById('f-dtype').value || 'event';
+    var domain  = document.getElementById('f-domain').value;
+    var statusVal = document.querySelector('[name=f-status]:checked').value;
+    closeModal();
+    createMetricRow(newId, name, ctype, domain, statusVal);
+    if (modalCalledFrom === 'exp-step4' && statusVal === 'on') {
+      addMetricToExpSelectors(newId, name);
+    }
+    showToast('创建成功', '指标「' + name + '」已创建，可在列表中查看或引用到实验');
+    addNotif('指标创建成功', '「' + name + '」已成功创建', now());
+  } else {
+    if (editRowId) {
+      var row = document.getElementById('row-' + editRowId);
+      if (row) {
+        row.querySelector('.mtr-link').textContent = name;
+        row.dataset.name = name;
+        var ctype = document.getElementById('f-dtype').value;
+        row.dataset.ctype = ctype;
+        var ctypeTag = row.querySelector('td:nth-child(4) .tag');
+        if (ctypeTag) {
+          ctypeTag.className = 'tag ' + (ctype === 'retain' ? 'tag-retain' : 'tag-event');
+          ctypeTag.textContent = ctype === 'retain' ? '留存指标' : '事件指标';
+        }
+        row.dataset.domain = document.getElementById('f-domain').value;
+        var statusVal = document.querySelector('[name=f-status]:checked').value;
+        row.dataset.status = statusVal;
+        var statusTag = row.querySelector('.tag-on, .tag-off');
+        if (statusTag) {
+          statusTag.className = 'tag ' + (statusVal === 'on' ? 'tag-on' : 'tag-off');
+          statusTag.textContent = statusVal === 'on' ? '启用' : '停用';
+        }
+      }
+    }
+    closeModal();
+    showToast('保存成功', '指标「' + name + '」已更新');
+    addNotif('指标编辑成功', '「' + name + '」已成功更新', now());
+  }
+}
+
+/* ── Copy metric ── */
+function nextMtrId() {
+  var ids = Array.from(document.querySelectorAll('tbody .mtr-id')).map(function(el) {
+    return parseInt(el.textContent.replace('mtr', ''), 10);
+  });
+  var max = Math.max.apply(null, ids);
+  return 'mtr' + String(max + 1).padStart(6, '0');
+}
+
+function copyMetric(rowId) {
+  var row = document.getElementById('row-' + rowId);
+  if (!row) return;
+  var newId = nextMtrId();
+  var newName = (row.dataset.name || '') + '_副本';
+  var newRow = row.cloneNode(true);
+  newRow.id = 'row-' + newId;
+  newRow.dataset.id = newId;
+  newRow.dataset.name = newName;
+  newRow.dataset.active = '0';
+  newRow.dataset.related = '0';
+  newRow.querySelector('.mtr-id').textContent = newId;
+  newRow.querySelector('.mtr-link').textContent = newName;
+  var tds = newRow.querySelectorAll('td');
+  tds[4].querySelector('.exp-count').textContent = '0 / 0';
+  tds[7].textContent = now();
+  // Re-wire popover id
+  var newPop = newRow.querySelector('.del-popover');
+  newPop.id = 'pop-' + newId;
+  // Re-wire buttons
+  var opBtns = newRow.querySelectorAll('.op-link');
+  opBtns[0].onclick = (function(id){ return function(){ openEditModal(id); }; })(newId);
+  opBtns[1].onclick = (function(id){ return function(){ copyMetric(id); }; })(newId);
+  opBtns[2].onclick = (function(btn, id){ return function(e){ e.stopPropagation(); toggleDelPopover(btn, id, 0); }; })(opBtns[2], newId);
+  newPop.querySelector('.pop-btn:not(.primary)').onclick = function(e){ e.stopPropagation(); closeAllPopovers(); };
+  newPop.querySelector('.pop-btn.primary').onclick = (function(id){ return function(e){ e.stopPropagation(); confirmDelete(id); }; })(newId);
+  row.parentNode.insertBefore(newRow, row.nextSibling);
+  showToast('复制成功', '指标「' + newName + '」已创建');
+}
+
+/* ── Delete ── */
+function toggleDelPopover(btn, rowId, related) {
+  var wasOpen = document.getElementById('pop-' + rowId).classList.contains('show');
+  closeAllPopovers();
+  if (wasOpen) return;
+  var pop = document.getElementById('pop-' + rowId);
+  if (!pop) return;
+  var msgEl = pop.querySelector('.pop-msg');
+  var btnsEl = pop.querySelector('.pop-btns');
+  var warnEl = pop.querySelector('.pop-warn');
+  if (parseInt(related, 10) > 0) {
+    msgEl.style.display = 'none'; btnsEl.style.display = 'none';
+    warnEl.style.display = 'block';
+    warnEl.textContent = '当前指标存在关联实验不可删除';
+  } else {
+    msgEl.style.display = 'block';
+    msgEl.textContent = '是否确认删除该指标？删除后不可恢复。';
+    btnsEl.style.display = 'flex';
+    warnEl.style.display = 'none';
+  }
+  pop.classList.add('show');
+}
+
+function confirmDelete(rowId) {
+  var row = document.getElementById('row-' + rowId);
+  if (row) { var name = row.dataset.name || rowId; row.remove(); showToast('删除成功', '指标「' + name + '」已删除'); }
+  closeAllPopovers();
+}
+
+function closeAllPopovers() {
+  document.querySelectorAll('.del-popover.show').forEach(function(p){ p.classList.remove('show'); });
+}
+
+/* ── Filter builder ── */
+var FILTER_ATTRS = null;
+function getFilterAttrs() {
+  if (!FILTER_ATTRS) {
+    FILTER_ATTRS = [{ cn:'事件发生时间', en:'event_time', type:'DATE' }]
+      .concat(PROPS_DATA.map(function(p){ return { cn:p.cn, en:p.en, type:p.type }; }));
+  }
+  return FILTER_ATTRS;
+}
+var FILTER_OPS = {
+  'STRING':  ['=','≠','包含','不包含','为空','不为空'],
+  'INTEGER': ['=','≠','>','>=','<','<=','为空','不为空'],
+  'DOUBLE':  ['=','≠','>','>=','<','<=','为空','不为空'],
+  'DATE':    ['固定范围','相对范围','最近N天']
+};
+var FILTER_NO_VAL = ['为空','不为空'];
+
+function buildFilterSection(boxId) {
+  return '<div class="filter-section">'
+    + '<div class="filter-section-label">过滤条件</div>'
+    + '<div class="filter-group" id="fg-' + boxId + '" style="display:none;">'
+    + '<div class="filter-bracket"><button type="button" class="filter-logic-btn" onclick="toggleFilterLogic(this)">且</button></div>'
+    + '<div class="filter-box" id="' + boxId + '"></div>'
+    + '</div>'
+    + '<button type="button" class="filter-add-btn" onclick="addFilterRow(\'' + boxId + '\')">'
+    + '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>'
+    + '添加过滤条件</button>'
+    + '</div>';
+}
+
+function toggleFilterLogic(btn) {
+  btn.textContent = btn.textContent === '且' ? '或' : '且';
+}
+
+function _filterAttrOpts(selectedEn) {
+  return getFilterAttrs().map(function(a) {
+    return '<option value="' + a.en + '"' + (a.en === selectedEn ? ' selected' : '') + '>' + a.cn + '</option>';
+  }).join('');
+}
+
+function _filterOpOpts(type, selectedOp) {
+  var ops = FILTER_OPS[type] || ['='];
+  return ops.map(function(op) {
+    return '<option value="' + op + '"' + (op === selectedOp ? ' selected' : '') + '>' + op + '</option>';
+  }).join('');
+}
+
+function _filterValHTML(op, attrType) {
+  if (FILTER_NO_VAL.indexOf(op) >= 0) return '';
+  if (attrType === 'DATE' && op === '固定范围') {
+    return '<div class="filter-date-wrap">'
+      + '<input type="date" class="filter-date-input" style="width:128px;">'
+      + '<span class="filter-date-sep">→</span>'
+      + '<input type="date" class="filter-date-input" style="width:128px;">'
+      + '</div>';
+  }
+  if (attrType === 'DATE') {
+    return '<input class="filter-date-input" style="flex:1;min-width:80px;" placeholder="如：7">';
+  }
+  return '<div class="filter-tag-wrap" onclick="this.querySelector(\'.filter-tag-input\').focus()">'
+    + '<input class="filter-tag-input" placeholder="输入后按 Enter 添加" onkeydown="onFilterTagKeydown(this,event)">'
+    + '</div>';
+}
+
+function addFilterRow(boxId) {
+  var box = document.getElementById(boxId);
+  if (!box) return;
+  var attrs = getFilterAttrs();
+  var attr = attrs[0];
+  var ops = FILTER_OPS[attr.type] || ['='];
+  var op = ops[0];
+  var row = document.createElement('div');
+  row.className = 'filter-row';
+  row.innerHTML = '<select class="filter-attr-sel" onchange="onFilterAttrChange(this)">'
+    + _filterAttrOpts(attr.en)
+    + '</select>'
+    + '<select class="filter-op-sel" onchange="onFilterOpChange(this)">'
+    + _filterOpOpts(attr.type, op)
+    + '</select>'
+    + '<div class="filter-val-wrap" style="flex:1;display:flex;align-items:center;">'
+    + _filterValHTML(op, attr.type)
+    + '</div>'
+    + '<button type="button" class="filter-del-btn" onclick="removeFilterRow(this)" title="删除">'
+    + '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px;"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>'
+    + '</button>';
+  box.appendChild(row);
+  var group = document.getElementById('fg-' + boxId);
+  if (group) group.style.display = 'flex';
+}
+
+function removeFilterRow(btn) {
+  var row = btn.closest('.filter-row');
+  if (!row) return;
+  var box = row.parentNode;
+  box.removeChild(row);
+  if (box.children.length === 0) {
+    var group = box.closest('.filter-group');
+    if (group) group.style.display = 'none';
+  }
+}
+
+function onFilterAttrChange(sel) {
+  var row = sel.closest('.filter-row');
+  var attrs = getFilterAttrs();
+  var attr = attrs.filter(function(a) { return a.en === sel.value; })[0] || attrs[0];
+  var ops = FILTER_OPS[attr.type] || ['='];
+  row.querySelector('.filter-op-sel').innerHTML = _filterOpOpts(attr.type, ops[0]);
+  row.querySelector('.filter-val-wrap').innerHTML = _filterValHTML(ops[0], attr.type);
+}
+
+function onFilterOpChange(sel) {
+  var row = sel.closest('.filter-row');
+  var attrSel = row.querySelector('.filter-attr-sel');
+  var attrs = getFilterAttrs();
+  var attr = attrs.filter(function(a) { return a.en === attrSel.value; })[0] || attrs[0];
+  row.querySelector('.filter-val-wrap').innerHTML = _filterValHTML(sel.value, attr.type);
+}
+
+function onFilterTagKeydown(input, e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  var val = input.value.trim();
+  if (!val) return;
+  var wrap = input.closest('.filter-tag-wrap');
+  var tag = document.createElement('span');
+  tag.className = 'filter-tag';
+  tag.innerHTML = val + '<button type="button" class="filter-tag-del" onclick="this.parentNode.remove()">×</button>';
+  wrap.insertBefore(tag, input);
+  input.value = '';
+}
+
+/* ── Event searchable select ── */
+function buildEvSelect(inputId, placeholder) {
+  var wrapId = 'evs-' + inputId;
+  return '<div class="ev-select-wrap" id="'+wrapId+'">'
+    + '<div class="ev-select-trigger" onclick="toggleEvSelect(\''+wrapId+'\',event)">'
+    + '<span class="ev-sel-text ph" id="evt-'+inputId+'">'+placeholder+'</span>'
+    + '<svg class="ev-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>'
+    + '</div>'
+    + '<div class="ev-dropdown">'
+    + '<div class="ev-search-wrap"><input class="ev-search" placeholder="输入关键字搜索…" oninput="filterEvOptions(\''+wrapId+'\',this.value)" onclick="event.stopPropagation()"></div>'
+    + '<div class="ev-list" id="evl-'+inputId+'"></div>'
+    + '</div>'
+    + '<input type="hidden" id="'+inputId+'">'
+    + '</div>';
+}
+
+function renderEvOptions(listId, filter) {
+  var list = document.getElementById(listId);
+  if (!list) return;
+  var q = (filter || '').toLowerCase();
+  var inputId = listId.replace('evl-', '');
+  var hidden = document.getElementById(inputId);
+  var currentVal = hidden ? hidden.value : '';
+  var filtered = [];
+  EVENTS_DATA.forEach(function(ev, i) {
+    if (!q || ev.cn.indexOf(q) >= 0 || ev.en.toLowerCase().indexOf(q) >= 0) filtered.push({ev:ev, idx:i});
+  });
+  if (filtered.length === 0) { list.innerHTML = '<div class="ev-no-result">未找到匹配事件</div>'; return; }
+  list.innerHTML = filtered.map(function(item) {
+    var sel = item.ev.en === currentVal ? ' ev-opt-sel' : '';
+    return '<div class="ev-option'+sel+'" data-idx="'+item.idx+'"'
+      + ' onclick="selectEvOption(\''+inputId+'\',\''+item.ev.en+'\',\''+item.ev.cn+'\')"'
+      + ' onmouseenter="showEvTooltipByIdx(this)" onmouseleave="hideEvTooltip()">'
+      + '<span class="ev-opt-cn">'+item.ev.cn+'</span>'
+      + '<span class="ev-opt-en">'+item.ev.en+'</span>'
+      + '</div>';
+  }).join('');
+}
+
+function toggleEvSelect(wrapId, e) {
+  e.stopPropagation();
+  var wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  var wasOpen = wrap.classList.contains('open');
+  closeAllEvSelects();
+  if (wasOpen) return;
+  wrap.classList.add('open');
+  var inputId = wrapId.replace('evs-', '');
+  renderEvOptions('evl-' + inputId, '');
+  // position dropdown using fixed coordinates
+  var dd = wrap.querySelector('.ev-dropdown');
+  var trigRect = wrap.querySelector('.ev-select-trigger').getBoundingClientRect();
+  dd.style.width = trigRect.width + 'px';
+  dd.style.left = trigRect.left + 'px';
+  dd.style.top = (trigRect.bottom + 4) + 'px';
+  var searchEl = wrap.querySelector('.ev-search');
+  if (searchEl) setTimeout(function(){ searchEl.focus(); }, 30);
+}
+
+function closeAllEvSelects() {
+  document.querySelectorAll('.ev-select-wrap.open').forEach(function(w){ w.classList.remove('open'); });
+}
+
+function filterEvOptions(wrapId, q) {
+  var inputId = wrapId.replace('evs-', '');
+  renderEvOptions('evl-' + inputId, q);
+}
+
+function selectEvOption(inputId, value, cnName) {
+  var hidden = document.getElementById(inputId);
+  if (hidden) hidden.value = value;
+  var textEl = document.getElementById('evt-' + inputId);
+  if (textEl) { textEl.textContent = cnName + '  ' + value; textEl.classList.remove('ph'); }
+  closeAllEvSelects();
+  renderSQL();
+}
+
+function getOrCreateTooltip() {
+  var tt = document.getElementById('evTooltip');
+  if (!tt) {
+    tt = document.createElement('div');
+    tt.className = 'ev-tooltip'; tt.id = 'evTooltip';
+    document.body.appendChild(tt);
+  }
+  return tt;
+}
+
+function showEvTooltipByIdx(el) {
+  var ev = EVENTS_DATA[parseInt(el.dataset.idx, 10)];
+  if (!ev) return;
+  var tt = getOrCreateTooltip();
+  tt.innerHTML = '<div class="ev-tt-title">'+ev.cn+'</div>'
+    + '<div class="ev-tt-row"><span class="ev-tt-key">英文名</span><span class="ev-tt-val ev-tt-mono">'+ev.en+'</span></div>'
+    + '<div class="ev-tt-row"><span class="ev-tt-key">协议</span><span class="ev-tt-val">'+ev.protocol+'</span></div>'
+    + '<div class="ev-tt-row"><span class="ev-tt-key">触发条件</span><span class="ev-tt-val">'+ev.trigger+'</span></div>'
+    + '<div class="ev-tt-row"><span class="ev-tt-key">事件说明</span><span class="ev-tt-val">'+ev.desc+'</span></div>';
+  tt.style.display = 'block';
+  var rect = el.getBoundingClientRect();
+  var ttW = 268, ttH = tt.offsetHeight || 150;
+  var left = rect.right + 10;
+  if (left + ttW > window.innerWidth - 8) left = rect.left - ttW - 10;
+  var top = Math.max(8, Math.min(rect.top, window.innerHeight - ttH - 8));
+  tt.style.left = left + 'px';
+  tt.style.top = top + 'px';
+}
+
+function hideEvTooltip() {
+  var tt = document.getElementById('evTooltip');
+  if (tt) tt.style.display = 'none';
+}
+
+/* ── Property Select ── */
+function buildPropSelect(inputId, placeholder) {
+  var wrapId = 'ps-' + inputId;
+  return '<div class="ev-select-wrap" id="'+wrapId+'">'
+    + '<div class="ev-select-trigger" onclick="togglePropSelect(\''+wrapId+'\',event)">'
+    + '<span class="ev-sel-text ph" id="pst-'+inputId+'">'+placeholder+'</span>'
+    + '<svg class="ev-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>'
+    + '</div>'
+    + '<div class="ev-dropdown">'
+    + '<div class="ev-search-wrap"><input class="ev-search" placeholder="输入关键字搜索…" oninput="filterPropOptions(\''+wrapId+'\',this.value)" onclick="event.stopPropagation()"></div>'
+    + '<div class="ev-list" id="psl-'+inputId+'"></div>'
+    + '</div>'
+    + '<input type="hidden" id="'+inputId+'">'
+    + '</div>';
+}
+
+function renderPropOptions(listId, filter) {
+  var list = document.getElementById(listId);
+  if (!list) return;
+  var q = (filter || '').toLowerCase();
+  var inputId = listId.replace('psl-', '');
+  var hidden = document.getElementById(inputId);
+  var currentVal = hidden ? hidden.value : '';
+  var filtered = [];
+  PROPS_DATA.forEach(function(p, i) {
+    if (!q || p.cn.indexOf(q) >= 0 || p.en.toLowerCase().indexOf(q) >= 0) filtered.push({p:p, idx:i});
+  });
+  if (filtered.length === 0) { list.innerHTML = '<div class="ev-no-result">未找到匹配属性</div>'; return; }
+  list.innerHTML = filtered.map(function(item) {
+    var sel = item.p.en === currentVal ? ' ev-opt-sel' : '';
+    return '<div class="ev-option'+sel+'" data-pidx="'+item.idx+'"'
+      + ' onclick="selectPropOption(\''+inputId+'\',\''+item.p.en+'\',\''+item.p.cn+'\')"'
+      + ' onmouseenter="showPropTooltipByIdx(this)" onmouseleave="hideEvTooltip()">'
+      + '<span class="ev-opt-cn">'+item.p.cn+'</span>'
+      + '<span class="ev-opt-en">'+item.p.en+'</span>'
+      + '</div>';
+  }).join('');
+}
+
+function togglePropSelect(wrapId, e) {
+  e.stopPropagation();
+  var wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  var wasOpen = wrap.classList.contains('open');
+  closeAllEvSelects();
+  if (wasOpen) return;
+  wrap.classList.add('open');
+  var inputId = wrapId.replace('ps-', '');
+  renderPropOptions('psl-' + inputId, '');
+  var dd = wrap.querySelector('.ev-dropdown');
+  var trigRect = wrap.querySelector('.ev-select-trigger').getBoundingClientRect();
+  dd.style.width = trigRect.width + 'px';
+  dd.style.left = trigRect.left + 'px';
+  dd.style.top = (trigRect.bottom + 4) + 'px';
+  var searchEl = wrap.querySelector('.ev-search');
+  if (searchEl) setTimeout(function(){ searchEl.focus(); }, 30);
+}
+
+function filterPropOptions(wrapId, q) {
+  var inputId = wrapId.replace('ps-', '');
+  renderPropOptions('psl-' + inputId, q);
+}
+
+function selectPropOption(inputId, value, cnName) {
+  var hidden = document.getElementById(inputId);
+  if (hidden) hidden.value = value;
+  var textEl = document.getElementById('pst-' + inputId);
+  if (textEl) { textEl.textContent = cnName + '  ' + value; textEl.classList.remove('ph'); }
+  closeAllEvSelects();
+}
+
+function showPropTooltipByIdx(el) {
+  var p = PROPS_DATA[parseInt(el.dataset.pidx, 10)];
+  if (!p) return;
+  var tt = getOrCreateTooltip();
+  tt.innerHTML = '<div class="ev-tt-title">'+p.cn+'</div>'
+    + '<div class="ev-tt-row"><span class="ev-tt-key">英文名</span><span class="ev-tt-val ev-tt-mono">'+p.en+'</span></div>'
+    + '<div class="ev-tt-row"><span class="ev-tt-key">数据类型</span><span class="ev-tt-val ev-tt-mono">'+p.type+'</span></div>'
+    + '<div class="ev-tt-row"><span class="ev-tt-key">属性说明</span><span class="ev-tt-val">'+p.desc+'</span></div>';
+  tt.style.display = 'block';
+  var rect = el.getBoundingClientRect();
+  var ttW = 268, ttH = tt.offsetHeight || 130;
+  var left = rect.right + 10;
+  if (left + ttW > window.innerWidth - 8) left = rect.left - ttW - 10;
+  var top = Math.max(8, Math.min(rect.top, window.innerHeight - ttH - 8));
+  tt.style.left = left + 'px';
+  tt.style.top = top + 'px';
+}
+
+/* ── Toast ── */
+var toastTimer;
+function showToast(title, desc) {
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastDesc').textContent  = desc;
+  var t = document.getElementById('toast'); t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 4000);
+}
+function hideToast() { document.getElementById('toast').classList.remove('show'); }
+
+/* ── Notifications ── */
+function now() {
+  var d=new Date();
+  return d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0')
+    +' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+}
+function addNotif(title, msg, time) {
+  notifItems.unshift({title:title, msg:msg||'', time:time||now()});
+  notifCount++;
+  updateBadge();
+  renderNotifList();
+}
+function updateBadge() {
+  var dot=document.querySelector('.bell-dot');
+  if (dot) dot.textContent=notifCount>9?'9+':notifCount;
+}
+function renderNotifList() {
+  var list=document.getElementById('notifList'), empty=document.getElementById('notifEmpty');
+  if (notifItems.length===0) { empty.style.display='block'; list.querySelectorAll('.notif-row').forEach(function(r){r.remove();}); return; }
+  empty.style.display='none';
+  list.querySelectorAll('.notif-row').forEach(function(r){r.remove();});
+  notifItems.forEach(function(item){
+    var div=document.createElement('div'); div.className='notif-row';
+    div.innerHTML='<div class="notif-dot"></div><div><div class="notif-row-title">'+item.title+'</div><div class="notif-row-time">'+item.time+'</div></div>';
+    list.appendChild(div);
+  });
+}
+function clearNotifs() {
+  notifItems=[]; notifCount=0; updateBadge(); renderNotifList();
+  var dot=document.querySelector('.bell-dot'); if(dot) dot.style.display='none';
+}
+function toggleNotif(e) {
+  e.stopPropagation();
+  document.getElementById('notifPanel').classList.toggle('show');
+}
+document.addEventListener('click', function(){
+  document.getElementById('notifPanel').classList.remove('show');
+  closeAllPopovers();
+  closeAllEvSelects();
+  hideEvTooltip();
+});
+document.getElementById('notifPanel').addEventListener('click', function(e){ e.stopPropagation(); });
+
+/* ── Copy SQL ── */
+function copySql() {
+  var text = document.getElementById('sqlCode').innerText;
+  navigator.clipboard.writeText(text).then(function(){
+    var btn=document.querySelector('.sql-copy'); btn.textContent='已复制 ✓';
+    setTimeout(function(){ btn.textContent='复制'; }, 1500);
+  });
+}
+
+/* ── Wire up buttons ── */
+window.addEventListener('DOMContentLoaded', function(){
+  // bell button
+  document.querySelectorAll('.hdr-action').forEach(function(b){
+    if (b.title==='消息') {
+      b.classList.add('bell-btn');
+      b.onclick = toggleNotif;
+      var dot=b.querySelector('span[style]');
+      if (dot) { dot.classList.add('bell-dot'); dot.textContent=notifCount; dot.style.cssText='position:absolute;top:2px;right:4px;min-width:14px;height:14px;background:#FF4D4F;border-radius:7px;border:1.5px solid #fff;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;'; }
+    }
+  });
+  // create button
+  document.querySelector('.btn-create').onclick = openModal;
+  // table row buttons
+  document.querySelectorAll('tbody tr[data-id]').forEach(function(row) {
+    var id = row.dataset.id;
+    var related = parseInt(row.dataset.related || '0', 10);
+    // metric name link → open edit modal
+    var nameLink = row.querySelector('.mtr-link');
+    if (nameLink) nameLink.onclick = (function(i){ return function(e){ e.preventDefault(); openEditModal(i); }; })(id);
+    var opBtns = row.querySelectorAll('.op-link');
+    if (opBtns[0]) opBtns[0].onclick = (function(i){ return function(){ openEditModal(i); }; })(id);
+    if (opBtns[1]) opBtns[1].onclick = (function(i){ return function(){ copyMetric(i); }; })(id);
+    var delBtn = row.querySelector('.op-link.del');
+    if (delBtn) delBtn.onclick = (function(btn, i, rel){ return function(e){ e.stopPropagation(); toggleDelPopover(btn, i, rel); }; })(delBtn, id, related);
+    var pop = document.getElementById('pop-' + id);
+    if (pop) {
+      pop.querySelector('.pop-btn:not(.primary)').onclick = function(e){ e.stopPropagation(); closeAllPopovers(); };
+      pop.querySelector('.pop-btn.primary').onclick = (function(i){ return function(e){ e.stopPropagation(); confirmDelete(i); }; })(id);
+    }
+  });
+  // initial SQL
+  renderSQL();
+});
+
+/* ── Experiment page navigation ── */
+function switchPage(name) {
+  document.getElementById('page-metrics').style.display = name === 'metrics' ? '' : 'none';
+  document.getElementById('page-exp').style.display = name === 'exp' ? '' : 'none';
+  var bc = document.getElementById('breadcrumbNav');
+  if (name === 'metrics') {
+    bc.innerHTML = '<a href="#">指标管理</a><span class="sep"> / </span><span class="current">指标列表</span>';
+  } else {
+    bc.innerHTML = '<a href="#" onclick="switchPage(\'metrics\');return false;">实验管理</a><span class="sep"> / </span><span class="current">创建实验</span>';
+    initMetricSelectors();
+  }
+  document.querySelectorAll('.nav-l2').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.nav-l2').forEach(function(el) {
+    if ((name === 'metrics' && el.textContent.trim() === '指标管理') ||
+        (name === 'exp' && el.textContent.trim() === '实验管理')) {
+      el.classList.add('active');
+    }
+  });
+}
+
+function removeExpGroup(btn) {
+  var card = btn.closest('.exp-group-card');
+  if (card) { card.parentNode.removeChild(card); }
+}
+
+/* ── Create metric row in table ── */
+function createMetricRow(id, name, ctype, domain, statusVal) {
+  var tbody = document.querySelector('tbody');
+  if (!tbody) return;
+  var ctypeLabel = ctype === 'retain' ? '留存指标' : '事件指标';
+  var ctypeClass = ctype === 'retain' ? 'tag-retain' : 'tag-event';
+  var statusLabel = statusVal === 'on' ? '启用' : '停用';
+  var statusClass = statusVal === 'on' ? 'tag-on' : 'tag-off';
+  var tr = document.createElement('tr');
+  tr.id = 'row-' + id;
+  tr.dataset.id = id; tr.dataset.name = name; tr.dataset.mtype = '';
+  tr.dataset.ctype = ctype; tr.dataset.domain = domain || '';
+  tr.dataset.status = statusVal; tr.dataset.active = '0'; tr.dataset.related = '0';
+  tr.innerHTML =
+    '<td><span class="mtr-id">' + id + '</span></td>' +
+    '<td><a class="mtr-link" href="#">' + name + '</a></td>' +
+    '<td><span class="tag ' + ctypeClass + '">' + ctypeLabel + '</span></td>' +
+    '<td><span class="tag tag-domain">' + (domain || '—') + '</span></td>' +
+    '<td><span class="exp-count">0 / 0</span></td>' +
+    '<td>当前用户</td><td>当前用户</td>' +
+    '<td>' + now() + '</td>' +
+    '<td><span class="tag ' + statusClass + '">' + statusLabel + '</span></td>' +
+    '<td><div class="op-btns">' +
+      '<button class="op-link">编辑</button><span class="op-sep">|</span>' +
+      '<button class="op-link">复制</button><span class="op-sep">|</span>' +
+      '<div class="del-wrap"><button class="op-link del">删除</button>' +
+        '<div class="del-popover" id="pop-' + id + '">' +
+          '<div class="pop-msg"></div>' +
+          '<div class="pop-warn" style="display:none;"></div>' +
+          '<div class="pop-btns"><button class="pop-btn">取消</button><button class="pop-btn primary">确认</button></div>' +
+        '</div>' +
+      '</div></div></td>';
+  var opBtns = tr.querySelectorAll('.op-link');
+  opBtns[0].onclick = (function(i){ return function(){ openEditModal(i); }; })(id);
+  opBtns[1].onclick = (function(i){ return function(){ copyMetric(i); }; })(id);
+  var delBtn = tr.querySelector('.op-link.del');
+  if (delBtn) delBtn.onclick = (function(btn, i){ return function(e){ e.stopPropagation(); toggleDelPopover(btn, i, 0); }; })(delBtn, id);
+  tr.querySelector('.mtr-link').onclick = (function(i){ return function(e){ e.preventDefault(); openEditModal(i); }; })(id);
+  var pop = tr.querySelector('.del-popover');
+  pop.querySelector('.pop-btn:not(.primary)').onclick = function(e){ e.stopPropagation(); closeAllPopovers(); };
+  pop.querySelector('.pop-btn.primary').onclick = (function(i){ return function(e){ e.stopPropagation(); confirmDelete(i); }; })(id);
+  tbody.appendChild(tr);
+}
+
+/* ── Add newly created metric to exp step-4 selectors ── */
+function addMetricToExpSelectors(id, name) {
+  var sel = document.getElementById('exp-primary-metric');
+  if (sel) {
+    var opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = name + '  ·  ' + id;
+    sel.appendChild(opt);
+    sel.value = id; // auto-select the just-created metric
+  }
+  var dd = document.getElementById('msel-focus-dropdown');
+  if (dd) {
+    var div = document.createElement('div');
+    div.className = 'msel-option';
+    div.dataset.id = id; div.dataset.name = name;
+    div.innerHTML =
+      '<input type="checkbox">' +
+      '<span class="msel-opt-label">' + name + '</span>' +
+      '<span class="msel-opt-id">' + id + '</span>';
+    div.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var cb = div.querySelector('input[type=checkbox]');
+      var idx = mselSelected.findIndex(function(s){ return s.id === id; });
+      if (idx > -1) { mselSelected.splice(idx, 1); cb.checked = false; }
+      else { mselSelected.push({ id: id, name: name }); cb.checked = true; }
+      renderMselTags();
+    });
+    dd.appendChild(div);
+  }
+}
+
+/* ── Step 4: 指标选择 ── */
+var mselSelected = []; // [{id, name}]
+
+function getEnabledMetrics() {
+  var rows = document.querySelectorAll('tbody tr[data-id][data-status="on"]');
+  var list = [];
+  rows.forEach(function(row) {
+    list.push({ id: row.dataset.id, name: row.dataset.name });
+  });
+  return list;
+}
+
+function initMetricSelectors() {
+  var metrics = getEnabledMetrics();
+
+  // 核心指标单选
+  var sel = document.getElementById('exp-primary-metric');
+  sel.innerHTML = '<option value="">请选择核心指标</option>';
+  metrics.forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name + '  ·  ' + m.id;
+    sel.appendChild(opt);
+  });
+
+  // 关注指标多选下拉
+  mselSelected = [];
+  renderMselDropdown(metrics);
+  renderMselTags();
+}
+
+function renderMselDropdown(metrics) {
+  var dd = document.getElementById('msel-focus-dropdown');
+  dd.innerHTML = '';
+  metrics.forEach(function(m) {
+    var checked = mselSelected.some(function(s){ return s.id === m.id; });
+    var div = document.createElement('div');
+    div.className = 'msel-option';
+    div.dataset.id = m.id;
+    div.dataset.name = m.name;
+    div.innerHTML =
+      '<input type="checkbox"' + (checked ? ' checked' : '') + '>' +
+      '<span class="msel-opt-label">' + m.name + '</span>' +
+      '<span class="msel-opt-id">' + m.id + '</span>';
+    div.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var cb = div.querySelector('input[type=checkbox]');
+      var id = div.dataset.id, name = div.dataset.name;
+      var idx = mselSelected.findIndex(function(s){ return s.id === id; });
+      if (idx > -1) {
+        mselSelected.splice(idx, 1);
+        cb.checked = false;
+      } else {
+        mselSelected.push({ id: id, name: name });
+        cb.checked = true;
+      }
+      renderMselTags();
+    });
+    dd.appendChild(div);
+  });
+}
+
+function renderMselTags() {
+  var trigger = document.getElementById('msel-focus-trigger');
+  var placeholder = document.getElementById('msel-focus-placeholder');
+  // remove old tags
+  trigger.querySelectorAll('.msel-tag').forEach(function(t){ t.parentNode.removeChild(t); });
+  if (mselSelected.length === 0) {
+    placeholder.style.display = '';
+  } else {
+    placeholder.style.display = 'none';
+    mselSelected.forEach(function(m) {
+      var tag = document.createElement('span');
+      tag.className = 'msel-tag';
+      tag.innerHTML = m.name + '&nbsp;<button type="button" class="msel-tag-del" data-id="' + m.id + '">×</button>';
+      tag.querySelector('.msel-tag-del').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var id = e.target.dataset.id;
+        mselSelected = mselSelected.filter(function(s){ return s.id !== id; });
+        // uncheck in dropdown
+        var opt = document.querySelector('#msel-focus-dropdown .msel-option[data-id="' + id + '"] input');
+        if (opt) opt.checked = false;
+        renderMselTags();
+      });
+      trigger.insertBefore(tag, placeholder);
+    });
+  }
+}
+
+function toggleMsel() {
+  var trigger = document.getElementById('msel-focus-trigger');
+  var dd = document.getElementById('msel-focus-dropdown');
+  var isOpen = dd.classList.contains('open');
+  if (isOpen) {
+    dd.classList.remove('open');
+    trigger.classList.remove('open');
+  } else {
+    dd.classList.add('open');
+    trigger.classList.add('open');
+  }
+}
+
+// close multi-select when clicking outside
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('msel-focus-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('msel-focus-dropdown').classList.remove('open');
+    document.getElementById('msel-focus-trigger').classList.remove('open');
+  }
+});
+</script>
+
+<!-- Alert dialog -->
+<div class="alert-overlay" id="alertOverlay" onclick="closeAlert(event)">
+  <div class="alert-dialog">
+    <div class="alert-dialog-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#D46B08" stroke-width="2" style="width:22px;height:22px;">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </div>
+    <div class="alert-dialog-title">无法修改指标</div>
+    <div class="alert-dialog-msg">该指标关联的实验正在进行中，<br>请结束相关实验再修改指标</div>
+    <div class="alert-dialog-btns">
+      <button class="alert-dialog-btn" onclick="closeAlert()">知道了</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
