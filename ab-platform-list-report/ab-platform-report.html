@@ -1,0 +1,2998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 实验报告</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #1677FF;
+      --primary-light:#E6F0FF;
+      --primary-hover:#0958D9;
+      --green:        #00B42A;
+      --green-light:  #E8FFEA;
+      --red:          #F53F3F;
+      --red-light:    #FFECE8;
+      --orange:       #FF7D00;
+      --orange-light: #FFF3E8;
+      --gray-light:   #F7F8FA;
+      --sidebar-w:    220px;
+      --header-h:     52px;
+      --subbar-h:     44px;
+      --bg:           #F5F7FA;
+      --card:         #FFFFFF;
+      --border:       #E8ECF0;
+      --text:         #1D2129;
+      --sub:          #86909C;
+      --link:         #1677FF;
+    }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+      display: flex; flex-direction: column; min-height: 100vh; overflow-y: auto;
+    }
+
+    /* ══════════════════════════════════════════════
+       TOP HEADER
+    ══════════════════════════════════════════════ */
+    .header {
+      height: var(--header-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 0; flex-shrink: 0;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .logo-wrap {
+      display: flex; align-items: center; gap: 8px;
+      min-width: var(--sidebar-w); padding-right: 16px;
+      border-right: 1px solid var(--border);
+    }
+    .logo-star { width: 28px; height: 28px; color: var(--primary); flex-shrink: 0; }
+    .logo-name { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+    .header-nav { display: flex; align-items: center; height: 100%; margin-left: 20px; gap: 4px; }
+    .header-tab {
+      height: 100%; display: flex; align-items: center; padding: 0 18px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s;
+    }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 4px 8px; border-radius: 4px; cursor: pointer;
+      color: var(--sub); background: none; border: none; transition: color .15s;
+    }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; cursor: pointer;
+      background: none; border: none; color: var(--text);
+    }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+
+    /* ══════════════════════════════════════════════
+       SUB-HEADER
+    ══════════════════════════════════════════════ */
+    .subbar {
+      height: var(--subbar-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 0 0 var(--sidebar-w);
+      flex-shrink: 0;
+      position: sticky; top: var(--header-h); z-index: 10;
+    }
+    .subbar-inner { display: flex; align-items: center; gap: 14px; padding: 0 20px; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .btn-back {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 28px; padding: 0 12px; border-radius: 6px;
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: #fff; color: var(--sub);
+      transition: all .15s; white-space: nowrap; text-decoration: none;
+    }
+    .btn-back:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-back svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+    /* ══════════════════════════════════════════════
+       BODY = SIDEBAR + CONTENT
+    ══════════════════════════════════════════════ */
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+
+    /* ──── Sidebar ──── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: #fff; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      position: sticky; top: 0;
+      height: calc(100vh - var(--header-h) - var(--subbar-h));
+    }
+    .nav-group { padding: 8px 0; }
+
+    /* Level-1 item */
+    .nav-l1 {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; user-select: none;
+      transition: background .12s;
+    }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron {
+      margin-left: auto; width: 14px; height: 14px;
+      transition: transform .2s; flex-shrink: 0;
+    }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+
+    /* Level-2 items */
+    .nav-l2-list { overflow: hidden; }
+    .nav-l2 {
+      display: flex; align-items: center;
+      padding: 9px 16px 9px 40px; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active {
+      color: var(--primary); font-weight: 500;
+      background: var(--primary-light);
+    }
+    .nav-l2.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+
+    /* 实验管理子组标题行（兼作 L2 样式，但带折叠箭头） */
+    .nav-l2-group-hd {
+      font-weight: 600; color: var(--text);
+    }
+    .nav-l2-group-hd.open .nav-l2-chevron { transform: rotate(180deg); }
+
+    /* Level-3 items（实验报告等） */
+    .nav-l3-list { overflow: hidden; }
+    .nav-l3 {
+      display: flex; align-items: center;
+      padding: 8px 16px 8px 56px; font-size: 12px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l3:hover { background: var(--bg); color: var(--text); }
+    .nav-l3.active {
+      color: var(--primary); font-weight: 600;
+      background: var(--primary-light);
+    }
+    .nav-l3.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+
+    /* ──── Content ──── */
+    .content {
+      flex: 1; min-width: 0; padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    /* ══════════════════════════════════════════════
+       COMMON CARD
+    ══════════════════════════════════════════════ */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+    }
+    .card-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+    }
+    .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .card-title-sub { font-size: 12px; color: var(--sub); margin-left: 4px; font-weight: 400; }
+    .card-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 20px; }
+
+    /* ══════════════════════════════════════════════
+       PAGE TITLE BAR
+    ══════════════════════════════════════════════ */
+    .page-title-bar {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 16px;
+    }
+    .page-title-left { display: flex; flex-direction: column; gap: 6px; }
+    .page-exp-name {
+      font-size: 20px; font-weight: 700; color: var(--text);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .page-exp-id { font-size: 12px; color: var(--sub); font-weight: 400; }
+    .exp-status {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    }
+    .exp-status.running {
+      background: #E8FFEA; color: #00B42A; border: 1px solid #A3E8B0;
+    }
+    .exp-status.stopped {
+      background: #F5F5F5; color: #86909C; border: 1px solid #E0E0E0;
+    }
+    .exp-status.paused {
+      background: #FFF3E8; color: #FF7D00; border: 1px solid #FFD399;
+    }
+    .exp-status .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+    }
+    .page-title-actions { display: flex; align-items: center; gap: 8px; }
+
+    /* ══════════════════════════════════════════════
+       BUTTONS
+    ══════════════════════════════════════════════ */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 32px; padding: 0 14px; border-radius: 6px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: #fff; color: var(--text);
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-primary {
+      background: var(--primary); border-color: var(--primary); color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+    .btn-danger { border-color: var(--red); color: var(--red); }
+    .btn-danger:hover { background: var(--red-light); }
+
+    /* ══════════════════════════════════════════════
+       OVERVIEW CARD
+    ══════════════════════════════════════════════ */
+    .overview-body {
+      display: flex; gap: 0;
+    }
+    .overview-left {
+      flex-shrink: 0; width: 340px;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+    }
+    .overview-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .overview-item {
+      background: #fff; padding: 14px 20px;
+      display: flex; flex-direction: column; gap: 5px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+    }
+    .overview-item:nth-child(even) { border-right: none; }
+    .overview-item:nth-last-child(-n+2) { border-bottom: none; }
+    .ov-label { font-size: 11px; color: var(--sub); }
+    .ov-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    .ov-value.primary { color: var(--primary); }
+
+    /* traffic bar — inside left panel, full width */
+    .overview-traffic {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+    }
+    .overview-traffic .ov-label { margin-bottom: 8px; }
+    .traffic-bar-wrap { }
+    .traffic-bar {
+      height: 8px; border-radius: 4px; background: var(--border);
+      overflow: hidden; display: flex; margin-bottom: 8px;
+    }
+    .traffic-seg { height: 100%; transition: width .4s; }
+    .traffic-seg.ctrl { background: #86909C; }
+    .traffic-seg.exp1 { background: var(--primary); }
+    .traffic-seg.exp2 { background: #7B61FF; }
+    .traffic-legend { display: flex; gap: 12px; flex-wrap: wrap; }
+    .tl-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--sub); }
+    .tl-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* 右侧累计进组用户量图表 */
+    .overview-right {
+      flex: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+    }
+    .ov-chart-title {
+      font-size: 12px; font-weight: 600; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ov-chart-legend {
+      display: flex; gap: 14px;
+    }
+    .ov-chart-container {
+      flex: 1; position: relative; min-height: 160px;
+    }
+
+    /* ══════════════════════════════════════════════
+       TAB BAR (for metrics / trend)
+    ══════════════════════════════════════════════ */
+    .tab-bar {
+      display: flex; align-items: center; gap: 0;
+      border-bottom: 1px solid var(--border); padding: 0 20px;
+    }
+    .tab-item {
+      height: 40px; display: flex; align-items: center; padding: 0 16px;
+      font-size: 13px; color: var(--sub); cursor: pointer;
+      position: relative; border: none; background: none;
+      transition: color .15s; white-space: nowrap;
+    }
+    .tab-item:hover { color: var(--text); }
+    .tab-item.active { color: var(--primary); font-weight: 600; }
+    .tab-item.active::after {
+      content: ''; position: absolute; bottom: 0; left: 16px; right: 16px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .tab-badge {
+      margin-left: 4px; background: var(--primary-light); color: var(--primary);
+      font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 10px;
+    }
+
+    /* ══════════════════════════════════════════════
+       METRICS TABLE
+    ══════════════════════════════════════════════ */
+    .metrics-toolbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 20px; border-bottom: 1px solid var(--border);
+    }
+    .segment-btn-group { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .seg-btn {
+      padding: 5px 12px; font-size: 12px; font-weight: 500;
+      color: var(--sub); background: #fff; border: none; cursor: pointer;
+      border-right: 1px solid var(--border); transition: all .15s;
+    }
+    .seg-btn:last-child { border-right: none; }
+    .seg-btn.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+    .seg-btn:hover:not(.active) { background: var(--gray-light); color: var(--text); }
+
+    .select-sm {
+      height: 30px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; color: var(--text); font-size: 12px;
+      padding: 0 24px 0 8px; outline: none; cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 6px center;
+    }
+    .select-sm:focus { border-color: var(--primary); }
+
+    .metrics-table-wrap { overflow-x: auto; }
+    table.metrics-tbl {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .metrics-tbl th {
+      background: #FAFBFC; border-bottom: 1px solid var(--border);
+      padding: 10px 16px; text-align: left;
+      font-size: 12px; font-weight: 600; color: var(--sub);
+      white-space: nowrap;
+    }
+    .metrics-tbl td {
+      padding: 12px 16px; border-bottom: 1px solid #F0F3F6;
+      vertical-align: middle;
+    }
+    .metrics-tbl tr:last-child td { border-bottom: none; }
+    .metrics-tbl tr:hover td { background: #FAFBFC; }
+
+    .metric-name-cell { display: flex; flex-direction: column; gap: 3px; }
+    .metric-name { font-weight: 500; color: var(--text); }
+    .metric-type-tag {
+      display: inline-flex; align-items: center;
+      padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 500;
+    }
+    .metric-type-tag.core { background: #E6F0FF; color: var(--primary); }
+    .metric-type-tag.secondary { background: #F5F5F5; color: var(--sub); }
+    .metric-type-tag.guard { background: #FFF3E8; color: var(--orange); }
+
+    .value-cell { font-family: "SF Mono", "Consolas", monospace; font-size: 13px; }
+    .diff-cell { display: flex; align-items: center; gap: 6px; }
+    .diff-positive { color: var(--green); font-weight: 600; }
+    .diff-negative { color: var(--red); font-weight: 600; }
+    .diff-neutral { color: var(--sub); }
+    .diff-bar-wrap { display: none; }
+    .diff-bar { height: 100%; border-radius: 3px; }
+    .diff-bar.pos { background: var(--green); }
+    .diff-bar.neg { background: var(--red); }
+
+    .pvalue-cell { display: flex; align-items: center; gap: 6px; }
+    .sig-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .sig-badge.sig { background: var(--green-light); color: var(--green); }
+    .sig-badge.nonsig { background: #F5F5F5; color: var(--sub); }
+    .sig-badge.negative { background: var(--red-light); color: var(--red); }
+
+    /* ══════════════════════════════════════════════
+       AA HOMOGENEITY CHECK PANE
+    ══════════════════════════════════════════════ */
+    .aa-summary {
+      display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap;
+      padding: 14px 20px; background: #FFFBE6;
+      border-bottom: 1px solid #FFD666;
+    }
+    .aa-summary.pass { background: #F6FFED; border-bottom-color: #B7EB8F; }
+    .aa-summary.warn { background: #FFFBE6; border-bottom-color: #FFD666; }
+    .aa-summary.fail { background: #FFF2F0; border-bottom-color: #FFCCC7; }
+    .aa-summary-left { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+    .aa-summary-status {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 700;
+    }
+    .aa-summary-status.pass { color: #389E0D; }
+    .aa-summary-status.warn { color: #D46B08; }
+    .aa-summary-status.fail { color: var(--red); }
+    .aa-summary-rule-list { display: flex; flex-direction: column; gap: 4px; }
+    .aa-rule-item {
+      display: flex; align-items: center; gap: 7px; font-size: 12px;
+    }
+    .aa-rule-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .pass-dot { background: #389E0D; }
+    .warn-dot { background: #D46B08; }
+    .fail-dot { background: var(--red); }
+    .aa-rule-label { color: var(--sub); min-width: 110px; }
+    .aa-rule-result { font-weight: 600; }
+    .aa-rule-item.pass .aa-rule-result { color: #389E0D; }
+    .aa-rule-item.warn .aa-rule-result { color: #D46B08; }
+    .aa-rule-item.fail .aa-rule-result { color: var(--red); }
+    .aa-summary-desc {
+      font-size: 11px; color: var(--sub); line-height: 1.7;
+      max-width: 480px; align-self: center;
+      border-left: 1px solid var(--border); padding-left: 20px;
+    }
+
+    /* 分组行：SRM / L1 / L2 */
+    .aa-tbl .aa-group-row td { display: flex; }
+    .aa-group-row td.aa-group-label {
+      padding: 6px 16px; font-size: 11px; font-weight: 700;
+      color: var(--sub); letter-spacing: .3px;
+      display: flex; align-items: center; gap: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .aa-group-srm td.aa-group-label { background: #FFF0F0; }
+    .aa-group-l1  td.aa-group-label { background: #EEF5FF; }
+    .aa-group-l2  td.aa-group-label { background: #F7F8FA; }
+
+    /* 分组层级 badge */
+    .aa-mandatory-badge, .aa-l1-badge, .aa-l2-badge {
+      display: inline-flex; align-items: center;
+      padding: 1px 7px; border-radius: 3px;
+      font-size: 10px; font-weight: 700; white-space: nowrap;
+    }
+    .aa-mandatory-badge { background: #FFF0F0; color: #CF1322; border: 1px solid #FFCCC7; }
+    .aa-l1-badge  { background: #E6F0FF; color: #1677FF; border: 1px solid #ADC6FF; }
+    .aa-l2-badge  { background: #F5F5F5; color: #4E5969; border: 1px solid #E8ECF0; }
+
+    .metric-type-tag.aa-builtin {
+      background: #F0F0FF; color: #6B6EBF; font-size: 10px;
+    }
+
+    .aa-cat-tag {
+      display: inline-flex; align-items: center;
+      padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .cat-traffic { background: #E6F0FF; color: #1677FF; }
+    .cat-active  { background: #E8F5E9; color: #2E7D32; }
+    .cat-retain  { background: #FFF8E1; color: #F57F17; }
+    .cat-money   { background: #FFF0F6; color: #C41D7F; }
+    .cat-engage  { background: #E8F4FF; color: #0958D9; }
+    .cat-ad      { background: #FFF3E8; color: #D46B08; }
+    .cat-stable  { background: #F5F5F5; color: #4E5969; }
+
+    .aa-result {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      white-space: nowrap;
+    }
+    .aa-result.pass { background: #F6FFED; color: #389E0D; }
+    .aa-result.warn { background: #FFF3E8; color: #D46B08; }
+    .aa-result.fail { background: var(--red-light); color: var(--red); }
+
+    .aa-footer-note {
+      display: flex; align-items: flex-start; gap: 6px;
+      padding: 10px 20px; font-size: 11px; color: var(--sub);
+      border-top: 1px solid var(--border); line-height: 1.6;
+    }
+    .aa-footer-note svg { flex-shrink: 0; margin-top: 1px; }
+
+    .p-sig { color: var(--red); font-weight: 600; }
+    .p-sig-pos { color: var(--green); font-weight: 600; }
+
+    .ci-text { font-size: 11px; color: var(--sub); }
+
+    .expand-row td {
+      background: #FAFCFF; padding: 0 !important;
+    }
+    .expand-inner { padding: 12px 16px 16px 36px; }
+    .expand-sub-title { font-size: 12px; font-weight: 600; color: var(--sub); margin-bottom: 8px; }
+    .expand-groups { display: flex; gap: 16px; }
+    .exp-group-card {
+      flex: 1; border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px 14px;
+    }
+    .exp-group-card.ctrl { border-left: 3px solid #86909C; }
+    .exp-group-card.exp1 { border-left: 3px solid var(--primary); }
+    .exp-group-card.exp2 { border-left: 3px solid #7B61FF; }
+    .egc-name { font-size: 11px; font-weight: 600; color: var(--sub); margin-bottom: 6px; }
+    .egc-main { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 2px; font-family: monospace; }
+    .egc-sub { font-size: 11px; color: var(--sub); }
+
+    /* ══════════════════════════════════════════════
+       TREND CHART AREA
+    ══════════════════════════════════════════════ */
+    .trend-toolbar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 20px; border-bottom: 1px solid var(--border);
+    }
+    .date-range-picker { display: flex; align-items: center; gap: 6px; }
+    .date-input {
+      height: 28px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 12px; color: var(--text);
+      padding: 0 8px; outline: none; cursor: pointer;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .date-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .date-range-sep { font-size: 12px; color: var(--sub); }
+    .trend-chart-area { padding: 16px 20px; }
+    .chart-container {
+      position: relative; width: 100%; height: 280px;
+    }
+    .chart-legend {
+      display: flex; gap: 16px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sub); }
+    .legend-line { width: 20px; height: 3px; border-radius: 2px; }
+    .legend-line.ctrl { background: #86909C; }
+    .legend-line.exp1 { background: var(--primary); }
+    .legend-line.exp2 { background: #7B61FF; }
+
+    /* ══════════════════════════════════════════════
+       CONCLUSION CARD
+    ══════════════════════════════════════════════ */
+    .conclusion-banner {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .conclusion-banner.recommend-yes { background: linear-gradient(135deg, #E8FFEA 0%, #F0FFF2 100%); }
+    .conclusion-banner.recommend-no  { background: linear-gradient(135deg, #FFF3E8 0%, #FFF8F0 100%); }
+    .conclusion-icon {
+      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .conclusion-banner.recommend-yes .conclusion-icon { background: #C0F2C8; }
+    .conclusion-banner.recommend-no  .conclusion-icon { background: #FFD9B0; }
+    .conclusion-text { flex: 1; }
+    .conclusion-verdict {
+      font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px;
+    }
+    .conclusion-desc { font-size: 13px; color: #4E5969; line-height: 1.6; }
+    .conclusion-meta { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+    .conclusion-meta-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--sub); }
+    .conclusion-meta-item svg { width: 13px; height: 13px; }
+
+    .sig-summary-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 0; border-bottom: 1px solid var(--border);
+    }
+    .sig-summary-item {
+      padding: 14px 20px; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .sig-summary-item:last-child { border-right: none; }
+    .sig-summary-num { font-size: 22px; font-weight: 700; }
+    .sig-summary-num.green { color: var(--green); }
+    .sig-summary-num.red { color: var(--red); }
+    .sig-summary-num.gray { color: var(--sub); }
+    .sig-summary-label { font-size: 12px; color: var(--sub); }
+
+    .analyst-note-section { padding: 16px 20px; }
+    .analyst-note-title {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+    }
+    .note-author {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+    }
+    .note-avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #7B61FF; color: #fff; font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .note-name { font-size: 12px; color: var(--sub); }
+    .note-time { font-size: 11px; color: #C2C7CF; margin-left: auto; }
+    .note-content {
+      font-size: 13px; color: #4E5969; line-height: 1.7;
+      background: var(--gray-light); border-radius: 6px;
+      padding: 12px 14px; border-left: 3px solid #7B61FF;
+    }
+    .note-add-btn {
+      margin-top: 10px; width: 100%; height: 36px;
+      border: 1px dashed var(--border); border-radius: 6px;
+      background: none; color: var(--sub); font-size: 13px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all .15s;
+    }
+    .note-add-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+    /* ══════════════════════════════════════════════
+       ADD NOTE MODAL
+    ══════════════════════════════════════════════ */
+    .note-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .note-modal-overlay.show { opacity: 1; pointer-events: all; }
+    .note-modal {
+      background: #fff; border-radius: 8px; width: 520px; max-width: 96vw;
+      display: flex; flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+      transform: translateY(20px); transition: transform .22s;
+    }
+    .note-modal-overlay.show .note-modal { transform: none; }
+    .note-modal-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .note-modal-title { font-size: 15px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 7px; }
+    .note-modal-close {
+      width: 28px; height: 28px; border-radius: 4px; border: none;
+      background: none; cursor: pointer; color: var(--sub);
+      display: flex; align-items: center; justify-content: center; transition: background .12s;
+    }
+    .note-modal-close:hover { background: var(--bg); color: var(--text); }
+    .note-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .note-modal-row label { font-size: 12px; color: var(--sub); margin-bottom: 6px; display: block; }
+    .note-modal-author-row { display: flex; gap: 10px; }
+    .note-modal-author-row input {
+      flex: 1; height: 34px; border: 1px solid var(--border); border-radius: 6px;
+      padding: 0 10px; font-size: 13px; color: var(--text); background: var(--bg);
+      outline: none; transition: border-color .15s;
+    }
+    .note-modal-author-row input:focus { border-color: var(--primary); background: #fff; }
+    .note-modal-textarea {
+      width: 100%; min-height: 120px; border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px; font-size: 13px; color: var(--text); background: var(--bg);
+      resize: vertical; outline: none; transition: border-color .15s; box-sizing: border-box; font-family: inherit;
+    }
+    .note-modal-textarea:focus { border-color: var(--primary); background: #fff; }
+    .note-modal-footer {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    }
+
+    /* ══════════════════════════════════════════════
+       TOOLTIPS & MISC
+    ══════════════════════════════════════════════ */
+    .tooltip-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; border-radius: 50%; border: 1px solid #C2C7CF;
+      color: var(--sub); font-size: 9px; font-weight: 700;
+      cursor: help; flex-shrink: 0; position: relative;
+    }
+    .tooltip-wrap {
+      position: relative; display: inline-flex; align-items: center;
+    }
+    /* Global fixed tooltip — escapes any overflow:hidden ancestor */
+    #g-tooltip {
+      position: fixed;
+      width: 420px;
+      background: #1a1f2e;
+      color: #e8eaf0;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.75;
+      padding: 14px 16px;
+      border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.28);
+      white-space: pre-wrap;
+      word-break: break-word;
+      z-index: 99999;
+      pointer-events: none;
+      display: none;
+    }
+    #g-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%; left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #1a1f2e;
+    }
+    .divider-v { width: 1px; height: 16px; background: var(--border); }
+    .tag {
+      display: inline-flex; padding: 1px 7px; border-radius: 3px;
+      font-size: 11px; font-weight: 500;
+    }
+    .tag-blue { background: var(--primary-light); color: var(--primary); }
+    .tag-gray { background: #F5F5F5; color: var(--sub); }
+
+    /* expand toggle */
+    .expand-toggle {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; color: var(--primary); cursor: pointer;
+      background: none; border: none;
+    }
+    .expand-toggle svg { width: 12px; height: 12px; transition: transform .2s; }
+    .expand-toggle.open svg { transform: rotate(180deg); }
+
+    /* ══════════════════════════════════════════════
+       SECTION SUMMARY CHIPS
+    ══════════════════════════════════════════════ */
+    .summary-chips { display: flex; gap: 8px; margin-top: 2px; flex-wrap: wrap; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+      border: 1px solid transparent;
+    }
+    .chip-green { background: var(--green-light); color: var(--green); border-color: #A3E8B0; }
+    .chip-red   { background: var(--red-light); color: var(--red); border-color: #FFC0BD; }
+    .chip-blue  { background: var(--primary-light); color: var(--primary); border-color: #99C2FF; }
+    .chip-gray  { background: #F5F5F5; color: var(--sub); border-color: #E0E0E0; }
+    .chip-orange{ background: var(--orange-light); color: var(--orange); border-color: #FFD399; }
+
+    /* ══════════════════════════════════════════════
+       SCROLLBAR STYLE
+    ══════════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #D0D5DD; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #B0B8C8; }
+
+    /* canvas placeholder */
+    canvas { display: block; }
+
+    /* ══════════════════════════════════════════════
+       METRICS TAB INLINE SELECT
+    ══════════════════════════════════════════════ */
+    .th-select-wrap {
+      display: flex; align-items: center; gap: 5px; white-space: nowrap;
+    }
+    .th-label {
+      font-size: 12px; font-weight: 600; color: var(--sub);
+    }
+    .th-inline-sel {
+      height: 22px !important; font-size: 11px !important;
+      padding: 0 18px 0 5px !important;
+    }
+
+    /* ══════════════════════════════════════════════
+       MULTI-GROUP TABLE
+    ══════════════════════════════════════════════ */
+    .multi-tbl thead tr:first-child th { padding: 8px 16px 6px; }
+    .multi-tbl thead tr:last-child th  { padding: 6px 16px 8px; font-size: 11px; color: var(--sub); }
+
+    /* ══════════════════════════════════════════════
+       ADD-METRIC DROPDOWN
+    ══════════════════════════════════════════════ */
+    .add-metric-wrap { position: relative; }
+    .add-metric-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 28px; padding: 0 12px; border-radius: 5px;
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--primary); background: var(--primary-light); color: var(--primary);
+      transition: all .15s; white-space: nowrap;
+    }
+    .add-metric-btn:hover { background: var(--primary); color: #fff; }
+    .add-metric-dropdown {
+      position: absolute; top: calc(100% + 4px); right: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 220px; z-index: 200;
+      display: none; overflow: hidden;
+    }
+    .add-metric-dropdown.open { display: block; }
+    .amd-search-wrap { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    .amd-search {
+      width: 100%; height: 28px; border: 1px solid var(--border); border-radius: 4px;
+      padding: 0 8px; font-size: 12px; color: var(--text); outline: none;
+    }
+    .amd-search:focus { border-color: var(--primary); }
+    .amd-list { max-height: 200px; overflow-y: auto; }
+    .amd-option {
+      padding: 7px 12px; font-size: 12px; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid var(--bg); transition: background .1s;
+    }
+    .amd-option:last-child { border-bottom: none; }
+    .amd-option:hover { background: var(--primary-light); }
+    .amd-option.selected { background: #E6F0FF; }
+    .amd-opt-check { width: 14px; height: 14px; flex-shrink: 0; color: var(--primary); }
+    .amd-opt-name { color: var(--text); font-weight: 500; flex: 1; }
+    .amd-opt-tag { font-size: 10px; padding: 1px 5px; border-radius: 3px; }
+    .amd-opt-tag.core { background: #E6F0FF; color: var(--primary); }
+    .amd-opt-tag.sec  { background: #F5F5F5; color: var(--sub); }
+    .amd-footer { padding: 6px 8px; border-top: 1px solid var(--border); }
+    .amd-create-btn {
+      width: 100%; height: 28px; border-radius: 4px;
+      border: 1px dashed var(--primary); background: none; color: var(--primary);
+      font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: background .12s;
+    }
+    .amd-create-btn:hover { background: var(--primary-light); }
+
+    /* ══════════════════════════════════════════════
+       CREATE METRIC MODAL
+    ══════════════════════════════════════════════ */
+    .cm-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .cm-overlay.show { opacity: 1; pointer-events: all; }
+    .cm-modal {
+      background: #fff; border-radius: 8px; width: 800px; max-width: 96vw;
+      max-height: 90vh; display: flex; flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+      transform: translateY(20px); transition: transform .22s;
+    }
+    .cm-overlay.show .cm-modal { transform: none; }
+    .cm-modal-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .cm-modal-title { font-size: 15px; font-weight: 600; color: var(--text); }
+    .cm-modal-close {
+      width: 28px; height: 28px; border-radius: 4px; border: none;
+      background: none; cursor: pointer; color: var(--sub);
+      display: flex; align-items: center; justify-content: center; transition: background .12s;
+    }
+    .cm-modal-close:hover { background: var(--bg); color: var(--text); }
+    .cm-modal-close svg { width: 16px; height: 16px; }
+    .cm-modal-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 22px; }
+    .cm-modal-footer {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-shrink: 0;
+    }
+    .cm-form-section-title {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .cm-form-section-title::before { content:''; width:3px; height:14px; background:var(--primary); border-radius:2px; }
+    .cm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
+    .cm-form-field { display: flex; flex-direction: column; gap: 5px; }
+    .cm-form-field.full { grid-column: 1 / -1; }
+    .cm-form-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .cm-form-label .req { color: #FF4D4F; margin-left: 2px; }
+    .cm-form-control {
+      height: 34px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 10px; outline: none; transition: border-color .15s, box-shadow .15s; width: 100%;
+    }
+    .cm-form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .cm-form-control.err { border-color: #FF4D4F; }
+    textarea.cm-form-control { height: 68px; padding: 8px 10px; resize: none; line-height: 1.6; }
+    .cm-err-msg { font-size: 11px; color: #FF4D4F; display: none; }
+    .cm-form-field.has-err .cm-err-msg { display: block; }
+    .cm-radio-group { display: flex; align-items: center; gap: 18px; height: 34px; }
+    .cm-radio-item { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; color: var(--text); }
+    .cm-radio-item input[type=radio] { accent-color: var(--primary); width: 14px; height: 14px; }
+    .cm-fmt-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .cm-fmt-tab {
+      padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border);
+      font-size: 12px; cursor: pointer; color: var(--sub); background: #fff; transition: all .12s;
+    }
+    .cm-fmt-tab.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 500; }
+    .cm-fmt-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .cm-fmt-preview {
+      font-size: 12px; color: #4E5969; background: #F5F7FA; border-radius: 3px;
+      padding: 3px 8px; border: 1px solid var(--border);
+    }
+    .cm-calc-box {
+      background: #F8FAFF; border: 1px solid #D0E0FF; border-radius: 6px; padding: 14px;
+    }
+    .cm-sql-wrap { background: #1A1B2E; border-radius: 6px; overflow: hidden; }
+    .cm-sql-bar {
+      background: #252640; padding: 7px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .cm-sql-bar-label { font-size: 11px; color: #7C80A8; font-family: monospace; }
+    .cm-sql-copy {
+      background: none; border: 1px solid #3A3C58; color: #7C80A8;
+      font-size: 11px; padding: 2px 8px; border-radius: 3px; cursor: pointer; transition: all .12s;
+    }
+    .cm-sql-copy:hover { border-color: var(--primary); color: var(--primary); }
+    .cm-sql-code {
+      padding: 12px 14px; font-family: 'Consolas','SF Mono',monospace;
+      font-size: 12px; line-height: 1.75; color: #CDD6F4;
+      white-space: pre; overflow-x: auto; min-height: 90px; max-height: 220px;
+    }
+    .kw { color: #89B4FA; } .fn { color: #CBA6F7; } .str { color: #A6E3A1; }
+    .cm { color: #585B70; } .num { color: #FAB387; }
+    /* ══════════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════════ */
+    .toast {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(12px);
+      background: rgba(30,33,40,0.92); color: #fff; border-radius: 8px;
+      padding: 10px 20px; font-size: 13px; font-weight: 500;
+      display: flex; align-items: center; gap: 8px;
+      opacity: 0; pointer-events: none;
+      transition: opacity .22s, transform .22s; z-index: 2000; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+    .toast-icon { font-size: 15px; }
+
+    /* ══════════════════════════════════════════════
+       END EXPERIMENT MODALS
+    ══════════════════════════════════════════════ */
+    .end-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .end-overlay.show { opacity: 1; pointer-events: all; }
+    .end-modal {
+      background: #fff; border-radius: 8px; width: 480px; max-width: 96vw;
+      display: flex; flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+      transform: translateY(20px); transition: transform .22s;
+    }
+    .end-overlay.show .end-modal { transform: none; }
+    .end-modal-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .end-modal-title { font-size: 15px; font-weight: 600; color: var(--text); }
+    .end-modal-close {
+      width: 28px; height: 28px; border-radius: 4px; border: none;
+      background: none; cursor: pointer; color: var(--sub);
+      display: flex; align-items: center; justify-content: center; transition: background .12s;
+    }
+    .end-modal-close:hover { background: var(--bg); color: var(--text); }
+    .end-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .end-modal-desc { font-size: 13px; color: var(--sub); line-height: 1.6; }
+    .end-form-label { font-size: 12px; color: var(--sub); font-weight: 500; margin-bottom: 5px; }
+    .end-form-textarea {
+      width: 100%; height: 100px; border: 1px solid var(--border); border-radius: 5px;
+      padding: 8px 10px; font-size: 13px; color: var(--text); outline: none;
+      resize: none; line-height: 1.6; box-sizing: border-box; transition: border-color .15s;
+    }
+    .end-form-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .end-form-select {
+      width: 100%; height: 34px; border: 1px solid var(--border); border-radius: 5px;
+      padding: 0 10px; font-size: 13px; color: var(--text); outline: none;
+      background: #fff; transition: border-color .15s; box-sizing: border-box;
+    }
+    .end-form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .end-modal-body { max-height: 70vh; overflow-y: auto; }
+    /* multi-select dropdown */
+    .ms-wrap { position: relative; }
+    .ms-display {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 34px; border: 1px solid var(--border); border-radius: 5px;
+      padding: 0 10px; font-size: 13px; color: var(--text);
+      background: #fff; cursor: pointer; transition: border-color .15s; box-sizing: border-box;
+      user-select: none;
+    }
+    .ms-display:hover { border-color: var(--primary); }
+    .ms-display.open { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .ms-placeholder { color: #bbb; }
+    .ms-selected-text { color: var(--text); }
+    .ms-chevron { width: 12px; height: 12px; color: var(--sub); transition: transform .15s; flex-shrink: 0; }
+    .ms-display.open .ms-chevron { transform: rotate(180deg); }
+    .ms-dropdown {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.12); z-index: 500; overflow: hidden;
+    }
+    .ms-dropdown.open { display: block; }
+    .ms-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; font-size: 13px; cursor: pointer;
+      transition: background .1s;
+    }
+    .ms-option:hover { background: var(--primary-light); }
+    .ms-option input[type=checkbox] { accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer; }
+    .end-modal-footer {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="logo-wrap">
+    <span class="logo-name">Spark</span>
+  </div>
+  <nav class="header-nav">
+    <button class="header-tab active">实验平台</button>
+    <button class="header-tab">指标管理</button>
+    <button class="header-tab">受众管理</button>
+    <button class="header-tab">分析工具</button>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span>通知</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+      <span>文档</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张明</span>
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SUB BAR
+═══════════════════════════════════════════════════════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <a id="btnBackToList" href="ab-platform-list.html" class="btn-back" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      返回实验列表
+    </a>
+    <div class="breadcrumb">
+      <a href="#">实验列表</a>
+      <span class="sep">/</span>
+      <span class="current">推荐流信息流改版实验</span>
+      <span class="sep">/</span>
+      <span class="current">实验报告</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     BODY
+═══════════════════════════════════════════════════════════ -->
+<div class="body-wrap">
+
+  <!-- ──── SIDEBAR ──── -->
+  <aside class="sidebar">
+    <div class="nav-group">
+      <!-- L1: AB测试（展开） -->
+      <div class="nav-l1 open" onclick="this.classList.toggle('open');this.nextElementSibling.style.display=this.classList.contains('open')?'block':'none'">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        AB测试
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:block;">
+        <div class="nav-l2">产品信息</div>
+        <div class="nav-l2">远程配置</div>
+        <div class="nav-l2">用户群配置</div>
+
+        <!-- 实验管理子组（可折叠） -->
+        <div class="nav-l2 nav-l2-group-hd open"
+             onclick="this.classList.toggle('open');var n=this.nextElementSibling;n.style.display=this.classList.contains('open')?'block':'none'">
+          <svg style="width:13px;height:13px;flex-shrink:0;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+          </svg>
+          实验管理
+          <svg class="nav-l2-chevron" style="margin-left:auto;width:12px;height:12px;flex-shrink:0;transition:transform .2s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="nav-l3-list" style="display:block;">
+          <div class="nav-l3">实验列表</div>
+          <div class="nav-l3 active">实验报告</div>
+          <div class="nav-l3">实验创建</div>
+          <div class="nav-l3">实验日志</div>
+        </div>
+
+        <div class="nav-l2">用户群标签管理</div>
+        <div class="nav-l2">指标管理</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ──── MAIN CONTENT ──── -->
+  <main class="content" id="mainContent">
+
+    <!-- ══ PAGE TITLE ══ -->
+    <div class="page-title-bar">
+      <div class="page-title-left">
+        <div class="page-exp-name">
+          推荐流信息流改版实验
+          <span id="expStatusBadge" class="exp-status running"><span class="dot"></span>运行中</span>
+          <span class="page-exp-id">EXP-20240315-0042</span>
+        </div>
+        <div class="summary-chips">
+          <span class="chip chip-gray">推荐&nbsp;·&nbsp;信息流</span>
+          <span class="chip chip-green">3个指标显著提升</span>
+          <span class="chip chip-orange">1个指标需关注</span>
+        </div>
+      </div>
+      <div class="page-title-actions">
+      </div>
+    </div>
+
+    <!-- ══ 1. OVERVIEW CARD ══ -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span class="card-title">实验概览</span>
+        <div class="card-actions">
+          <span style="font-size:12px;color:var(--sub)">最后更新：2024-03-11 10:32</span>
+        </div>
+      </div>
+      <div class="overview-body">
+        <!-- 左侧：基础信息 -->
+        <div class="overview-left">
+          <div class="overview-grid">
+            <div class="overview-item" style="grid-column:span 2;border-right:none;">
+              <div class="ov-label">产品 ID</div>
+              <div class="ov-value" style="font-size:13px;">1001-productname</div>
+            </div>
+            <div class="overview-item">
+              <div class="ov-label">实验状态</div>
+              <div class="ov-value"><span class="exp-status running"><span class="dot"></span>运行中</span></div>
+            </div>
+            <div class="overview-item">
+              <div class="ov-label">已运行天数</div>
+              <div class="ov-value primary">20 天</div>
+            </div>
+            <div class="overview-item">
+              <div class="ov-label">开始时间</div>
+              <div class="ov-value" style="font-size:13px;">2024-02-20 09:00</div>
+            </div>
+            <div class="overview-item">
+              <div class="ov-label">预计结束</div>
+              <div class="ov-value" style="font-size:13px;">2024-03-20 09:00</div>
+            </div>
+            <div class="overview-item">
+              <div class="ov-label">累计参与用户</div>
+              <div class="ov-value" style="font-size:18px;">1,284,723 <span style="font-size:12px;font-weight:400;color:var(--sub);">人</span></div>
+            </div>
+            <div class="overview-item" style="border-right:none;">
+              <div class="ov-label">总流量占比</div>
+              <div class="ov-value" style="font-size:18px;">32.6<span style="font-size:12px;font-weight:400;color:var(--sub);">%</span></div>
+            </div>
+          </div>
+          <!-- 流量分配 -->
+          <div class="overview-traffic">
+            <div class="ov-label">流量分配 <span class="tooltip-icon">?</span></div>
+            <div class="traffic-bar-wrap">
+              <div class="traffic-bar">
+                <div class="traffic-seg ctrl" style="width:50%"></div>
+                <div class="traffic-seg exp1" style="width:25%"></div>
+                <div class="traffic-seg exp2" style="width:25%"></div>
+              </div>
+              <div class="traffic-legend">
+                <div class="tl-item"><div class="tl-dot" style="background:#86909C"></div>对照组 50%</div>
+                <div class="tl-item"><div class="tl-dot" style="background:var(--primary)"></div>实验组A 25%</div>
+                <div class="tl-item"><div class="tl-dot" style="background:#7B61FF"></div>实验组B 25%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧：累计进组用户量堆积曲线图 -->
+        <div class="overview-right">
+          <div class="ov-chart-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            各组累计进组用户量趋势
+            <span style="font-size:11px;font-weight:400;color:var(--sub);margin-left:auto;">单位：人</span>
+          </div>
+          <div class="ov-chart-legend">
+            <div class="tl-item"><div class="tl-dot" style="background:#86909C"></div>对照组</div>
+            <div class="tl-item"><div class="tl-dot" style="background:var(--primary)"></div>实验组A</div>
+            <div class="tl-item"><div class="tl-dot" style="background:#7B61FF"></div>实验组B</div>
+          </div>
+          <div class="ov-chart-container">
+            <canvas id="enrollCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 2. METRICS RESULT CARD ══ -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span class="card-title">指标结果</span>
+        <div class="card-actions">
+          <div class="add-metric-wrap" id="addMetricWrap">
+            <button class="add-metric-btn" onclick="toggleAddMetricDropdown(event)">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+              添加指标
+            </button>
+            <div class="add-metric-dropdown" id="addMetricDropdown">
+              <div class="amd-search-wrap">
+                <input class="amd-search" id="amdSearch" placeholder="搜索指标…" oninput="filterAmdOptions(this.value)" onclick="event.stopPropagation()">
+              </div>
+              <div class="amd-list" id="amdList"></div>
+              <div class="amd-footer">
+                <button class="amd-create-btn" onclick="openCreateMetricModal()">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+                  新建指标
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-item" onclick="switchMetricsTab(this,'multi')">多组对比</button>
+        <button class="tab-item active" onclick="switchMetricsTab(this,'detail')">详细对比</button>
+        <button class="tab-item" onclick="switchMetricsTab(this,'homo')">同质性检验</button>
+      </div>
+      <!-- Multi-group pane -->
+      <div id="metricsMultiPane" style="display:none;">
+      <div class="metrics-table-wrap">
+        <table class="metrics-tbl multi-tbl">
+          <thead>
+            <tr>
+              <th rowspan="2" style="width:180px;vertical-align:middle;border-right:1px solid var(--border);">指标名称</th>
+              <th style="text-align:center;background:#F8F9FA;border-bottom:none;border-right:2px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:5px;justify-content:center;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#86909C;flex-shrink:0;"></span>对照组
+                </div>
+              </th>
+              <th colspan="2" style="text-align:center;background:#EEF5FF;color:var(--primary);border-bottom:none;border-right:2px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:5px;justify-content:center;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;"></span>实验组A
+                </div>
+              </th>
+              <th colspan="2" style="text-align:center;background:#F3F0FF;color:#7B61FF;border-bottom:none;">
+                <div style="display:flex;align-items:center;gap:5px;justify-content:center;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#7B61FF;flex-shrink:0;"></span>实验组B
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th style="border-right:2px solid var(--border);">均值</th>
+              <th>均值</th>
+              <th style="border-right:2px solid var(--border);">vs 对照组</th>
+              <th>均值</th>
+              <th>vs 对照组</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border-right:1px solid var(--border);">
+                <div class="metric-name-cell">
+                  <span class="metric-name">人均使用时长</span>
+                  <span class="metric-type-tag core">核心</span>
+                </div>
+              </td>
+              <td class="value-cell" style="border-right:2px solid var(--border);">28.4</td>
+              <td class="value-cell">30.7</td>
+              <td style="border-right:2px solid var(--border);">
+                <div class="diff-cell"><span class="diff-positive">+8.1%</span><div class="diff-bar-wrap"><div class="diff-bar pos" style="width:81%"></div></div></div>
+              </td>
+              <td class="value-cell">29.8</td>
+              <td>
+                <div class="diff-cell"><span class="diff-positive">+4.9%</span><div class="diff-bar-wrap"><div class="diff-bar pos" style="width:49%"></div></div></div>
+              </td>
+            </tr>
+            <tr>
+              <td style="border-right:1px solid var(--border);">
+                <div class="metric-name-cell">
+                  <span class="metric-name">人均播放视频数</span>
+                  <span class="metric-type-tag secondary">关注</span>
+                </div>
+              </td>
+              <td class="value-cell" style="border-right:2px solid var(--border);">14.2</td>
+              <td class="value-cell">15.6</td>
+              <td style="border-right:2px solid var(--border);">
+                <div class="diff-cell"><span class="diff-positive">+9.9%</span><div class="diff-bar-wrap"><div class="diff-bar pos" style="width:99%"></div></div></div>
+              </td>
+              <td class="value-cell">15.1</td>
+              <td>
+                <div class="diff-cell"><span class="diff-positive">+6.3%</span><div class="diff-bar-wrap"><div class="diff-bar pos" style="width:63%"></div></div></div>
+              </td>
+            </tr>
+            <tr>
+              <td style="border-right:1px solid var(--border);">
+                <div class="metric-name-cell">
+                  <span class="metric-name">次日留存率</span>
+                  <span class="metric-type-tag secondary">关注</span>
+                </div>
+              </td>
+              <td class="value-cell" style="border-right:2px solid var(--border);">62.3%</td>
+              <td class="value-cell">63.1%</td>
+              <td style="border-right:2px solid var(--border);">
+                <div class="diff-cell"><span class="diff-positive">+1.3%</span><div class="diff-bar-wrap"><div class="diff-bar pos" style="width:13%"></div></div></div>
+              </td>
+              <td class="value-cell">62.9%</td>
+              <td>
+                <div class="diff-cell"><span class="diff-positive">+1.0%</span><div class="diff-bar-wrap"><div class="diff-bar pos" style="width:10%"></div></div></div>
+              </td>
+            </tr>
+            <tr>
+              <td style="border-right:1px solid var(--border);">
+                <div class="metric-name-cell">
+                  <span class="metric-name">广告点击率</span>
+                  <span class="metric-type-tag secondary">关注</span>
+                </div>
+              </td>
+              <td class="value-cell" style="border-right:2px solid var(--border);">3.82%</td>
+              <td class="value-cell">3.61%</td>
+              <td style="border-right:2px solid var(--border);">
+                <div class="diff-cell"><span class="diff-negative">-5.5%</span><div class="diff-bar-wrap"><div class="diff-bar neg" style="width:55%"></div></div></div>
+              </td>
+              <td class="value-cell">3.69%</td>
+              <td>
+                <div class="diff-cell"><span class="diff-negative">-3.4%</span><div class="diff-bar-wrap"><div class="diff-bar neg" style="width:34%"></div></div></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+      <!-- Detail pane -->
+      <div id="metricsDetailPane">
+      <div class="metrics-table-wrap">
+        <table class="metrics-tbl" id="metricsTable">
+          <thead>
+            <tr>
+              <th style="width:180px">指标名称</th>
+              <th>
+                <div class="th-select-wrap">
+                  <span class="th-label">基准</span>
+                  <select class="select-sm th-inline-sel" id="baseGroupSel" onchange="updateGroupLabels()">
+                    <option value="ctrl">对照组</option>
+                    <option value="expA">实验组A</option>
+                    <option value="expB">实验组B</option>
+                  </select>
+                </div>
+              </th>
+              <th>基准组样本量</th>
+              <th>
+                <div class="th-select-wrap">
+                  <span class="th-label">对比</span>
+                  <select class="select-sm th-inline-sel" id="compareGroupSel" onchange="updateGroupLabels()">
+                    <option value="expA">实验组A</option>
+                    <option value="expB">实验组B</option>
+                  </select>
+                </div>
+              </th>
+              <th>对比组样本量</th>
+              <th>相对变化</th>
+              <th>p 值 <span class="tooltip-icon" data-gtip="P值：在原假设为真的前提下随机抽取样本出现极端情况的概率。当 p-value &lt; 1 - 置信度水平，认为统计显著。&#10;&#10;习惯上，当 p_value 小于 5% 时，就是我们常说的实验效果已经「统计显著」，它意味着你观测到的差异来源于随机抽样误差的概率已经小于 5%，反过来说，你的策略大概率（大于 95%）是有效的。P-value 越小说明实验发现的差异是因为抽样误差导致的概率越小，极大程度上还是由于本质上存在差异造成。">?</span></th>
+              <th>95% 置信区间</th>
+              <th>显著性</th>
+              <th>MDE <span class="tooltip-icon" data-gtip="通过比较 MDE 与指标的目标提升率来判断不显著的结论是否可靠，可以避免实验在灵敏度不足的情况下被过早作出非显著结论而结束，错失有潜力的策略。&#10;&#10;假设你对该指标的预期目标提升率为 1%&#10;&#10;1. 如果此时 MDE = 0.5%，MDE ＜ 预期提升值，说明指标变化真的不显著，请结合业务 ROI 和其他维度例如用户体验、长期战略价值等来综合判断是否值得上线；&#10;&#10;2. 如果此时 MDE = 2%，MDE ＞ 预期提升值，说明当前能检验出显著性的最小差异值是 2%，由于灵敏度（也就是检验效力）不足未能检测出。这种情况下建议增大样本量，例如扩大流量、再观察一段时间积累更多进组用户，指标还有置信的可能。">?</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Row 1 -->
+            <tr>
+              <td>
+                <div class="metric-name-cell">
+                  <span class="metric-name">人均使用时长</span>
+                  <span class="metric-type-tag core">核心</span>
+                </div>
+              </td>
+              <td class="value-cell">28.4</td>
+              <td class="value-cell">641,203</td>
+              <td class="value-cell">30.7</td>
+              <td class="value-cell">321,640</td>
+              <td>
+                <div class="diff-cell">
+                  <span class="diff-positive">+8.1%</span>
+                  <div class="diff-bar-wrap"><div class="diff-bar pos" style="width:81%"></div></div>
+                </div>
+              </td>
+              <td class="value-cell p-sig-pos">0.0024</td>
+              <td class="ci-text">[+5.2%, +11.0%]</td>
+              <td><span class="sig-badge sig">✓ 显著提升</span></td>
+              <td class="value-cell">3.2%</td>
+            </tr>
+            <!-- Row 2 -->
+            <tr>
+              <td>
+                <div class="metric-name-cell">
+                  <span class="metric-name">人均播放视频数</span>
+                  <span class="metric-type-tag secondary">关注</span>
+                </div>
+              </td>
+              <td class="value-cell">14.2</td>
+              <td class="value-cell">641,203</td>
+              <td class="value-cell">15.6</td>
+              <td class="value-cell">321,640</td>
+              <td>
+                <div class="diff-cell">
+                  <span class="diff-positive">+9.9%</span>
+                  <div class="diff-bar-wrap"><div class="diff-bar pos" style="width:99%"></div></div>
+                </div>
+              </td>
+              <td class="value-cell p-sig-pos">0.0011</td>
+              <td class="ci-text">[+7.1%, +12.7%]</td>
+              <td><span class="sig-badge sig">✓ 显著提升</span></td>
+              <td class="value-cell">4.1%</td>
+            </tr>
+            <!-- Row 3 -->
+            <tr>
+              <td>
+                <div class="metric-name-cell">
+                  <span class="metric-name">次日留存率</span>
+                  <span class="metric-type-tag secondary">关注</span>
+                </div>
+              </td>
+              <td class="value-cell">62.3%</td>
+              <td class="value-cell">641,203</td>
+              <td class="value-cell">63.1%</td>
+              <td class="value-cell">321,640</td>
+              <td>
+                <div class="diff-cell">
+                  <span class="diff-positive">+1.3%</span>
+                  <div class="diff-bar-wrap"><div class="diff-bar pos" style="width:13%"></div></div>
+                </div>
+              </td>
+              <td class="value-cell">0.0810</td>
+              <td class="ci-text">[-0.2%, +2.7%]</td>
+              <td><span class="sig-badge nonsig">— 不显著</span></td>
+              <td class="value-cell">2.0%</td>
+            </tr>
+            <!-- Row 4 -->
+            <tr>
+              <td>
+                <div class="metric-name-cell">
+                  <span class="metric-name">广告点击率</span>
+                  <span class="metric-type-tag secondary">关注</span>
+                </div>
+              </td>
+              <td class="value-cell">3.82%</td>
+              <td class="value-cell">641,203</td>
+              <td class="value-cell">3.61%</td>
+              <td class="value-cell">321,640</td>
+              <td>
+                <div class="diff-cell">
+                  <span class="diff-negative">-5.5%</span>
+                  <div class="diff-bar-wrap"><div class="diff-bar neg" style="width:55%"></div></div>
+                </div>
+              </td>
+              <td class="value-cell p-sig">0.0310</td>
+              <td class="ci-text">[-9.2%, -1.8%]</td>
+              <td><span class="sig-badge negative">↓ 显著下降</span></td>
+              <td class="value-cell">2.8%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+      <!-- Homogeneity (AA) pane -->
+      <div id="metricsHomoPane" style="display:none;">
+        <!-- Summary banner -->
+        <div class="aa-summary warn">
+          <div class="aa-summary-left">
+            <div class="aa-summary-status warn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              AA检验需关注
+            </div>
+            <div class="aa-summary-rule-list">
+              <div class="aa-rule-item pass">
+                <span class="aa-rule-dot pass-dot"></span>
+                <span class="aa-rule-label">SRM（强制）</span>
+                <span class="aa-rule-result">✓ 通过</span>
+              </div>
+              <div class="aa-rule-item warn">
+                <span class="aa-rule-dot warn-dot"></span>
+                <span class="aa-rule-label">L1 核心指标</span>
+                <span class="aa-rule-result">⚠ 1 项 p ∈ (0.01, 0.05]</span>
+              </div>
+              <div class="aa-rule-item pass">
+                <span class="aa-rule-dot pass-dot"></span>
+                <span class="aa-rule-label">L2 辅助指标失败率</span>
+                <span class="aa-rule-result">✓ 0 / 8 (0%)</span>
+              </div>
+            </div>
+          </div>
+          <div class="aa-summary-desc">分层判断：SRM 为强制项，任一失败立即暂停；L1 核心指标有 p ≤ 0.01 判异常，p ∈ (0.01, 0.05] 需关注；L2 辅助失败率 &gt; 20% 需关注。当前 L1 有 1 项需关注，建议人工复核分流逻辑后继续实验。</div>
+        </div>
+        <!-- AA table -->
+        <div class="metrics-table-wrap">
+          <table class="metrics-tbl aa-tbl">
+            <thead>
+              <tr>
+                <th style="width:190px">指标名称</th>
+                <th style="width:90px">分类</th>
+                <th>对照组均值</th>
+                <th>实验组A均值</th>
+                <th>实验组B均值</th>
+                <th>p 值（A vs 对照）</th>
+                <th>p 值（B vs 对照）</th>
+                <th>检验结论</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 流量分配 -->
+              <tr class="aa-group-row aa-group-srm">
+                <td colspan="8" class="aa-group-label">
+                  <span class="aa-mandatory-badge">强制</span>
+                  流量分配（SRM）
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">各组用户数</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-traffic">流量</span></td>
+                <td class="value-cell">641,203</td>
+                <td class="value-cell">321,640</td>
+                <td class="value-cell">319,563</td>
+                <td class="value-cell">—</td>
+                <td class="value-cell">—</td>
+                <td><span class="aa-result pass">✓ 通过</span></td>
+              </tr>
+              <!-- 活跃 -->
+              <tr class="aa-group-row aa-group-l1">
+                <td colspan="8" class="aa-group-label">
+                  <span class="aa-l1-badge">L1 核心</span>
+                  活跃度
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">日活跃用户数（DAU）</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-active">活跃</span></td>
+                <td class="value-cell">641,203</td>
+                <td class="value-cell">321,640</td>
+                <td class="value-cell">319,563</td>
+                <td class="value-cell">0.4712</td>
+                <td class="value-cell">0.5831</td>
+                <td><span class="aa-result pass">✓ 通过</span></td>
+              </tr>
+              <!-- 留存 -->
+              <tr class="aa-group-row aa-group-l1">
+                <td colspan="8" class="aa-group-label">
+                  <span class="aa-l1-badge">L1 核心</span>
+                  留存
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">次日留存率（D1）</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-retain">留存</span></td>
+                <td class="value-cell">62.3%</td>
+                <td class="value-cell">62.8%</td>
+                <td class="value-cell">62.4%</td>
+                <td class="value-cell p-sig">0.0381</td>
+                <td class="value-cell">0.7901</td>
+                <td><span class="aa-result warn">⚠ 需关注</span></td>
+              </tr>
+              <tr class="aa-group-row aa-group-l2">
+                <td colspan="8" class="aa-group-label">
+                  <span class="aa-l2-badge">L2 辅助</span>
+                  留存（续）
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">7日留存率（D7）</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-retain">留存</span></td>
+                <td class="value-cell">34.8%</td>
+                <td class="value-cell">34.5%</td>
+                <td class="value-cell">35.1%</td>
+                <td class="value-cell">0.2163</td>
+                <td class="value-cell">0.4407</td>
+                <td><span class="aa-result pass">✓ 通过</span></td>
+              </tr>
+              <!-- 货币化 -->
+              <tr class="aa-group-row aa-group-l1">
+                <td colspan="8" class="aa-group-label">
+                  <span class="aa-l1-badge">L1 核心</span>
+                  货币化
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">人均收入（ARPU）</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-money">货币化</span></td>
+                <td class="value-cell">$1.84</td>
+                <td class="value-cell">$1.82</td>
+                <td class="value-cell">$1.87</td>
+                <td class="value-cell">0.5534</td>
+                <td class="value-cell">0.6812</td>
+                <td><span class="aa-result pass">✓ 通过</span></td>
+              </tr>
+              <!-- 参与度（原来的独立行，现已合并到L2分组，删除重复） -->
+              <tr class="aa-group-row aa-group-l2">
+                <td colspan="8" class="aa-group-label">
+                  <span class="aa-l2-badge">L2 辅助</span>
+                  货币化（续）· 参与度
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">付费转化率</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-money">货币化</span></td>
+                <td class="value-cell">4.71%</td>
+                <td class="value-cell">4.68%</td>
+                <td class="value-cell">4.73%</td>
+                <td class="value-cell">0.6290</td>
+                <td class="value-cell">0.8143</td>
+                <td><span class="aa-result pass">✓ 通过</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">人均游戏时长（分钟）</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-engage">参与</span></td>
+                <td class="value-cell">28.4</td>
+                <td class="value-cell">28.6</td>
+                <td class="value-cell">28.3</td>
+                <td class="value-cell p-sig">0.0391</td>
+                <td class="value-cell">0.5629</td>
+                <td><span class="aa-result warn">⚠ 需关注</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">人均对局数</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-engage">参与</span></td>
+                <td class="value-cell">8.7</td>
+                <td class="value-cell">8.6</td>
+                <td class="value-cell">8.8</td>
+                <td class="value-cell">0.2884</td>
+                <td class="value-cell">0.4152</td>
+                <td><span class="aa-result pass">✓ 通过</span></td>
+              </tr>
+              <!-- 广告 -->
+              <tr class="aa-group-row aa-group-l2">
+                <td colspan="8" class="aa-group-label">
+                  <span class="aa-l2-badge">L2 辅助</span>
+                  广告变现
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">广告 eCPM</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-ad">广告</span></td>
+                <td class="value-cell">$4.12</td>
+                <td class="value-cell">$4.09</td>
+                <td class="value-cell">$4.14</td>
+                <td class="value-cell">0.3017</td>
+                <td class="value-cell">0.6538</td>
+                <td><span class="aa-result pass">✓ 通过</span></td>
+              </tr>
+              <!-- 稳定性 -->
+              <tr class="aa-group-row aa-group-l2">
+                <td colspan="8" class="aa-group-label">
+                  <span class="aa-l2-badge">L2 辅助</span>
+                  稳定性
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="metric-name-cell">
+                    <span class="metric-name">崩溃率</span>
+                    <span class="metric-type-tag aa-builtin">平台内置</span>
+                  </div>
+                </td>
+                <td><span class="aa-cat-tag cat-stable">稳定性</span></td>
+                <td class="value-cell">0.41%</td>
+                <td class="value-cell">0.40%</td>
+                <td class="value-cell">0.42%</td>
+                <td class="value-cell">0.7823</td>
+                <td class="value-cell">0.8914</td>
+                <td><span class="aa-result pass">✓ 通过</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Footer note -->
+        <div class="aa-footer-note">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          显著性水平 α = 0.05。⚠ 需关注 表示 0.05 ≥ p &gt; 0.01，建议人工复核分流逻辑；异常 表示 p ≤ 0.01，须暂停实验排查。
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 3. TREND CHART CARD ══ -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span class="card-title">趋势分析</span>
+        <span class="card-title-sub">折线图 · 指标随时间变化</span>
+      </div>
+      <div class="trend-toolbar">
+        <select class="select-sm" id="trendMetricSel" onchange="drawTrendChart()">
+          <option value="duration">人均使用时长</option>
+          <option value="videos">人均播放视频数</option>
+          <option value="retention">次日留存率</option>
+          <option value="adctr">广告点击率</option>
+        </select>
+        <div class="divider-v"></div>
+        <div class="date-range-picker">
+          <input type="date" class="date-input" id="trendStartDate" value="2024-02-20" min="2024-02-20" max="2024-03-11" onchange="onTrendDateChange()">
+          <span class="date-range-sep">→</span>
+          <input type="date" class="date-input" id="trendEndDate" value="2024-03-11" min="2024-02-20" max="2024-03-11" onchange="onTrendDateChange()">
+        </div>
+      </div>
+      <div class="trend-chart-area">
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-line ctrl"></div>对照组</div>
+          <div class="legend-item"><div class="legend-line exp1"></div>实验组A</div>
+          <div class="legend-item"><div class="legend-line exp2"></div>实验组B</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="trendCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 4. CONCLUSION CARD ══ -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span class="card-title">实验结论</span>
+        <div class="card-actions">
+          <span style="font-size:12px;color:var(--sub)">系统自动生成 · 2024-03-11 10:32</span>
+          <button id="btnDirectEnd" class="btn btn-sm btn-danger" onclick="openEndModal()">直接结束</button>
+          <button id="btnRollout" class="btn btn-sm btn-primary" onclick="openRolloutModal()">结束并铺开</button>
+        </div>
+      </div>
+
+      <!-- Verdict Banner -->
+      <div class="conclusion-banner recommend-yes">
+        <div class="conclusion-icon">✅</div>
+        <div class="conclusion-text">
+          <div class="conclusion-verdict">推荐上线（实验组A方案）</div>
+          <div class="conclusion-desc">
+            实验组A在核心指标上表现优异：人均使用时长显著提升 <strong>+8.1%</strong>（p=0.0024），人均播放视频数提升 <strong>+9.9%</strong>（p=0.0011），整体用户体验改善明显。次日留存率提升 +1.3% 但未达显著性水平，建议持续观察。需注意广告点击率出现显著下降（-5.5%，p=0.031），上线前需与广告团队评估对商业化指标的整体影响。
+          </div>
+          <div class="conclusion-meta">
+            <div class="conclusion-meta-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              实验周期：20天（建议最小14天）
+            </div>
+            <div class="conclusion-meta-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              AA 检验通过
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sig Summary -->
+      <div class="sig-summary-grid">
+        <div class="sig-summary-item">
+          <div class="sig-summary-num green">3</div>
+          <div class="sig-summary-label">指标显著提升</div>
+        </div>
+        <div class="sig-summary-item">
+          <div class="sig-summary-num red">1</div>
+          <div class="sig-summary-label">指标显著下降（需关注）</div>
+        </div>
+        <div class="sig-summary-item">
+          <div class="sig-summary-num gray">9</div>
+          <div class="sig-summary-label">指标无显著变化</div>
+        </div>
+      </div>
+
+      <!-- Analyst Note -->
+      <div class="analyst-note-section">
+        <div class="analyst-note-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          备注
+        </div>
+        <div class="note-author">
+          <div class="note-avatar">李</div>
+          <span class="note-name">李华（数据分析师）</span>
+          <span class="note-time">2024-03-10 16:45</span>
+        </div>
+        <div class="note-content">
+          综合评估：本次实验的核心体验指标（时长、播放数）提升幅度符合预期，但广告点击率下降值得关注。<br>
+          初步判断：该下降可能由于新版本信息流排列密度降低，减少了广告曝光位。建议上线时同步优化广告插入策略（如动态间距），或通过 CPM/eCPM 指标综合评估商业化影响，而非仅看点击率。<br>
+          <strong>结论：支持实验组A方案上线，建议广告团队同步介入评估。</strong>
+        </div>
+        <button class="note-add-btn" onclick="openNoteModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          添加备注
+        </button>
+      </div>
+    </div>
+
+    <!-- BOTTOM PADDING -->
+    <div style="height:24px"></div>
+  </main>
+</div>
+
+<script>
+  /* ══════════════════════
+     FROM-LIST MODE: hide sidebar
+  ══════════════════════ */
+  (function() {
+    if (new URLSearchParams(window.location.search).get('from') === 'list') {
+      var style = document.createElement('style');
+      style.textContent = '.sidebar{display:none!important;} .subbar{padding-left:0!important;}';
+      document.head.appendChild(style);
+      document.addEventListener('DOMContentLoaded', function() {
+        var btn = document.getElementById('btnBackToList');
+        if (btn) btn.style.display = '';
+      });
+    }
+  })();
+
+  /* ══════════════════════
+     TAB / SEG SWITCH
+  ══════════════════════ */
+  function switchMetricTab(el, tab) {
+    el.closest('.tab-bar').querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+  function switchSeg(el) {
+    el.closest('.segment-btn-group').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+  function switchMetricsTab(el, pane) {
+    el.closest('.tab-bar').querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('metricsMultiPane').style.display  = pane === 'multi'  ? '' : 'none';
+    document.getElementById('metricsDetailPane').style.display = pane === 'detail' ? '' : 'none';
+    document.getElementById('metricsHomoPane').style.display   = pane === 'homo'   ? '' : 'none';
+  }
+  function updateGroupLabels() {
+    // placeholder: in a real implementation, this would reload table data based on selected groups
+  }
+
+  /* ══════════════════════
+     EXPAND ROWS
+  ══════════════════════ */
+  function toggleExpand(btn, rowId) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    const isOpen = row.style.display !== 'none';
+    row.style.display = isOpen ? 'none' : '';
+    btn.classList.toggle('open', !isOpen);
+  }
+
+  /* ══════════════════════
+     TREND CHART (Canvas)
+  ══════════════════════ */
+  const CHART_DATA = {
+    duration: {
+      dates:  ['2024-02-20','2024-02-21','2024-02-22','2024-02-23','2024-02-24','2024-02-25',
+               '2024-02-26','2024-02-27','2024-02-28','2024-02-29','2024-03-01','2024-03-02',
+               '2024-03-03','2024-03-04','2024-03-05','2024-03-06','2024-03-07','2024-03-08',
+               '2024-03-09','2024-03-10'],
+      labels: ['2/20','2/21','2/22','2/23','2/24','2/25','2/26','2/27','2/28','2/29',
+               '3/1','3/2','3/3','3/4','3/5','3/6','3/7','3/8','3/9','3/10'],
+      ctrl:   [28.1,28.2,28.0,28.3,28.2,28.4,28.3,28.2,28.5,28.3,28.6,28.4,28.3,28.5,28.4,28.2,28.5,28.3,28.4,28.4],
+      exp1:   [28.5,28.7,28.9,29.0,29.2,29.4,29.5,29.6,29.8,29.9,30.0,30.1,30.2,30.3,30.4,30.4,30.5,30.5,30.6,30.7],
+      exp2:   [28.3,28.5,28.6,28.8,28.9,29.0,29.1,29.2,29.3,29.4,29.5,29.5,29.6,29.6,29.7,29.7,29.7,29.8,29.8,29.8],
+      unit: ' min'
+    },
+    videos: {
+      dates:  ['2024-02-20','2024-02-21','2024-02-22','2024-02-23','2024-02-24','2024-02-25',
+               '2024-02-26','2024-02-27','2024-02-28','2024-02-29','2024-03-01','2024-03-02',
+               '2024-03-03','2024-03-04','2024-03-05','2024-03-06','2024-03-07','2024-03-08',
+               '2024-03-09','2024-03-10'],
+      labels: ['2/20','2/21','2/22','2/23','2/24','2/25','2/26','2/27','2/28','2/29',
+               '3/1','3/2','3/3','3/4','3/5','3/6','3/7','3/8','3/9','3/10'],
+      ctrl:   [13.8,13.9,13.9,14.0,14.0,14.1,14.1,14.1,14.2,14.1,14.2,14.2,14.2,14.3,14.2,14.2,14.3,14.2,14.2,14.2],
+      exp1:   [13.9,14.0,14.2,14.4,14.5,14.7,14.8,14.9,15.0,15.1,15.2,15.2,15.3,15.4,15.4,15.5,15.5,15.5,15.6,15.6],
+      exp2:   [13.8,13.9,14.1,14.2,14.4,14.5,14.6,14.7,14.8,14.9,15.0,15.0,15.0,15.1,15.1,15.1,15.1,15.1,15.1,15.1],
+      unit: ''
+    },
+    retention: {
+      dates:  ['2024-02-20','2024-02-21','2024-02-22','2024-02-23','2024-02-24','2024-02-25',
+               '2024-02-26','2024-02-27','2024-02-28','2024-02-29','2024-03-01','2024-03-02',
+               '2024-03-03','2024-03-04','2024-03-05','2024-03-06','2024-03-07','2024-03-08',
+               '2024-03-09','2024-03-10'],
+      labels: ['2/20','2/21','2/22','2/23','2/24','2/25','2/26','2/27','2/28','2/29',
+               '3/1','3/2','3/3','3/4','3/5','3/6','3/7','3/8','3/9','3/10'],
+      ctrl:   [62.0,62.1,62.2,62.1,62.3,62.2,62.4,62.3,62.2,62.5,62.3,62.4,62.3,62.5,62.4,62.3,62.5,62.4,62.5,62.3],
+      exp1:   [62.2,62.3,62.5,62.6,62.7,62.8,62.8,62.9,62.9,63.0,63.0,63.0,63.1,63.0,63.1,63.1,63.0,63.1,63.1,63.1],
+      exp2:   [62.1,62.2,62.3,62.4,62.5,62.6,62.7,62.7,62.8,62.8,62.9,62.8,62.9,62.9,62.9,62.9,62.9,62.9,62.9,62.9],
+      unit: '%'
+    },
+    adctr: {
+      dates:  ['2024-02-20','2024-02-21','2024-02-22','2024-02-23','2024-02-24','2024-02-25',
+               '2024-02-26','2024-02-27','2024-02-28','2024-02-29','2024-03-01','2024-03-02',
+               '2024-03-03','2024-03-04','2024-03-05','2024-03-06','2024-03-07','2024-03-08',
+               '2024-03-09','2024-03-10'],
+      labels: ['2/20','2/21','2/22','2/23','2/24','2/25','2/26','2/27','2/28','2/29',
+               '3/1','3/2','3/3','3/4','3/5','3/6','3/7','3/8','3/9','3/10'],
+      ctrl:   [3.80,3.81,3.82,3.82,3.83,3.82,3.81,3.83,3.82,3.83,3.82,3.81,3.83,3.82,3.81,3.83,3.82,3.83,3.82,3.82],
+      exp1:   [3.79,3.78,3.77,3.76,3.75,3.74,3.73,3.72,3.71,3.70,3.69,3.68,3.67,3.66,3.65,3.64,3.63,3.62,3.61,3.61],
+      exp2:   [3.80,3.79,3.79,3.78,3.78,3.77,3.77,3.76,3.75,3.74,3.74,3.73,3.73,3.72,3.72,3.71,3.71,3.70,3.70,3.69],
+      unit: '%'
+    }
+  };
+
+  function onTrendDateChange() {
+    const s = document.getElementById('trendStartDate');
+    const e = document.getElementById('trendEndDate');
+    // Ensure start <= end
+    if (s.value && e.value && s.value > e.value) {
+      if (document.activeElement === s) e.value = s.value;
+      else s.value = e.value;
+    }
+    drawTrendChart();
+  }
+
+  let _trendPAD, _trendCW, _trendCH, _trendN, _trendW, _trendH, _trendXOf, _trendYOf, _trendD;
+
+  function drawTrendChart(hoverIdx) {
+    const canvas = document.getElementById('trendCanvas');
+    if (!canvas) return;
+    const container = canvas.parentElement;
+    canvas.width  = container.clientWidth;
+    canvas.height = container.clientHeight;
+
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const PAD = { top: 20, right: 80, bottom: 40, left: 60 };
+
+    const metricKey = document.getElementById('trendMetricSel').value;
+    const full = CHART_DATA[metricKey];
+
+    // Filter by selected date range
+    const startDate = document.getElementById('trendStartDate').value;
+    const endDate   = document.getElementById('trendEndDate').value;
+    const idxs = full.dates.reduce((arr, dt, i) => {
+      if ((!startDate || dt >= startDate) && (!endDate || dt <= endDate)) arr.push(i);
+      return arr;
+    }, []);
+    const d = idxs.length >= 2 ? {
+      labels: idxs.map(i => full.labels[i]),
+      ctrl:   idxs.map(i => full.ctrl[i]),
+      exp1:   idxs.map(i => full.exp1[i]),
+      exp2:   idxs.map(i => full.exp2[i]),
+      unit:   full.unit
+    } : { labels: full.labels, ctrl: full.ctrl, exp1: full.exp1, exp2: full.exp2, unit: full.unit };
+
+    ctx.clearRect(0, 0, W, H);
+
+    const allVals = [...d.ctrl, ...d.exp1, ...d.exp2];
+    const minV = Math.min(...allVals) * 0.985;
+    const maxV = Math.max(...allVals) * 1.015;
+
+    const chartW = W - PAD.left - PAD.right;
+    const chartH = H - PAD.top  - PAD.bottom;
+
+    const xOf = i => PAD.left + (i / (d.labels.length - 1)) * chartW;
+    const yOf = v => PAD.top  + chartH - ((v - minV) / (maxV - minV)) * chartH;
+
+    // Store layout for hover
+    _trendPAD = PAD; _trendCW = chartW; _trendCH = chartH;
+    _trendN = d.labels.length; _trendW = W; _trendH = H;
+    _trendXOf = xOf; _trendYOf = yOf; _trendD = d;
+
+    // Grid
+    ctx.strokeStyle = '#F0F3F6';
+    ctx.lineWidth = 1;
+    const gridLines = 5;
+    for (let i = 0; i <= gridLines; i++) {
+      const y = PAD.top + (i / gridLines) * chartH;
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+      const val = maxV - (i / gridLines) * (maxV - minV);
+      ctx.fillStyle = '#86909C'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(val.toFixed(1) + d.unit, PAD.left - 6, y + 3);
+    }
+
+    // X axis labels
+    ctx.fillStyle = '#86909C'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    d.labels.forEach((lbl, i) => {
+      ctx.fillText(lbl, xOf(i), H - PAD.bottom + 14);
+    });
+
+    // Lines
+    const drawLine = (series, color, dash = []) => {
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash(dash);
+      series.forEach((v, i) => {
+        const x = xOf(i), y = yOf(v);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // dots
+      series.forEach((v, i) => {
+        if (hoverIdx != null && i === hoverIdx) return; // drawn larger below
+        const x = xOf(i), y = yOf(v);
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      // end label
+      const lastX = xOf(series.length - 1), lastY = yOf(series[series.length - 1]);
+      ctx.fillStyle = color; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(series[series.length - 1].toFixed(1) + d.unit, lastX + 8, lastY + 4);
+    };
+
+    drawLine(d.ctrl, '#86909C', [4, 3]);
+    drawLine(d.exp1, '#1677FF');
+    drawLine(d.exp2, '#7B61FF');
+
+    // Hover overlay
+    if (hoverIdx != null && hoverIdx >= 0 && hoverIdx < d.labels.length) {
+      const hx = xOf(hoverIdx);
+
+      // vertical guide line
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(hx, PAD.top); ctx.lineTo(hx, H - PAD.bottom); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // highlighted dots
+      const series3 = [
+        { data: d.ctrl, color: '#86909C' },
+        { data: d.exp1, color: '#1677FF' },
+        { data: d.exp2, color: '#7B61FF' },
+      ];
+      series3.forEach(({ data, color }) => {
+        const x = xOf(hoverIdx), y = yOf(data[hoverIdx]);
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      });
+
+      // Tooltip box
+      const labels3 = ['对照组', '实验组A', '实验组B'];
+      const colors3 = ['#86909C', '#1677FF', '#7B61FF'];
+      const vals3   = [d.ctrl[hoverIdx], d.exp1[hoverIdx], d.exp2[hoverIdx]];
+      const dateLabel = d.labels[hoverIdx];
+
+      const lineH = 18, padX = 10, padY = 8;
+      const boxW = 140, boxH = padY * 2 + 16 + lineH * 3;
+      let bx = hx + 12;
+      if (bx + boxW > W - PAD.right) bx = hx - boxW - 12;
+      const by = PAD.top + 4;
+
+      ctx.fillStyle = 'rgba(29,33,41,0.88)';
+      ctx.beginPath();
+      ctx.roundRect(bx, by, boxW, boxH, 5);
+      ctx.fill();
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(dateLabel, bx + padX, by + padY + 10);
+
+      vals3.forEach((v, i) => {
+        const ty = by + padY + 10 + 6 + lineH * (i + 1);
+        ctx.fillStyle = colors3[i];
+        ctx.beginPath(); ctx.arc(bx + padX + 4, ty - 4, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#E0E6F0';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(labels3[i], bx + padX + 12, ty);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(v.toFixed(1) + d.unit, bx + boxW - padX, ty);
+        ctx.textAlign = 'left';
+      });
+    }
+  }
+
+  /* ══════════════════════
+     ENROLL STACKED AREA CHART
+  ══════════════════════ */
+  const ENROLL_DAYS = ['2/20','2/21','2/22','2/23','2/24','2/25','2/26','2/27','2/28','3/1','3/2','3/3','3/4','3/5','3/6','3/7','3/8','3/9','3/10','3/11'];
+  // 每日新增（人）：ctrl≈32000, expA≈16000, expB≈16000，带轻微波动
+  const dailyCtrl  = [31200,32800,31600,30400,33800,32600,31000,32200,33600,32000,32800,31200,32200,33000,33800,32000,31200,33000,32000,31200];
+  const dailyExpA  = [15400,15800,16800,15200,16200,16800,15600,15200,16800,15800,15200,15800,16800,15800,15200,15800,16800,15200,15800,15600];
+  const dailyExpB  = [15200,15800,15200,15600,16800,15200,15600,15800,15200,16800,15600,15200,15800,15200,16800,15800,15200,15800,16800,15200];
+
+  // 累计（人）
+  function cumsumInt(arr) {
+    let s = 0; return arr.map(v => (s += v, s));
+  }
+  const cumCtrl = cumsumInt(dailyCtrl);
+  const cumExpA = cumsumInt(dailyExpA);
+  const cumExpB = cumsumInt(dailyExpB);
+
+  // 格式化大数字，如 641200 → 641,200
+  function fmtNum(n) { return n.toLocaleString('zh-CN'); }
+
+  // 枚举每个数据点的 canvas 坐标（供 hover 使用）
+  let _enrollPAD, _enrollCW, _enrollCH, _enrollN, _enrollW, _enrollH;
+
+  function drawEnrollChart(hoverIdx) {
+    const canvas = document.getElementById('enrollCanvas');
+    if (!canvas) return;
+    const container = canvas.parentElement;
+    canvas.width  = container.clientWidth  || 600;
+    canvas.height = container.clientHeight || 180;
+
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const PAD = { top: 20, right: 64, bottom: 32, left: 60 };
+    const cW = W - PAD.left - PAD.right;
+    const cH = H - PAD.top  - PAD.bottom;
+    const n  = ENROLL_DAYS.length;
+
+    // cache for mousemove
+    _enrollPAD = PAD; _enrollCW = cW; _enrollCH = cH;
+    _enrollN = n; _enrollW = W; _enrollH = H;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const stackedTop    = cumCtrl.map((v,i) => v + cumExpA[i] + cumExpB[i]);
+    const stackedMidTop = cumCtrl.map((v,i) => v + cumExpA[i]);
+    const maxV = Math.max(...stackedTop) * 1.06;
+
+    const xOf = i => PAD.left + (i / (n - 1)) * cW;
+    const yOf = v => PAD.top  + cH - (v / maxV) * cH;
+
+    // Grid lines + Y labels
+    const gridN = 4;
+    ctx.strokeStyle = '#F0F3F6'; ctx.lineWidth = 1;
+    for (let i = 0; i <= gridN; i++) {
+      const y = PAD.top + (i / gridN) * cH;
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+      const val = Math.round(maxV * (1 - i / gridN));
+      ctx.fillStyle = '#B0B8C8'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+      // 显示为万人便于阅读
+      ctx.fillText((val / 10000).toFixed(0) + '万', PAD.left - 5, y + 3);
+    }
+
+    // X labels（每隔 4 天）
+    ctx.fillStyle = '#B0B8C8'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ENROLL_DAYS.forEach((d, i) => {
+      if (i % 4 === 0 || i === n - 1) ctx.fillText(d, xOf(i), H - PAD.bottom + 13);
+    });
+
+    // fill area between two value arrays
+    function fillArea(topArr, botArr, color) {
+      ctx.beginPath();
+      topArr.forEach((v, i) => { const x = xOf(i), y = yOf(v); i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y); });
+      for (let i = botArr.length - 1; i >= 0; i--) ctx.lineTo(xOf(i), yOf(botArr[i]));
+      ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+    }
+
+    // draw line + end label（labelArr 为该组自身累计值，非堆积值）
+    function drawLine(arr, color, labelArr) {
+      ctx.beginPath();
+      arr.forEach((v, i) => { const x = xOf(i), y = yOf(v); i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y); });
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([]); ctx.stroke();
+      const lx = xOf(n-1), ly = yOf(arr[n-1]);
+      const displayVal = labelArr ? labelArr[n-1] : arr[n-1];
+      ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(fmtNum(displayVal), lx + 4, ly + 3);
+    }
+
+    // Stacked areas
+    const zeroArr = new Array(n).fill(0);
+    fillArea(cumCtrl,      zeroArr,       'rgba(134,144,156,0.22)');
+    fillArea(stackedMidTop, cumCtrl,      'rgba(22,119,255,0.20)');
+    fillArea(stackedTop,    stackedMidTop,'rgba(123,97,255,0.20)');
+
+    // Lines — 末端标注显示各组自身累计值
+    drawLine(cumCtrl,       '#86909C', cumCtrl);
+    drawLine(stackedMidTop, '#1677FF', cumExpA);
+    drawLine(stackedTop,    '#7B61FF', cumExpB);
+
+    // Hover state
+    if (hoverIdx !== undefined && hoverIdx >= 0 && hoverIdx < n) {
+      const hx = xOf(hoverIdx);
+
+      // 竖线
+      ctx.beginPath(); ctx.moveTo(hx, PAD.top); ctx.lineTo(hx, PAD.top + cH);
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1; ctx.setLineDash([3,3]); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 各折线的数据点小圆
+      [[cumCtrl,'#86909C'],[stackedMidTop,'#1677FF'],[stackedTop,'#7B61FF']].forEach(([arr,col]) => {
+        const hy = yOf(arr[hoverIdx]);
+        ctx.beginPath(); ctx.arc(hx, hy, 4, 0, Math.PI*2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+      });
+
+      // Tooltip box
+      const ttLines = [
+        { label: '日期', value: ENROLL_DAYS[hoverIdx], color: '#1D2129' },
+        { label: '对照组累计', value: fmtNum(cumCtrl[hoverIdx]) + ' 人', color: '#86909C' },
+        { label: '实验组A累计', value: fmtNum(cumExpA[hoverIdx]) + ' 人', color: '#1677FF' },
+        { label: '实验组B累计', value: fmtNum(cumExpB[hoverIdx]) + ' 人', color: '#7B61FF' },
+      ];
+      const ttW = 178, ttLH = 18, ttPad = 10;
+      const ttH = ttLines.length * ttLH + ttPad * 2;
+      let ttX = hx + 12;
+      if (ttX + ttW > W - 4) ttX = hx - ttW - 12;
+      const ttY = PAD.top + 4;
+
+      ctx.fillStyle = 'rgba(30,33,40,0.88)';
+      ctx.beginPath();
+      ctx.roundRect(ttX, ttY, ttW, ttH, 6);
+      ctx.fill();
+
+      ttLines.forEach((line, i) => {
+        const ly = ttY + ttPad + i * ttLH + 12;
+        ctx.fillStyle = '#A0AAB8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText(line.label, ttX + ttPad, ly);
+        ctx.fillStyle = i === 0 ? '#FFFFFF' : line.color;
+        ctx.font = i === 0 ? 'bold 11px sans-serif' : '11px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(line.value, ttX + ttW - ttPad, ly);
+      });
+    }
+
+    // Y-axis label
+    ctx.save();
+    ctx.translate(11, PAD.top + cH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = '#C2C7CF'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('万人', 0, 0);
+    ctx.restore();
+  }
+
+  // Mouse hover handler for enroll chart
+  (function() {
+    function attachEnrollHover() {
+      const canvas = document.getElementById('enrollCanvas');
+      if (!canvas) return;
+      canvas.addEventListener('mousemove', function(e) {
+        if (!_enrollPAD) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const PAD = _enrollPAD, cW = _enrollCW, n = _enrollN;
+        if (mx < PAD.left || mx > PAD.left + cW) { drawEnrollChart(); return; }
+        const frac = (mx - PAD.left) / cW;
+        const idx = Math.round(frac * (n - 1));
+        drawEnrollChart(Math.max(0, Math.min(n-1, idx)));
+      });
+      canvas.addEventListener('mouseleave', function() { drawEnrollChart(); });
+    }
+    window.addEventListener('load', attachEnrollHover);
+  })();
+
+  // Mouse hover handler for trend chart
+  (function() {
+    function attachTrendHover() {
+      const canvas = document.getElementById('trendCanvas');
+      if (!canvas) return;
+      canvas.addEventListener('mousemove', function(e) {
+        if (!_trendPAD) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const PAD = _trendPAD, cW = _trendCW, n = _trendN;
+        if (mx < PAD.left || mx > PAD.left + cW) { drawTrendChart(); return; }
+        const frac = (mx - PAD.left) / cW;
+        const idx = Math.round(frac * (n - 1));
+        drawTrendChart(Math.max(0, Math.min(n - 1, idx)));
+      });
+      canvas.addEventListener('mouseleave', function() { drawTrendChart(); });
+    }
+    window.addEventListener('load', attachTrendHover);
+  })();
+
+  /* ══════════════════════
+     INIT
+  ══════════════════════ */
+  window.addEventListener('load', () => {
+    drawTrendChart();
+    drawEnrollChart();
+    renderAmdOptions('');
+  });
+  window.addEventListener('resize', () => {
+    drawTrendChart();
+    drawEnrollChart();
+  });
+
+  /* ══════════════════════════════════════════════
+     ADD-METRIC DROPDOWN
+  ══════════════════════════════════════════════ */
+  // Mock data: metrics available in this game product
+  var AMD_METRICS = [
+    { id: 'mtr000001', name: '人均使用时长',   type: 'core' },
+    { id: 'mtr000002', name: '人均播放视频数', type: 'sec'  },
+    { id: 'mtr000003', name: '次日留存率',     type: 'sec'  },
+    { id: 'mtr000004', name: '广告点击率',     type: 'sec'  },
+    { id: 'mtr000005', name: '7日留存率',      type: 'sec'  },
+    { id: 'mtr000006', name: '付费转化率',     type: 'core' },
+    { id: 'mtr000007', name: '关卡通过率',     type: 'sec'  },
+    { id: 'mtr000008', name: '人均付费金额',   type: 'core' },
+  ];
+  // IDs of metrics currently shown in the table
+  var selectedMetricIds = ['mtr000001','mtr000002','mtr000003','mtr000004'];
+
+  function renderAmdOptions(q) {
+    var list = document.getElementById('amdList');
+    if (!list) return;
+    var lq = (q || '').toLowerCase();
+    var filtered = AMD_METRICS.filter(function(m) {
+      return !q || m.name.indexOf(q) >= 0 || m.id.toLowerCase().indexOf(lq) >= 0;
+    });
+    if (filtered.length === 0) {
+      list.innerHTML = '<div style="padding:12px 10px;text-align:center;color:var(--sub);font-size:12px;">未找到匹配指标</div>';
+      return;
+    }
+    list.innerHTML = filtered.map(function(m) {
+      var isSel = selectedMetricIds.indexOf(m.id) >= 0;
+      return '<div class="amd-option' + (isSel ? ' selected' : '') + '" onclick="toggleMetricSelection(\'' + m.id + '\')">'
+        + '<svg class="amd-opt-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" style="visibility:' + (isSel ? 'visible' : 'hidden') + '"><polyline points="3 8 7 12 13 4"/></svg>'
+        + '<span class="amd-opt-name">' + m.name + '</span>'
+        + '</div>';
+    }).join('');
+  }
+
+  function filterAmdOptions(q) {
+    renderAmdOptions(q);
+  }
+
+  function toggleMetricSelection(id) {
+    var idx = selectedMetricIds.indexOf(id);
+    if (idx >= 0) {
+      selectedMetricIds.splice(idx, 1);
+    } else {
+      selectedMetricIds.push(id);
+    }
+    renderAmdOptions(document.getElementById('amdSearch').value);
+  }
+
+  function toggleAddMetricDropdown(e) {
+    e.stopPropagation();
+    var dd = document.getElementById('addMetricDropdown');
+    var isOpen = dd.classList.contains('open');
+    dd.classList.toggle('open');
+    if (!isOpen) {
+      document.getElementById('amdSearch').value = '';
+      renderAmdOptions('');
+      setTimeout(function(){ document.getElementById('amdSearch').focus(); }, 30);
+    }
+  }
+
+  document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('addMetricWrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('addMetricDropdown').classList.remove('open');
+    }
+  });
+
+  /* ══════════════════════════════════════════════
+     CREATE METRIC MODAL
+  ══════════════════════════════════════════════ */
+  var cmSqlFmt = '%';
+  var cmDecPlaces = 2;
+
+  function openCreateMetricModal() {
+    document.getElementById('addMetricDropdown').classList.remove('open');
+    document.getElementById('cmOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    cmResetForm();
+    cmOnDtypeChange();
+  }
+
+  function closeCreateMetricModal() {
+    document.getElementById('cmOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function cmOverlayClick(e) {
+    if (e.target === document.getElementById('cmOverlay')) closeCreateMetricModal();
+  }
+
+  function cmResetForm() {
+    document.getElementById('cm-f-name').value = '';
+    document.getElementById('cm-f-desc').value = '';
+    document.getElementById('cm-f-dtype').value = '';
+    document.getElementById('cm-f-domain').value = '';
+    document.querySelectorAll('[name=cm-f-status]')[0].checked = true;
+    document.querySelectorAll('.cm-form-field').forEach(function(f){ f.classList.remove('has-err'); });
+    document.querySelectorAll('.cm-form-control').forEach(function(f){ f.classList.remove('err'); });
+    document.querySelectorAll('.cm-fmt-tab').forEach(function(t){ t.classList.remove('active'); });
+    var firstTab = document.querySelector('.cm-fmt-tab');
+    if (firstTab) firstTab.classList.add('active');
+    cmSqlFmt = '%'; cmDecPlaces = 2;
+    document.getElementById('cmFmtPreview').textContent = '示例：12.34%';
+    document.getElementById('cmCalcBox').innerHTML = '<div style="color:var(--sub);font-size:12px;padding:6px 0;">请先选择配置类型</div>';
+    document.getElementById('cmSqlCode').innerHTML = '';
+  }
+
+  function cmSetFmt(el, val) {
+    document.querySelectorAll('.cm-fmt-tab').forEach(function(t){ t.classList.remove('active'); });
+    el.classList.add('active');
+    cmSqlFmt = val;
+    document.getElementById('cmFmtPreview').textContent = val === '%' ? '示例：12.34%' : '示例：' + (1234.5678).toFixed(cmDecPlaces);
+    cmRenderSQL();
+  }
+
+  function cmOnFieldChange() { cmRenderSQL(); }
+
+  function cmOnDtypeChange() {
+    var ctype = document.getElementById('cm-f-dtype').value;
+    var box = document.getElementById('cmCalcBox');
+    if (!ctype) {
+      box.innerHTML = '<div style="color:var(--sub);font-size:12px;padding:6px 0;">请先选择配置类型</div>';
+    } else if (ctype === 'event') {
+      box.innerHTML = '<div style="color:var(--sub);font-size:12px;padding:6px 0;">事件指标 · 比率指标（A/B）</div>';
+    } else {
+      box.innerHTML = '<div style="color:var(--sub);font-size:12px;padding:6px 0;">留存指标 · 次日留存（D1/D7）</div>';
+    }
+    cmRenderSQL();
+  }
+
+  function cmRenderSQL() {
+    var name = (document.getElementById('cm-f-name').value.trim()) || 'metric_name';
+    var ctype = document.getElementById('cm-f-dtype').value || 'event';
+    var fmtComment = cmSqlFmt === '%' ? '-- 结果 × 100 转为百分比' : '-- 保留' + cmDecPlaces + '位小数';
+    var HL = function(t, cls){ return '<span class="' + cls + '">' + t + '</span>'; };
+    var KW = function(t){ return HL(t,'kw'); };
+    var FN = function(t){ return HL(t,'fn'); };
+    var STR = function(t){ return HL(t,'str'); };
+    var CM = function(t){ return HL(t,'cm'); };
+    var NUM = function(t){ return HL(t,'num'); };
+    var sql = '';
+    if (ctype === 'event') {
+      sql = CM('-- ' + name + '  |  比率指标  ' + fmtComment) + '\n'
+          + KW('SELECT') + '\n  experiment_id,\n  variant_id,\n'
+          + '  ' + FN('COUNT') + '(' + KW('DISTINCT') + ' ' + KW('CASE') + ' ' + KW('WHEN') + ' event_name = ' + STR("'event_a'")
+          + ' ' + KW('THEN') + ' user_id ' + KW('END') + ') ' + KW('AS') + ' numerator,\n'
+          + '  ' + FN('COUNT') + '(' + KW('DISTINCT') + ' ' + KW('CASE') + ' ' + KW('WHEN') + ' event_name = ' + STR("'event_b'")
+          + ' ' + KW('THEN') + ' user_id ' + KW('END') + ') ' + KW('AS') + ' denominator,\n'
+          + '  ' + FN('ROUND') + '(numerator * ' + NUM('1.0') + ' / ' + FN('NULLIF') + '(denominator, ' + NUM('0') + '), ' + NUM('4') + ') ' + KW('AS') + ' ' + STR('"' + name + '"') + '\n'
+          + KW('FROM') + ' dws_experiment_events\n'
+          + KW('GROUP BY') + ' experiment_id, variant_id';
+    } else {
+      sql = CM('-- ' + name + '  |  留存指标（经典留存）D[1,7]  ' + fmtComment) + '\n'
+          + KW('SELECT') + '\n  experiment_id,\n  variant_id,\n  day_offset,\n'
+          + '  ' + FN('COUNT') + '(' + KW('DISTINCT') + ' r.user_id) * ' + NUM('1.0') + ' / ' + FN('NULLIF') + '(' + FN('COUNT') + '(' + KW('DISTINCT') + ' s.user_id), ' + NUM('0') + ') ' + KW('AS') + ' ' + STR('"' + name + '"') + '\n'
+          + KW('FROM') + ' s ' + KW('JOIN') + ' r ' + KW('ON') + ' s.user_id = r.user_id ' + KW('AND') + ' r.day_offset ' + KW('IN') + ' (' + NUM('1') + ', ' + NUM('7') + ')\n'
+          + KW('GROUP BY') + ' experiment_id, variant_id, day_offset';
+    }
+    document.getElementById('cmSqlCode').innerHTML = sql;
+  }
+
+  function cmValidate() {
+    var ok = true;
+    function chk(ffId, fieldId) {
+      var ff = document.getElementById(ffId), f = document.getElementById(fieldId);
+      if (!f || !f.value.trim()) { if(ff) ff.classList.add('has-err'); if(f) f.classList.add('err'); ok = false; }
+      else { if(ff) ff.classList.remove('has-err'); if(f) f.classList.remove('err'); }
+    }
+    chk('cm-ff-name', 'cm-f-name');
+    chk('cm-ff-dtype', 'cm-f-dtype');
+    return ok;
+  }
+
+  function cmSubmitForm() {
+    if (!cmValidate()) return;
+    var name = document.getElementById('cm-f-name').value.trim();
+    var newId = 'mtr' + String(AMD_METRICS.length + 1).padStart(6, '0');
+    var domain = document.getElementById('cm-f-domain').value;
+    var statusVal = document.querySelector('[name=cm-f-status]:checked').value;
+    if (statusVal === 'on') {
+      AMD_METRICS.push({ id: newId, name: name, type: 'sec' });
+      selectedMetricIds.push(newId);
+    }
+    closeCreateMetricModal();
+  }
+
+  function cmCopySql() {
+    var text = document.getElementById('cmSqlCode').innerText;
+    navigator.clipboard.writeText(text).then(function(){
+      var btn = document.querySelector('.cm-sql-copy');
+      btn.textContent = '已复制 ✓';
+      setTimeout(function(){ btn.textContent = '复制'; }, 1500);
+    });
+  }
+  /* ══════════════════════════════════════════════
+     END EXPERIMENT INTERACTIONS
+  ══════════════════════════════════════════════ */
+  var _toastTimer = null;
+
+  function showToast(msg, icon) {
+    var t = document.getElementById('globalToast');
+    document.getElementById('toastMsg').textContent = msg;
+    document.getElementById('toastIcon').textContent = icon || '✅';
+    t.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function() { t.classList.remove('show'); }, 3000);
+  }
+
+  function disableEndButtons() {
+    var b1 = document.getElementById('btnDirectEnd');
+    var b2 = document.getElementById('btnRollout');
+    if (b1) { b1.disabled = true; b1.style.opacity = '0.4'; b1.style.cursor = 'not-allowed'; b1.onclick = null; }
+    if (b2) { b2.disabled = true; b2.style.opacity = '0.4'; b2.style.cursor = 'not-allowed'; b2.onclick = null; }
+  }
+
+  function updateStatusBadge(text, stateClass) {
+    var badge = document.getElementById('expStatusBadge');
+    if (!badge) return;
+    badge.className = 'exp-status ' + stateClass;
+    badge.innerHTML = '<span class="dot"></span>' + text;
+  }
+
+  /* ── 直接结束 ── */
+  function openEndModal() {
+    document.getElementById('endConclusionText').value = '';
+    // 自动根据核心指标显著性设置默认结论方向
+    var dir = 'neutral';
+    var coreRow = document.querySelector('#metricsTable .metric-type-tag.core');
+    if (coreRow) {
+      var badge = coreRow.closest('tr').querySelector('.sig-badge');
+      if (badge) {
+        var txt = badge.textContent.trim();
+        if (txt.indexOf('提升') !== -1) dir = 'positive';
+        else if (txt.indexOf('下降') !== -1) dir = 'negative';
+        else dir = 'neutral';
+      }
+    }
+    document.getElementById('endConclusionDir').value = dir;
+    document.getElementById('endOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeEndModal() {
+    document.getElementById('endOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function confirmDirectEnd() {
+    closeEndModal();
+    updateStatusBadge('已结束', 'stopped');
+    showToast('实验已结束', '🔴');
+    disableEndButtons();
+  }
+
+  /* ── 结束并铺开 ── */
+  function openRolloutModal() {
+    document.getElementById('rolloutVersionSel').value = '';
+    document.getElementById('rolloutConclusionText').value = '';
+    document.getElementById('rolloutVersionErr').style.display = 'none';
+    document.getElementById('rolloutUGErr').style.display = 'none';
+    // 重置用户群多选
+    document.querySelectorAll('#rolloutUGDropdown input[type=checkbox]').forEach(function(cb){ cb.checked = false; });
+    updateRolloutUGLabel();
+    // 自动根据核心指标显著性设置默认结论方向
+    var dir = 'neutral';
+    var coreRow = document.querySelector('#metricsTable .metric-type-tag.core');
+    if (coreRow) {
+      var badge = coreRow.closest('tr').querySelector('.sig-badge');
+      if (badge) {
+        var txt = badge.textContent.trim();
+        if (txt.indexOf('提升') !== -1) dir = 'positive';
+        else if (txt.indexOf('下降') !== -1) dir = 'negative';
+        else dir = 'neutral';
+      }
+    }
+    document.getElementById('rolloutConclusionDir').value = dir;
+    document.getElementById('rolloutOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function toggleRolloutUG() {
+    var display = document.getElementById('rolloutUGDisplay');
+    var dropdown = document.getElementById('rolloutUGDropdown');
+    var isOpen = dropdown.classList.contains('open');
+    if (isOpen) {
+      dropdown.classList.remove('open');
+      display.classList.remove('open');
+    } else {
+      dropdown.classList.add('open');
+      display.classList.add('open');
+    }
+  }
+
+  function updateRolloutUGLabel() {
+    var checked = Array.from(document.querySelectorAll('#rolloutUGDropdown input[type=checkbox]:checked'))
+      .map(function(cb){ return cb.parentElement.textContent.trim(); });
+    var label = document.getElementById('rolloutUGLabel');
+    if (checked.length === 0) {
+      label.className = 'ms-placeholder';
+      label.textContent = '请选择铺开用户群';
+    } else {
+      label.className = 'ms-selected-text';
+      label.textContent = checked.join('、');
+    }
+  }
+
+  // 点击外部关闭用户群下拉
+  document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('rolloutUGWrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('rolloutUGDropdown').classList.remove('open');
+      document.getElementById('rolloutUGDisplay').classList.remove('open');
+    }
+  });
+
+  function closeRolloutModal() {
+    document.getElementById('rolloutOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function confirmRollout() {
+    var ver = document.getElementById('rolloutVersionSel').value;
+    if (!ver) {
+      document.getElementById('rolloutVersionErr').style.display = 'block';
+      return;
+    }
+    document.getElementById('rolloutVersionErr').style.display = 'none';
+    var ugChecked = document.querySelectorAll('#rolloutUGDropdown input[type=checkbox]:checked');
+    if (ugChecked.length === 0) {
+      document.getElementById('rolloutUGErr').style.display = 'block';
+      return;
+    }
+    document.getElementById('rolloutUGErr').style.display = 'none';
+    closeRolloutModal();
+    updateStatusBadge('已铺开', 'paused');
+    showToast('实验已结束并铺开', '🚀');
+    disableEndButtons();
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeEndModal();
+      closeRolloutModal();
+    }
+  });
+</script>
+
+<!-- ══ CREATE METRIC MODAL ══ -->
+<div class="cm-overlay" id="cmOverlay" onclick="cmOverlayClick(event)">
+  <div class="cm-modal">
+    <div class="cm-modal-header">
+      <span class="cm-modal-title">创建指标</span>
+      <button class="cm-modal-close" onclick="closeCreateMetricModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cm-modal-body">
+      <!-- 基本信息 -->
+      <div>
+        <div class="cm-form-section-title">基本信息</div>
+        <div class="cm-form-grid">
+          <div class="cm-form-field" id="cm-ff-name">
+            <label class="cm-form-label">指标名称<span class="req">*</span></label>
+            <input id="cm-f-name" class="cm-form-control" type="text" placeholder="请输入指标名称" oninput="cmOnFieldChange()" />
+            <span class="cm-err-msg">请输入指标名称</span>
+          </div>
+          <div class="cm-form-field full" id="cm-ff-desc">
+            <label class="cm-form-label">指标描述</label>
+            <textarea id="cm-f-desc" class="cm-form-control" placeholder="请输入指标描述，说明该指标的业务含义和使用场景" oninput="cmOnFieldChange()"></textarea>
+          </div>
+          <div class="cm-form-field" id="cm-ff-dtype">
+            <label class="cm-form-label">配置类型<span class="req">*</span></label>
+            <select id="cm-f-dtype" class="cm-form-control" onchange="cmOnDtypeChange()">
+              <option value="">请选择</option>
+              <option value="event">事件指标</option>
+              <option value="retain">留存指标</option>
+            </select>
+            <span class="cm-err-msg">请选择配置类型</span>
+          </div>
+          <div class="cm-form-field">
+            <label class="cm-form-label">业务域</label>
+            <select id="cm-f-domain" class="cm-form-control" onchange="cmOnFieldChange()">
+              <option value="">请选择</option>
+              <option>留存增长</option>
+              <option>货币化</option>
+              <option>玩法参与</option>
+              <option>广告变现</option>
+              <option>社交</option>
+              <option>性能体验</option>
+            </select>
+          </div>
+          <div class="cm-form-field">
+            <label class="cm-form-label">数字格式</label>
+            <div class="cm-fmt-row">
+              <div class="cm-fmt-tabs" id="cmFmtTabs">
+                <span class="cm-fmt-tab active" onclick="cmSetFmt(this,'%')">百分比 (%)</span>
+                <span class="cm-fmt-tab" onclick="cmSetFmt(this,'dec')">小数</span>
+              </div>
+              <span class="cm-fmt-preview" id="cmFmtPreview">示例：12.34%</span>
+            </div>
+          </div>
+          <div class="cm-form-field">
+            <label class="cm-form-label">状态</label>
+            <div class="cm-radio-group">
+              <label class="cm-radio-item"><input type="radio" name="cm-f-status" value="on" checked onchange="cmOnFieldChange()" /> 启用</label>
+              <label class="cm-radio-item"><input type="radio" name="cm-f-status" value="off" onchange="cmOnFieldChange()" /> 停用</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 计算口径 -->
+      <div>
+        <div class="cm-form-section-title">计算口径</div>
+        <div class="cm-calc-box" id="cmCalcBox"><div style="color:var(--sub);font-size:12px;padding:6px 0;">请先选择配置类型</div></div>
+      </div>
+      <!-- SQL 预览 -->
+      <div>
+        <div class="cm-form-section-title">SQL 预览</div>
+        <div class="cm-sql-wrap">
+          <div class="cm-sql-bar">
+            <span class="cm-sql-bar-label">🔍 实时预览 · 根据当前配置自动生成</span>
+            <button class="cm-sql-copy" onclick="cmCopySql()">复制</button>
+          </div>
+          <div class="cm-sql-code" id="cmSqlCode"></div>
+        </div>
+      </div>
+    </div>
+    <div class="cm-modal-footer">
+      <button class="btn btn-default" onclick="closeCreateMetricModal()">取消</button>
+      <button class="btn btn-primary" onclick="cmSubmitForm()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><polyline points="20 6 9 17 4 12"/></svg>
+        确认创建
+      </button>
+    </div>
+  </div>
+</div>
+<!-- ══ DIRECT END MODAL ══ -->
+<div class="end-overlay" id="endOverlay" onclick="if(event.target===this)closeEndModal()">
+  <div class="end-modal">
+    <div class="end-modal-header">
+      <span class="end-modal-title">直接结束实验</span>
+      <button class="end-modal-close" onclick="closeEndModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="end-modal-body">
+      <div class="end-modal-desc">确认后实验将立即停止，流量恢复对照组，操作不可撤销。</div>
+      <div>
+        <div class="end-form-label">实验结论方向<span style="color:#FF4D4F;margin-left:2px;">*</span></div>
+        <select id="endConclusionDir" class="end-form-select">
+          <option value="positive">正向</option>
+          <option value="negative">负向</option>
+          <option value="neutral">波动</option>
+        </select>
+      </div>
+      <div>
+        <div class="end-form-label">实验结论（选填）</div>
+        <textarea id="endConclusionText" class="end-form-textarea" placeholder="请输入本次实验的结论与后续建议…"></textarea>
+      </div>
+    </div>
+    <div class="end-modal-footer">
+      <button class="btn btn-default" onclick="closeEndModal()">取消</button>
+      <button class="btn btn-sm btn-danger" style="height:32px;padding:0 16px;" onclick="confirmDirectEnd()">确认结束</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ROLLOUT MODAL ══ -->
+<div class="end-overlay" id="rolloutOverlay" onclick="if(event.target===this)closeRolloutModal()">
+  <div class="end-modal">
+    <div class="end-modal-header">
+      <span class="end-modal-title">结束并铺开</span>
+      <button class="end-modal-close" onclick="closeRolloutModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="end-modal-body">
+      <div class="end-modal-desc">将选定实验组的方案铺开至全量用户，实验同步结束。</div>
+      <div>
+        <div class="end-form-label">铺开版本<span style="color:#FF4D4F;margin-left:2px;">*</span></div>
+        <select id="rolloutVersionSel" class="end-form-select">
+          <option value="">请选择铺开版本</option>
+          <option value="expA">实验组A</option>
+          <option value="expB">实验组B</option>
+        </select>
+        <div id="rolloutVersionErr" style="font-size:11px;color:#FF4D4F;margin-top:4px;display:none;">请选择铺开版本</div>
+      </div>
+      <div>
+        <div class="end-form-label">铺开至用户群<span style="color:#FF4D4F;margin-left:2px;">*</span></div>
+        <div class="ms-wrap" id="rolloutUGWrap">
+          <div class="ms-display" id="rolloutUGDisplay" onclick="toggleRolloutUG()">
+            <span id="rolloutUGLabel" class="ms-placeholder">请选择铺开用户群</span>
+            <svg class="ms-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="ms-dropdown" id="rolloutUGDropdown">
+            <label class="ms-option"><input type="checkbox" value="all" onchange="updateRolloutUGLabel()">全量用户</label>
+            <label class="ms-option"><input type="checkbox" value="new" onchange="updateRolloutUGLabel()">新用户</label>
+            <label class="ms-option"><input type="checkbox" value="old" onchange="updateRolloutUGLabel()">老用户</label>
+            <label class="ms-option"><input type="checkbox" value="paid" onchange="updateRolloutUGLabel()">付费用户</label>
+            <label class="ms-option"><input type="checkbox" value="ios" onchange="updateRolloutUGLabel()">iOS 用户</label>
+            <label class="ms-option"><input type="checkbox" value="android" onchange="updateRolloutUGLabel()">Android 用户</label>
+          </div>
+        </div>
+        <div id="rolloutUGErr" style="font-size:11px;color:#FF4D4F;margin-top:4px;display:none;">请选择铺开用户群</div>
+      </div>
+      <div>
+        <div class="end-form-label">实验结论方向<span style="color:#FF4D4F;margin-left:2px;">*</span></div>
+        <select id="rolloutConclusionDir" class="end-form-select">
+          <option value="positive">正向</option>
+          <option value="negative">负向</option>
+          <option value="neutral">波动</option>
+        </select>
+      </div>
+      <div>
+        <div class="end-form-label">实验结论（选填）</div>
+        <textarea id="rolloutConclusionText" class="end-form-textarea" placeholder="请输入本次实验的结论与铺开理由…"></textarea>
+      </div>
+    </div>
+    <div class="end-modal-footer">
+      <button class="btn btn-default" onclick="closeRolloutModal()">取消</button>
+      <button class="btn btn-sm btn-primary" style="height:32px;padding:0 16px;" onclick="confirmRollout()">确认铺开</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="globalToast">
+  <span class="toast-icon" id="toastIcon"></span>
+  <span id="toastMsg"></span>
+</div>
+
+<!-- Global tooltip -->
+<div id="g-tooltip"></div>
+<script>
+(function() {
+  var tip = document.getElementById('g-tooltip');
+  document.addEventListener('mouseover', function(e) {
+    var el = e.target.closest('[data-gtip]');
+    if (!el) return;
+    tip.textContent = el.getAttribute('data-gtip');
+    tip.style.display = 'block';
+    position(e, el);
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (tip.style.display !== 'block') return;
+    var el = e.target.closest('[data-gtip]');
+    if (el) position(e, el);
+  });
+  document.addEventListener('mouseout', function(e) {
+    var el = e.target.closest('[data-gtip]');
+    if (el) tip.style.display = 'none';
+  });
+  function position(e, el) {
+    var rect = el.getBoundingClientRect();
+    var tipW = 420, tipH = tip.offsetHeight || 200;
+    // prefer above the icon; fall back to below if not enough space
+    var spaceAbove = rect.top;
+    var top, left;
+    if (spaceAbove >= tipH + 16) {
+      top = rect.top - tipH - 10;
+    } else {
+      top = rect.bottom + 10;
+    }
+    // center horizontally on icon, clamp to viewport
+    left = rect.left + rect.width / 2 - tipW / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
+    tip.style.top  = top + 'px';
+    tip.style.left = left + 'px';
+    // flip arrow if showing below
+    tip.style.setProperty('--arrow-dir', spaceAbove >= tipH + 16 ? 'bottom' : 'top');
+  }
+})();
+
+  /* ── Add Note Modal ── */
+  function openNoteModal() {
+    document.getElementById('noteAuthorName').value = '';
+    document.getElementById('noteAuthorRole').value = '';
+    document.getElementById('noteContent').value = '';
+    document.getElementById('noteModalOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function(){ document.getElementById('noteAuthorName').focus(); }, 220);
+  }
+
+  function closeNoteModal() {
+    document.getElementById('noteModalOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function noteOverlayClick(e) {
+    if (e.target === document.getElementById('noteModalOverlay')) closeNoteModal();
+  }
+
+  function submitNote() {
+    var name    = document.getElementById('noteAuthorName').value.trim();
+    var role    = document.getElementById('noteAuthorRole').value.trim();
+    var content = document.getElementById('noteContent').value.trim();
+    if (!content) {
+      document.getElementById('noteContent').focus();
+      document.getElementById('noteContent').style.borderColor = '#e53e3e';
+      return;
+    }
+    document.getElementById('noteContent').style.borderColor = '';
+
+    var now = new Date();
+    var ts  = now.getFullYear() + '-'
+            + String(now.getMonth()+1).padStart(2,'0') + '-'
+            + String(now.getDate()).padStart(2,'0') + ' '
+            + String(now.getHours()).padStart(2,'0') + ':'
+            + String(now.getMinutes()).padStart(2,'0');
+
+    var authorLabel = name || '匿名';
+    if (role) authorLabel += '（' + role + '）';
+    var initial = (name || '匿名').charAt(0);
+
+    var section = document.querySelector('.analyst-note-section');
+    var addBtn  = section.querySelector('.note-add-btn');
+
+    var block = document.createElement('div');
+    block.style.cssText = 'margin-top:14px;padding-top:14px;border-top:1px dashed var(--border)';
+    block.innerHTML =
+      '<div class="note-author">'
+      + '<div class="note-avatar">' + initial + '</div>'
+      + '<span class="note-name">' + authorLabel + '</span>'
+      + '<span class="note-time">' + ts + '</span>'
+      + '</div>'
+      + '<div class="note-content" style="margin-top:8px">' + content.replace(/\n/g,'<br>') + '</div>';
+
+    section.insertBefore(block, addBtn);
+    closeNoteModal();
+  }
+</script>
+<!-- ══ ADD NOTE MODAL ══ -->
+<div class="note-modal-overlay" id="noteModalOverlay" onclick="noteOverlayClick(event)">
+  <div class="note-modal">
+    <div class="note-modal-header">
+      <div class="note-modal-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        添加备注
+      </div>
+      <button class="note-modal-close" onclick="closeNoteModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="note-modal-body">
+      <div class="note-modal-row">
+        <label>作者信息</label>
+        <div class="note-modal-author-row">
+          <input type="text" id="noteAuthorName" placeholder="姓名（如：李华）" />
+          <input type="text" id="noteAuthorRole" placeholder="角色（如：数据分析师）" />
+        </div>
+      </div>
+      <div class="note-modal-row">
+        <label>备注内容</label>
+        <textarea class="note-modal-textarea" id="noteContent" placeholder="请输入备注内容…"></textarea>
+      </div>
+    </div>
+    <div class="note-modal-footer">
+      <button class="btn-secondary" onclick="closeNoteModal()">取消</button>
+      <button class="btn-primary" onclick="submitNote()">确认添加</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
