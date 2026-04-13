@@ -1,4 +1,3 @@
-      
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -376,6 +375,150 @@
     }
     .export-item:hover { background: var(--primary-light); color: var(--primary); }
     .export-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+    /* ══════════════════════════════════════════════
+       FEEDBACK PANEL
+    ══════════════════════════════════════════════ */
+    .feedback-wrap { position: relative; }
+    .feedback-panel {
+      display: none; position: absolute; top: calc(100% + 6px); right: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.14); z-index: 600;
+      width: 292px; overflow: hidden;
+    }
+    .feedback-panel.open { display: block; animation: fpIn .15s ease; }
+    @keyframes fpIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }
+    .fp-hd { padding: 12px 16px 10px; border-bottom: 1px solid var(--border); background: #FAFBFC; }
+    .fp-hd-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .fp-hd-sub { font-size: 11px; color: var(--sub); margin-top: 2px; display: block; line-height: 1.4; }
+    .fp-row { padding: 11px 16px; border-bottom: 1px solid var(--border); }
+    .fp-row:last-child { border-bottom: none; }
+    .fp-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .fp-icon {
+      width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fp-icon.bi  { background: #E6F0FF; color: #1677FF; }
+    .fp-icon.ds  { background: #F0F9EB; color: #52C41A; }
+    .fp-icon.bug { background: #FFF1F0; color: #FF4D4F; }
+    .fp-icon svg { width: 14px; height: 14px; }
+    .fp-row-info { flex: 1; }
+    .fp-row-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .fp-row-desc { font-size: 11px; color: var(--sub); margin-top: 1px; }
+    .fp-row-btns { display: flex; gap: 8px; }
+    .fp-btn {
+      flex: 1; height: 27px; border-radius: 5px; font-size: 12px; font-weight: 500;
+      cursor: pointer; border: 1px solid transparent; transition: all .13s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .fp-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .fp-btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .fp-btn.ghost { background: #fff; color: var(--text); border-color: var(--border); }
+    .fp-btn.ghost:hover { border-color: var(--primary); color: var(--primary); }
+    .fp-btn svg { width: 11px; height: 11px; }
+    .hdr-action.fb-active { color: var(--primary); background: var(--primary-light); border-radius: 4px; }
+
+    /* ══════════════════════════════════════════════
+       MODAL
+    ══════════════════════════════════════════════ */
+    .modal-mask {
+      display: none; position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,.38); align-items: center; justify-content: center;
+    }
+    .modal-mask.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.18);
+      width: 520px; max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 60px); display: flex; flex-direction: column;
+      animation: modalIn .2s cubic-bezier(.34,1.56,.64,1);
+    }
+    .modal-box.wide { width: 700px; }
+    @keyframes modalIn { from { opacity:0; transform:scale(.93); } to { opacity:1; transform:scale(1); } }
+    .modal-hd {
+      padding: 16px 20px 13px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    }
+    .modal-hd-icon {
+      width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-hd-icon.bi  { background: #E6F0FF; color: #1677FF; }
+    .modal-hd-icon.ds  { background: #F0F9EB; color: #52C41A; }
+    .modal-hd-icon.bug { background: #FFF1F0; color: #FF4D4F; }
+    .modal-hd-icon svg { width: 17px; height: 17px; }
+    .modal-hd-text { flex: 1; }
+    .modal-hd-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .modal-hd-sub { font-size: 12px; color: var(--sub); margin-top: 1px; }
+    .modal-x {
+      width: 28px; height: 28px; border-radius: 6px; border: none; background: none;
+      cursor: pointer; color: var(--sub);
+      display: flex; align-items: center; justify-content: center; transition: background .12s;
+    }
+    .modal-x:hover { background: var(--bg); color: var(--text); }
+    .modal-x svg { width: 16px; height: 16px; }
+    .modal-body { flex: 1; overflow-y: auto; padding: 18px 20px; }
+    .modal-ft {
+      padding: 12px 20px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-shrink: 0;
+    }
+    /* Form fields */
+    .f-field { margin-bottom: 14px; }
+    .f-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+    .f-label .req { color: #FF4D4F; margin-left: 1px; }
+    .f-ctrl {
+      width: 100%; height: 34px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 10px; outline: none; font-family: inherit; transition: border-color .15s;
+      appearance: none;
+      background-image: none;
+    }
+    select.f-ctrl {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center; padding-right: 28px;
+    }
+    .f-ctrl::placeholder { color: #C2C7CF; }
+    .f-ctrl:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.08); }
+    .f-ctrl.ta { height: auto; padding: 8px 10px; resize: vertical; min-height: 68px; }
+    .f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    /* Status query */
+    .st-filter { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .st-filter-btn {
+      height: 26px; padding: 0 12px; border-radius: 13px; border: 1px solid var(--border);
+      background: #fff; font-size: 12px; color: var(--sub); cursor: pointer; transition: all .12s;
+    }
+    .st-filter-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .st-filter-btn:not(.active):hover { border-color: var(--primary); color: var(--primary); }
+    .sbadge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 11px; font-weight: 500; }
+    .sbadge-pending  { background: #FFFBE6; color: #D48806; }
+    .sbadge-progress { background: #E6F0FF; color: #1677FF; }
+    .sbadge-done     { background: #F0F9EB; color: #389E0D; }
+    .sbadge-rejected { background: #F5F7FA; color: #4E5969; }
+
+    /* ══════════════════════════════════════════════
+       SORTABLE COLUMNS
+    ══════════════════════════════════════════════ */
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+    th.sortable:hover { background: #F0F5FF; }
+    th.sortable::after {
+      content: ' ↕';
+      font-size: 10px;
+      color: var(--sub);
+      opacity: 0.4;
+      font-weight: 400;
+    }
+    th.sort-asc::after {
+      content: ' ↑';
+      color: var(--primary);
+      opacity: 1;
+    }
+    th.sort-desc::after {
+      content: ' ↓';
+      color: var(--primary);
+      opacity: 1;
+    }
+
   </style>
 </head>
 <body>
@@ -392,12 +535,91 @@
   </nav>
 
   <div class="header-right">
-    <button class="hdr-action" title="反馈">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-      </svg>
-      <span>反馈</span>
-    </button>
+    <!-- ══ 反馈入口 ══ -->
+    <div class="feedback-wrap" id="feedbackWrap">
+      <button class="hdr-action" id="feedbackBtn" onclick="toggleFeedbackPanel(event)" title="需求与反馈">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+        <span>反馈</span>
+      </button>
+
+      <div class="feedback-panel" id="feedbackPanel">
+        <div class="fp-hd">
+          <div class="fp-hd-title">需求与反馈</div>
+          <span class="fp-hd-sub">提交新需求 / 缺陷，或查询已有进度</span>
+        </div>
+
+        <!-- BI 需求 -->
+        <div class="fp-row">
+          <div class="fp-row-top">
+            <div class="fp-icon bi">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>
+            </div>
+            <div class="fp-row-info">
+              <div class="fp-row-name">BI 需求</div>
+              <div class="fp-row-desc">报表 · 看板 · 指标分析</div>
+            </div>
+          </div>
+          <div class="fp-row-btns">
+            <button class="fp-btn primary" onclick="openFbForm('bi')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              填写表单
+            </button>
+            <button class="fp-btn ghost" onclick="openFbStatus('bi')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              查询进度
+            </button>
+          </div>
+        </div>
+
+        <!-- 数分需求 -->
+        <div class="fp-row">
+          <div class="fp-row-top">
+            <div class="fp-icon ds">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="fp-row-info">
+              <div class="fp-row-name">数分需求</div>
+              <div class="fp-row-desc">数据分析 · 取数 · 专项研究</div>
+            </div>
+          </div>
+          <div class="fp-row-btns">
+            <button class="fp-btn primary" onclick="openFbForm('ds')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              填写表单
+            </button>
+            <button class="fp-btn ghost" onclick="openFbStatus('ds')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              查询进度
+            </button>
+          </div>
+        </div>
+
+        <!-- 缺陷 -->
+        <div class="fp-row">
+          <div class="fp-row-top">
+            <div class="fp-icon bug">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="fp-row-info">
+              <div class="fp-row-name">缺陷反馈</div>
+              <div class="fp-row-desc">功能异常 · 数据错误 · 体验问题</div>
+            </div>
+          </div>
+          <div class="fp-row-btns">
+            <button class="fp-btn primary" onclick="openFbForm('bug')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              填写表单
+            </button>
+            <button class="fp-btn ghost" onclick="openFbStatus('bug')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              查询进度
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     <button class="hdr-action" title="消息" style="position:relative;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -555,6 +777,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="col-picker-dropdown" id="expColPicker">
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol('date',this)"> 数据日期</label>
               <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(0,this)"> 实验名称</label>
               <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(1,this)"> 实验ID</label>
               <label class="col-picker-item"><input type="checkbox" checked onchange="toggleExpCol(2,this)"> 实验状态</label>
@@ -595,6 +818,7 @@
         <table id="expTable">
           <thead>
             <tr>
+              <th data-col="date">数据日期</th>
               <th data-col="0">实验名称</th>
               <th data-col="1">实验ID</th>
               <th data-col="2">实验状态</th>
@@ -612,6 +836,7 @@
           </thead>
           <tbody id="expTableBody">
             <tr>
+              <td data-col="date">2025-12-15</td>
               <td data-col="0">激励视频完播率优化实验</td>
               <td data-col="1"><span class="mono">exp20251210001</span></td>
               <td data-col="2"><span class="tag tag-running">进行中</span></td>
@@ -627,6 +852,7 @@
               <td data-col="12"><span class="mono">style_a</span></td>
             </tr>
             <tr>
+              <td data-col="date">2025-11-16</td>
               <td data-col="0">新手引导流程优化</td>
               <td data-col="1"><span class="mono">exp20251115002</span></td>
               <td data-col="2"><span class="tag tag-ended">已结束</span></td>
@@ -642,6 +868,7 @@
               <td data-col="12"><span class="mono">default</span></td>
             </tr>
             <tr>
+              <td data-col="date">2025-10-21</td>
               <td data-col="0">关卡难度自适应算法</td>
               <td data-col="1"><span class="mono">exp20251020003</span></td>
               <td data-col="2"><span class="tag tag-ended">已结束</span></td>
@@ -657,6 +884,7 @@
               <td data-col="12"><span class="mono">adaptive_b</span></td>
             </tr>
             <tr>
+              <td data-col="date">2025-10-06</td>
               <td data-col="0">商城首页改版测试</td>
               <td data-col="1"><span class="mono">exp20251005004</span></td>
               <td data-col="2"><span class="tag tag-ended">已结束</span></td>
@@ -672,6 +900,7 @@
               <td data-col="12"><span class="mono">layout_c</span></td>
             </tr>
             <tr>
+              <td data-col="date">2025-09-02</td>
               <td data-col="0">每日签到奖励机制优化</td>
               <td data-col="1"><span class="mono">exp20250901005</span></td>
               <td data-col="2"><span class="tag tag-ended">已结束</span></td>
@@ -687,6 +916,7 @@
               <td data-col="12"><span class="mono">original</span></td>
             </tr>
             <tr>
+              <td data-col="date">2025-08-11</td>
               <td data-col="0">好友邀请裂变流程</td>
               <td data-col="1"><span class="mono">exp20250810006</span></td>
               <td data-col="2"><span class="tag tag-ended">已结束</span></td>
@@ -702,6 +932,7 @@
               <td data-col="12"><span class="mono">500</span></td>
             </tr>
             <tr>
+              <td data-col="date">2025-07-21</td>
               <td data-col="0">付费弹窗触发策略</td>
               <td data-col="1"><span class="mono">exp20250720007</span></td>
               <td data-col="2"><span class="tag tag-ended">已结束</span></td>
@@ -774,22 +1005,6 @@
             <input class="filter-input" type="date" />
           </div>
         </div>
-        <div class="filter-item">
-          <span class="filter-lbl">用户群创建时间</span>
-          <div class="date-range">
-            <input class="filter-input" type="date" />
-            <span class="date-range-sep">~</span>
-            <input class="filter-input" type="date" />
-          </div>
-        </div>
-        <div class="filter-item">
-          <span class="filter-lbl">用户群删除时间</span>
-          <div class="date-range">
-            <input class="filter-input" type="date" />
-            <span class="date-range-sep">~</span>
-            <input class="filter-input" type="date" />
-          </div>
-        </div>
       </div>
       <!-- 第三行：参数筛选 -->
       <div class="filter-row">
@@ -821,10 +1036,9 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="col-picker-dropdown" id="tagColPicker">
+              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol('date',this)"> 数据日期</label>
               <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(0,this)"> 用户群名称</label>
               <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(1,this)"> 用户群ID</label>
-              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(2,this)"> 用户群创建时间</label>
-              <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(3,this)"> 用户群删除时间</label>
               <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(4,this)"> 用户ID</label>
               <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(5,this)"> 命中时间</label>
               <label class="col-picker-item"><input type="checkbox" checked onchange="toggleTagCol(6,this)"> 参数名称</label>
@@ -858,10 +1072,9 @@
         <table id="tagTable">
           <thead>
             <tr>
+              <th data-col="date">数据日期</th>
               <th data-col="0">用户群名称</th>
               <th data-col="1">用户群ID</th>
-              <th data-col="2">用户群创建时间</th>
-              <th data-col="3">用户群删除时间</th>
               <th data-col="4">用户ID</th>
               <th data-col="5">命中时间</th>
               <th data-col="6">参数名称</th>
@@ -872,10 +1085,9 @@
           </thead>
           <tbody id="tagTableBody">
             <tr>
+              <td data-col="date">2025-03-05</td>
               <td data-col="0">7日内活跃用户</td>
               <td data-col="1"><span class="mono">seg_20250301_001</span></td>
-              <td data-col="2">2025-03-01 10:00:00</td>
-              <td data-col="3">—</td>
               <td data-col="4"><span class="mono">u_10086001</span></td>
               <td data-col="5">2025-03-05 10:30:44</td>
               <td data-col="6">激励横幅配置</td>
@@ -884,10 +1096,9 @@
               <td data-col="9"><span class="mono">true</span></td>
             </tr>
             <tr>
+              <td data-col="date">2025-02-20</td>
               <td data-col="0">高付费意愿用户</td>
               <td data-col="1"><span class="mono">seg_20250215_002</span></td>
-              <td data-col="2">2025-02-15 09:30:00</td>
-              <td data-col="3">—</td>
               <td data-col="4"><span class="mono">u_10086001</span></td>
               <td data-col="5">2025-02-20 14:18:22</td>
               <td data-col="6">折扣率配置</td>
@@ -896,10 +1107,9 @@
               <td data-col="9"><span class="mono">0.85</span></td>
             </tr>
             <tr>
+              <td data-col="date">2025-01-22</td>
               <td data-col="0">流失预警用户群</td>
               <td data-col="1"><span class="mono">seg_20250120_003</span></td>
-              <td data-col="2">2025-01-20 14:00:00</td>
-              <td data-col="3">2025-03-20 14:00:00</td>
               <td data-col="4"><span class="mono">u_10086001</span></td>
               <td data-col="5">2025-01-22 09:05:17</td>
               <td data-col="6">召回推送频率</td>
@@ -908,10 +1118,9 @@
               <td data-col="9"><span class="mono">3</span></td>
             </tr>
             <tr>
+              <td data-col="date">2024-12-03</td>
               <td data-col="0">首充引导目标群</td>
               <td data-col="1"><span class="mono">seg_20241201_004</span></td>
-              <td data-col="2">2024-12-01 09:00:00</td>
-              <td data-col="3">2025-01-01 09:00:00</td>
               <td data-col="4"><span class="mono">u_10086001</span></td>
               <td data-col="5">2024-12-03 11:40:09</td>
               <td data-col="6">首充礼包配置</td>
@@ -920,10 +1129,9 @@
               <td data-col="9"><span class="mono">gift_pack_001</span></td>
             </tr>
             <tr>
+              <td data-col="date">2024-11-11</td>
               <td data-col="0">关卡卡顿用户</td>
               <td data-col="1"><span class="mono">seg_20241110_005</span></td>
-              <td data-col="2">2024-11-10 11:00:00</td>
-              <td data-col="3">2024-12-10 11:00:00</td>
               <td data-col="4"><span class="mono">u_10086001</span></td>
               <td data-col="5">2024-11-11 15:22:31</td>
               <td data-col="6">渲染质量配置</td>
@@ -932,10 +1140,9 @@
               <td data-col="9"><span class="mono">low</span></td>
             </tr>
             <tr>
+              <td data-col="date">2024-10-26</td>
               <td data-col="0">新手期未付费用户</td>
               <td data-col="1"><span class="mono">seg_20241025_006</span></td>
-              <td data-col="2">2024-10-25 08:00:00</td>
-              <td data-col="3">2024-11-25 08:00:00</td>
               <td data-col="4"><span class="mono">u_10086001</span></td>
               <td data-col="5">2024-10-26 10:03:55</td>
               <td data-col="6">引导弹窗配置</td>
@@ -944,10 +1151,9 @@
               <td data-col="9"><span class="mono">style_b</span></td>
             </tr>
             <tr>
+              <td data-col="date">2024-09-02</td>
               <td data-col="0">社交高活跃用户</td>
               <td data-col="1"><span class="mono">seg_20240901_007</span></td>
-              <td data-col="2">2024-09-01 00:00:00</td>
-              <td data-col="3">2024-10-01 00:00:00</td>
               <td data-col="4"><span class="mono">u_10086001</span></td>
               <td data-col="5">2024-09-02 08:17:44</td>
               <td data-col="6">好友邀请奖励</td>
@@ -956,10 +1162,9 @@
               <td data-col="9"><span class="mono">200</span></td>
             </tr>
             <tr>
+              <td data-col="date">2024-08-03</td>
               <td data-col="0">广告敏感用户</td>
               <td data-col="1"><span class="mono">seg_20240801_008</span></td>
-              <td data-col="2">2024-08-01 00:00:00</td>
-              <td data-col="3">2024-09-01 00:00:00</td>
               <td data-col="4"><span class="mono">u_10086001</span></td>
               <td data-col="5">2024-08-03 19:55:02</td>
               <td data-col="6">广告频率上限</td>
@@ -995,6 +1200,284 @@
   </main>
 
 </div><!-- /body-wrap -->
+
+<!-- ══════════════ 反馈表单弹窗 ══════════════ -->
+<div class="modal-mask" id="fbFormModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <div class="modal-hd-icon" id="fbFormIcon"></div>
+      <div class="modal-hd-text">
+        <div class="modal-hd-title" id="fbFormTitle">提交需求</div>
+        <div class="modal-hd-sub" id="fbFormSub">请填写需求详情</div>
+      </div>
+      <button class="modal-x" onclick="closeFbModal('fbFormModal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+
+      <!-- BI 需求表单 -->
+      <div id="fbFormBi">
+        <div class="f-field">
+          <label class="f-label">需求标题 <span class="req">*</span></label>
+          <input class="f-ctrl" type="text" placeholder="请简明描述您的需求（30字以内）" maxlength="60" />
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">所属产品 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>9007-Polaris Game</option>
+              <option>9008-StarRacer</option>
+              <option>9009-MythicWorld</option>
+              <option>9010-ZenRun</option>
+            </select>
+          </div>
+          <div class="f-field">
+            <label class="f-label">优先级 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>低</option><option>中</option><option>高</option><option>紧急</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-field">
+          <label class="f-label">需求描述 <span class="req">*</span></label>
+          <textarea class="f-ctrl ta" placeholder="请描述希望实现的分析内容、看板指标或数据报表，尽量包含业务背景和使用场景"></textarea>
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">期望交付日期</label>
+            <input class="f-ctrl" type="date" />
+          </div>
+          <div class="f-field">
+            <label class="f-label">联系人</label>
+            <input class="f-ctrl" type="text" value="张三" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 数分需求表单 -->
+      <div id="fbFormDs" style="display:none;">
+        <div class="f-field">
+          <label class="f-label">需求标题 <span class="req">*</span></label>
+          <input class="f-ctrl" type="text" placeholder="请简明描述您的需求（30字以内）" maxlength="60" />
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">所属产品 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>9007-Polaris Game</option>
+              <option>9008-StarRacer</option>
+              <option>9009-MythicWorld</option>
+              <option>9010-ZenRun</option>
+            </select>
+          </div>
+          <div class="f-field">
+            <label class="f-label">优先级 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>低</option><option>中</option><option>高</option><option>紧急</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-field">
+          <label class="f-label">分析目标 <span class="req">*</span></label>
+          <textarea class="f-ctrl ta" placeholder="请描述希望回答的业务问题，例如：分析Q4付费用户的留存情况，找出流失原因"></textarea>
+        </div>
+        <div class="f-field">
+          <label class="f-label">数据范围 / 维度说明</label>
+          <textarea class="f-ctrl ta" style="min-height:54px;" placeholder="时间范围、用户群体、分析粒度等，例如：近3个月、付费用户、按关卡维度拆分"></textarea>
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">期望交付日期</label>
+            <input class="f-ctrl" type="date" />
+          </div>
+          <div class="f-field">
+            <label class="f-label">联系人</label>
+            <input class="f-ctrl" type="text" value="张三" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 缺陷表单 -->
+      <div id="fbFormBug" style="display:none;">
+        <div class="f-field">
+          <label class="f-label">缺陷标题 <span class="req">*</span></label>
+          <input class="f-ctrl" type="text" placeholder="请简明描述缺陷现象（30字以内）" maxlength="60" />
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">所属模块 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>实验管理</option>
+              <option>用户群配置</option>
+              <option>远程配置</option>
+              <option>实验用户查询</option>
+              <option>用户群/参数下发查询</option>
+              <option>指标管理</option>
+              <option>其他</option>
+            </select>
+          </div>
+          <div class="f-field">
+            <label class="f-label">严重程度 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>轻微</option><option>一般</option><option>严重</option><option>致命</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-field">
+          <label class="f-label">缺陷描述 <span class="req">*</span></label>
+          <textarea class="f-ctrl ta" placeholder="请描述缺陷的具体表现：期望结果是什么，实际结果是什么"></textarea>
+        </div>
+        <div class="f-field">
+          <label class="f-label">复现步骤</label>
+          <textarea class="f-ctrl ta" style="min-height:54px;" placeholder="1. 进入页面 xxx&#10;2. 执行操作 xxx&#10;3. 观察到异常现象"></textarea>
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">期望修复日期</label>
+            <input class="f-ctrl" type="date" />
+          </div>
+          <div class="f-field">
+            <label class="f-label">联系人</label>
+            <input class="f-ctrl" type="text" value="张三" />
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-default" onclick="closeFbModal('fbFormModal')">取 消</button>
+      <button class="btn btn-primary" onclick="submitFbForm()">提 交</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ 反馈进度查询弹窗 ══════════════ -->
+<div class="modal-mask" id="fbStatusModal">
+  <div class="modal-box wide">
+    <div class="modal-hd">
+      <div class="modal-hd-icon" id="fbStatusIcon"></div>
+      <div class="modal-hd-text">
+        <div class="modal-hd-title" id="fbStatusTitle">需求进度查询</div>
+        <div class="modal-hd-sub" id="fbStatusSub">查看已提交的需求及处理进度</div>
+      </div>
+      <button class="modal-x" onclick="closeFbModal('fbStatusModal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="st-filter" id="stFilterBar">
+        <button class="st-filter-btn active" onclick="filterStatus(this,'all')">全部</button>
+        <button class="st-filter-btn" onclick="filterStatus(this,'pending')">待评估</button>
+        <button class="st-filter-btn" onclick="filterStatus(this,'progress')">进行中</button>
+        <button class="st-filter-btn" onclick="filterStatus(this,'done')">已完成</button>
+        <button class="st-filter-btn" onclick="filterStatus(this,'rejected')">已关闭</button>
+      </div>
+
+      <!-- BI 进度列表 -->
+      <div id="stBi">
+        <div class="table-card">
+          <table>
+            <thead><tr><th>编号</th><th>需求标题</th><th>优先级</th><th>状态</th><th>提交时间</th><th>负责人</th><th>备注</th></tr></thead>
+            <tbody>
+              <tr data-status="progress">
+                <td><span class="mono">BR-2025-001</span></td>
+                <td>游戏留存率分析看板</td><td>高</td>
+                <td><span class="sbadge sbadge-progress">进行中</span></td>
+                <td>2025-11-15</td><td>数据分析组</td><td>预计12月底上线</td>
+              </tr>
+              <tr data-status="done">
+                <td><span class="mono">BR-2025-002</span></td>
+                <td>付费漏斗分析报表</td><td>中</td>
+                <td><span class="sbadge sbadge-done">已完成</span></td>
+                <td>2025-10-20</td><td>数据分析组</td><td>已上线，见钉钉群链接</td>
+              </tr>
+              <tr data-status="pending">
+                <td><span class="mono">BR-2025-003</span></td>
+                <td>用户分层活跃度趋势图</td><td>低</td>
+                <td><span class="sbadge sbadge-pending">待评估</span></td>
+                <td>2025-12-01</td><td>—</td><td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 数分 进度列表 -->
+      <div id="stDs" style="display:none;">
+        <div class="table-card">
+          <table>
+            <thead><tr><th>编号</th><th>需求标题</th><th>优先级</th><th>状态</th><th>提交时间</th><th>负责人</th><th>备注</th></tr></thead>
+            <tbody>
+              <tr data-status="progress">
+                <td><span class="mono">DS-2025-001</span></td>
+                <td>Q4游戏付费行为专项分析</td><td>高</td>
+                <td><span class="sbadge sbadge-progress">进行中</span></td>
+                <td>2025-11-20</td><td>张明</td><td>产出PPT报告</td>
+              </tr>
+              <tr data-status="done">
+                <td><span class="mono">DS-2025-002</span></td>
+                <td>新手引导完成率问题排查</td><td>紧急</td>
+                <td><span class="sbadge sbadge-done">已完成</span></td>
+                <td>2025-10-10</td><td>李红</td><td>结论已同步给PM</td>
+              </tr>
+              <tr data-status="done">
+                <td><span class="mono">DS-2025-003</span></td>
+                <td>广告ROI效果评估</td><td>中</td>
+                <td><span class="sbadge sbadge-done">已完成</span></td>
+                <td>2025-09-28</td><td>张明</td><td>—</td>
+              </tr>
+              <tr data-status="rejected">
+                <td><span class="mono">DS-2025-004</span></td>
+                <td>全量用户7日行为明细取数</td><td>低</td>
+                <td><span class="sbadge sbadge-rejected">已关闭</span></td>
+                <td>2025-09-05</td><td>李红</td><td>数据量超限，建议分批</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 缺陷 进度列表 -->
+      <div id="stBug" style="display:none;">
+        <div class="table-card">
+          <table>
+            <thead><tr><th>编号</th><th>缺陷标题</th><th>严重程度</th><th>状态</th><th>提交时间</th><th>负责人</th><th>备注</th></tr></thead>
+            <tbody>
+              <tr data-status="progress">
+                <td><span class="mono">BUG-2025-001</span></td>
+                <td>实验列表翻页后数据错乱</td><td>严重</td>
+                <td><span class="sbadge sbadge-progress">进行中</span></td>
+                <td>2025-12-05</td><td>王强</td><td>已定位原因，修复中</td>
+              </tr>
+              <tr data-status="done">
+                <td><span class="mono">BUG-2025-002</span></td>
+                <td>导出CSV中文乱码</td><td>一般</td>
+                <td><span class="sbadge sbadge-done">已完成</span></td>
+                <td>2025-11-22</td><td>王强</td><td>已添加UTF-8 BOM，已上线</td>
+              </tr>
+              <tr data-status="pending">
+                <td><span class="mono">BUG-2025-003</span></td>
+                <td>时间筛选器无法清空</td><td>轻微</td>
+                <td><span class="sbadge sbadge-pending">待评估</span></td>
+                <td>2025-12-08</td><td>—</td><td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-default" onclick="closeFbModal('fbStatusModal')">关 闭</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════ TOAST ══════════════ -->
 <div class="toast" id="toast">
@@ -1087,7 +1570,14 @@
     });
   }
 
-  document.addEventListener('click', function() { closeAllDropdowns(); });
+  document.addEventListener('click', function(e) {
+    closeAllDropdowns();
+    var fbWrap = document.getElementById('feedbackWrap');
+    if (fbWrap && !fbWrap.contains(e.target)) {
+      document.getElementById('feedbackPanel').classList.remove('open');
+      document.getElementById('feedbackBtn').classList.remove('fb-active');
+    }
+  });
 
   /* ════════════════════════
      导出数据功能
@@ -1150,6 +1640,192 @@
     URL.revokeObjectURL(url);
   }
 
+  /* ════════════════════════
+     表格排序
+  ════════════════════════ */
+  var sortState = {};
+
+  function sortTable(tableId, th) {
+    var col = th.getAttribute('data-col');
+    var table = document.getElementById(tableId);
+    var tbody = table.querySelector('tbody');
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    var dir = (sortState[tableId] && sortState[tableId].col === col && sortState[tableId].dir === 'asc') ? 'desc' : 'asc';
+    sortState[tableId] = { col: col, dir: dir };
+
+    table.querySelectorAll('thead th').forEach(function(h) {
+      h.classList.remove('sort-asc', 'sort-desc');
+    });
+    th.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
+
+    rows.sort(function(a, b) {
+      var aCell = a.querySelector('[data-col="' + col + '"]');
+      var bCell = b.querySelector('[data-col="' + col + '"]');
+      var aVal = aCell ? aCell.textContent.trim() : '';
+      var bVal = bCell ? bCell.textContent.trim() : '';
+
+      if (aVal === '—' && bVal === '—') return 0;
+      if (aVal === '—') return 1;
+      if (bVal === '—') return -1;
+
+      // 日期格式（YYYY-MM-DD 开头）
+      var aDate = /^\d{4}-\d{2}-\d{2}/.test(aVal) ? Date.parse(aVal) : NaN;
+      var bDate = /^\d{4}-\d{2}-\d{2}/.test(bVal) ? Date.parse(bVal) : NaN;
+      if (!isNaN(aDate) && !isNaN(bDate)) {
+        return dir === 'asc' ? aDate - bDate : bDate - aDate;
+      }
+
+      // 纯数字
+      var aNum = parseFloat(aVal);
+      var bNum = parseFloat(bVal);
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        return dir === 'asc' ? aNum - bNum : bNum - aNum;
+      }
+
+      // 字符串
+      var cmp = aVal.localeCompare(bVal, 'zh-CN');
+      return dir === 'asc' ? cmp : -cmp;
+    });
+
+    rows.forEach(function(r) { tbody.appendChild(r); });
+  }
+
+  // 初始化两张表的可排序表头
+  ['expTable', 'tagTable'].forEach(function(tableId) {
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    table.querySelectorAll('thead th').forEach(function(th) {
+      th.classList.add('sortable');
+      th.addEventListener('click', function() { sortTable(tableId, th); });
+    });
+  });
+
+  /* ════════════════════════
+     反馈面板 & 弹窗逻辑
+  ════════════════════════ */
+  var fbCurrentType = null;
+
+  var fbCfg = {
+    bi:  { cls: 'bi',  formTitle: '提交 BI 需求',  formSub: '报表 · 看板 · 指标分析需求',        statusTitle: 'BI 需求进度',   statusSub: '查看已提交的 BI 需求及处理进度' },
+    ds:  { cls: 'ds',  formTitle: '提交数分需求',  formSub: '数据分析 · 取数 · 专项研究需求',    statusTitle: '数分需求进度',  statusSub: '查看已提交的数分需求及处理进度' },
+    bug: { cls: 'bug', formTitle: '提交缺陷反馈',  formSub: '功能异常 · 数据错误 · 体验问题',    statusTitle: '缺陷处理进度',  statusSub: '查看已提交的缺陷及修复进度' }
+  };
+
+  var fbIcons = {
+    bi:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>',
+    ds:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    bug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+  };
+
+  var fbFormMap   = { bi: 'fbFormBi', ds: 'fbFormDs', bug: 'fbFormBug' };
+  var fbStatusMap = { bi: 'stBi',     ds: 'stDs',     bug: 'stBug' };
+
+  function toggleFeedbackPanel(event) {
+    if (event) event.stopPropagation();
+    var panel = document.getElementById('feedbackPanel');
+    var btn   = document.getElementById('feedbackBtn');
+    var isOpen = panel.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+      panel.classList.add('open');
+      btn.classList.add('fb-active');
+    } else {
+      panel.classList.remove('open');
+      btn.classList.remove('fb-active');
+    }
+  }
+
+  function openFbForm(type) {
+    closeFeedbackPanel();
+    fbCurrentType = type;
+    var cfg = fbCfg[type];
+
+    var iconEl = document.getElementById('fbFormIcon');
+    iconEl.className = 'modal-hd-icon ' + cfg.cls;
+    iconEl.innerHTML = fbIcons[type];
+    document.getElementById('fbFormTitle').textContent = cfg.formTitle;
+    document.getElementById('fbFormSub').textContent   = cfg.formSub;
+
+    Object.keys(fbFormMap).forEach(function(k) {
+      document.getElementById(fbFormMap[k]).style.display = k === type ? 'block' : 'none';
+    });
+    document.getElementById('fbFormModal').classList.add('open');
+  }
+
+  function openFbStatus(type) {
+    closeFeedbackPanel();
+    fbCurrentType = type;
+    var cfg = fbCfg[type];
+
+    var iconEl = document.getElementById('fbStatusIcon');
+    iconEl.className = 'modal-hd-icon ' + cfg.cls;
+    iconEl.innerHTML = fbIcons[type];
+    document.getElementById('fbStatusTitle').textContent = cfg.statusTitle;
+    document.getElementById('fbStatusSub').textContent   = cfg.statusSub;
+
+    Object.keys(fbStatusMap).forEach(function(k) {
+      document.getElementById(fbStatusMap[k]).style.display = k === type ? 'block' : 'none';
+    });
+
+    // reset filter to "全部"
+    document.querySelectorAll('.st-filter-btn').forEach(function(b, i) {
+      b.classList.toggle('active', i === 0);
+    });
+    filterStatus(null, 'all');
+
+    document.getElementById('fbStatusModal').classList.add('open');
+  }
+
+  function closeFbModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  function closeFeedbackPanel() {
+    document.getElementById('feedbackPanel').classList.remove('open');
+    document.getElementById('feedbackBtn').classList.remove('fb-active');
+  }
+
+  function submitFbForm() {
+    var activeForm = document.getElementById(fbFormMap[fbCurrentType]);
+    var titleInput = activeForm.querySelector('input[type=text]');
+    if (!titleInput.value.trim()) {
+      titleInput.focus();
+      titleInput.style.borderColor = '#FF4D4F';
+      titleInput.style.boxShadow = '0 0 0 2px rgba(255,77,79,.1)';
+      setTimeout(function() { titleInput.style.borderColor = ''; titleInput.style.boxShadow = ''; }, 2200);
+      return;
+    }
+    closeFbModal('fbFormModal');
+    showToast('提交成功', fbCfg[fbCurrentType].formTitle + ' 已收到，稍后会有负责人跟进');
+  }
+
+  function filterStatus(btnEl, status) {
+    if (btnEl) {
+      document.querySelectorAll('.st-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      btnEl.classList.add('active');
+    }
+    var container = document.getElementById(fbStatusMap[fbCurrentType]);
+    if (!container) return;
+    container.querySelectorAll('tbody tr').forEach(function(r) {
+      r.style.display = (status === 'all' || r.getAttribute('data-status') === status) ? '' : 'none';
+    });
+  }
+
+  // Close modals on overlay click
+  ['fbFormModal','fbStatusModal'].forEach(function(id) {
+    document.getElementById(id).addEventListener('click', function(e) {
+      if (e.target === this) closeFbModal(id);
+    });
+  });
+
+  // Close modals on ESC
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeFbModal('fbFormModal');
+      closeFbModal('fbStatusModal');
+    }
+  });
+
   /* ── Toast ── */
   function showToast(title, desc) {
     var t = document.getElementById('toast');
@@ -1162,5 +1838,3 @@
 
 </body>
 </html>
-
-    
