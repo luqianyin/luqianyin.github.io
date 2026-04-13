@@ -1810,16 +1810,21 @@
         </div>
 
         <div class="form-field">
-          <label class="form-label">业务域</label>
-          <select id="f-domain" class="form-control" onchange="onFieldChange()">
-            <option value="">请选择</option>
-            <option>留存增长</option>
-            <option>货币化</option>
-            <option>玩法参与</option>
-            <option>广告变现</option>
-            <option>社交</option>
-            <option>性能体验</option>
-          </select>
+          <label class="form-label">业务线</label>
+          <div class="msel-wrap" id="msel-domain-wrap">
+            <div class="msel-trigger" id="msel-domain-trigger" onclick="toggleDomainMsel()">
+              <span class="msel-placeholder" id="msel-domain-placeholder">请选择业务线（可多选）</span>
+              <svg class="msel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+            <div class="msel-dropdown" id="msel-domain-dropdown">
+              <div class="msel-option" data-val="sc" onclick="toggleDomainOption(this)"><input type="checkbox"><span class="msel-opt-label">sc</span></div>
+              <div class="msel-option" data-val="对战" onclick="toggleDomainOption(this)"><input type="checkbox"><span class="msel-opt-label">对战</span></div>
+              <div class="msel-option" data-val="XTG" onclick="toggleDomainOption(this)"><input type="checkbox"><span class="msel-opt-label">XTG</span></div>
+              <div class="msel-option" data-val="机台" onclick="toggleDomainOption(this)"><input type="checkbox"><span class="msel-opt-label">机台</span></div>
+            </div>
+          </div>
         </div>
 
         <div class="form-field">
@@ -1843,6 +1848,24 @@
             <label class="radio-item"><input type="radio" name="f-status" value="on" checked onchange="onFieldChange()" /> 启用</label>
             <label class="radio-item"><input type="radio" name="f-status" value="off" onchange="onFieldChange()" /> 停用</label>
           </div>
+        </div>
+
+        <div class="form-field" id="ff-subtype" style="display:none;">
+          <label class="form-label">计算方式
+            <span class="field-tip-wrap">
+              <span class="field-tip">?</span>
+              <span class="field-tip-bubble field-tip-bubble-lg">
+                <div style="margin-bottom:6px;"><b>比例指标</b>：每个用户只有 0/1 两种结果（付费 / 未付费、点击 / 未点击），如点击率、转化率、渗透率等</div>
+                <div style="margin-bottom:6px;"><b>均值指标</b>：一个用户一个连续值求平均，金额 / 时长 / 次数 ÷ 去重用户数，如人均游戏时长、人均通关数等</div>
+                <div><b>比率指标</b>：比值，分子分母是两个随机变量，均值 A ÷ 均值 B，如 ROI 等</div>
+              </span>
+            </span>
+          </label>
+          <select id="c-subtype" class="form-control" onchange="onSubtypeChange()">
+            <option value="ratio">比率指标（A/B）</option>
+            <option value="mean">均值指标（AVG）</option>
+            <option value="proportion">比例指标（占比）</option>
+          </select>
         </div>
 
         <div class="form-field">
@@ -1972,7 +1995,8 @@ function openEditModal(rowId) {
     // config type
     document.getElementById('f-dtype').value = row.dataset.ctype || '';
     // domain
-    document.getElementById('f-domain').value = row.dataset.domain || '';
+    mselDomainSelected = (row.dataset.domain || '').split(',').filter(Boolean);
+    renderDomainMselTags();
     // status
     var status = row.dataset.status || 'on';
     document.querySelectorAll('[name=f-status]').forEach(function(r) { r.checked = (r.value === status); });
@@ -2001,7 +2025,8 @@ function resetForm() {
   document.getElementById('f-name').value = '';
   document.getElementById('f-desc').value = '';
   document.getElementById('f-dtype').value = '';
-  document.getElementById('f-domain').value = '';
+  mselDomainSelected = [];
+  renderDomainMselTags();
   document.querySelectorAll('[name=f-status]')[0].checked = true;
   document.querySelectorAll('.form-field').forEach(function(f){ f.classList.remove('has-err'); });
   document.querySelectorAll('.form-control').forEach(function(f){ f.classList.remove('err'); });
@@ -2048,6 +2073,8 @@ function updateFmtPreview() {
 /* ── 计算口径 dynamic rendering ── */
 function onDtypeChange() {
   var ctype = document.getElementById('f-dtype').value;
+  var ffSubtype = document.getElementById('ff-subtype');
+  if (ffSubtype) ffSubtype.style.display = (ctype === 'event') ? '' : 'none';
   renderCalcBox(ctype);
   renderSQL();
 }
@@ -2061,16 +2088,7 @@ function renderCalcBox(ctype) {
     return;
   }
   if (ctype === 'event') {
-    box.innerHTML = '<div class="calc-part">'
-      + '<div class="calc-part-label">计算方式<span class="field-tip-wrap"><span class="field-tip">?</span><span class="field-tip-bubble field-tip-bubble-lg"><div style="margin-bottom:6px;"><b>比例指标</b>：每个用户只有 0/1 两种结果（付费 / 未付费、点击 / 未点击、使用、未使用等），如按用户级别统计的点击率、转化率、渗透率、完成率等</div><div style="margin-bottom:6px;"><b>均值指标</b>：一个用户一个连续值求平均，金额 / 时长 / 次数 ÷ 去重用户数，金额 / 时长 / 次数 ÷ 总次数，如人均游戏时长、人均通关数、平均每次付费金额等</div><div><b>比率指标</b>：比值，分子分母是两个随机变量，均值 A ÷ 均值 B，总和 A ÷ 总和 B，如 ROI 等</div></span></span></div>'
-      + '<div style="margin-bottom:14px;">'
-      + '<select id="c-subtype" class="form-control" style="max-width:240px;" onchange="onSubtypeChange()">'
-      + '<option value="ratio">比率指标（A/B）</option>'
-      + '<option value="mean">均值指标（AVG）</option>'
-      + '<option value="proportion">比例指标（占比）</option>'
-      + '</select></div>'
-      + '<div id="subCalcBox"></div>'
-      + '</div>';
+    box.innerHTML = '<div id="subCalcBox"></div>';
     onSubtypeChange();
   } else if (ctype === 'retain') {
     box.innerHTML = '<div class="calc-part">'
@@ -2303,7 +2321,7 @@ function submitForm() {
   if (modalMode === 'create') {
     var newId   = nextMtrId();
     var ctype   = document.getElementById('f-dtype').value || 'event';
-    var domain  = document.getElementById('f-domain').value;
+    var domain  = mselDomainSelected.join(',');
     var statusVal = document.querySelector('[name=f-status]:checked').value;
     closeModal();
     createMetricRow(newId, name, ctype, domain, statusVal);
@@ -2325,7 +2343,7 @@ function submitForm() {
           ctypeTag.className = 'tag ' + (ctype === 'retain' ? 'tag-retain' : 'tag-event');
           ctypeTag.textContent = ctype === 'retain' ? '留存指标' : '事件指标';
         }
-        row.dataset.domain = document.getElementById('f-domain').value;
+        row.dataset.domain = mselDomainSelected.join(',');
         var statusVal = document.querySelector('[name=f-status]:checked').value;
         row.dataset.status = statusVal;
         var statusTag = row.querySelector('.tag-on, .tag-off');
@@ -2943,6 +2961,76 @@ function addMetricToExpSelectors(id, name) {
 
 /* ── Step 4: 指标选择 ── */
 var mselSelected = []; // [{id, name}]
+
+/* ── Domain multi-select ── */
+var mselDomainSelected = [];
+
+function toggleDomainMsel() {
+  var trigger = document.getElementById('msel-domain-trigger');
+  var dd = document.getElementById('msel-domain-dropdown');
+  var isOpen = dd.classList.contains('open');
+  if (isOpen) {
+    dd.classList.remove('open');
+    trigger.classList.remove('open');
+  } else {
+    dd.classList.add('open');
+    trigger.classList.add('open');
+  }
+}
+
+function toggleDomainOption(div) {
+  var val = div.dataset.val;
+  var cb = div.querySelector('input[type=checkbox]');
+  var idx = mselDomainSelected.indexOf(val);
+  if (idx > -1) {
+    mselDomainSelected.splice(idx, 1);
+    cb.checked = false;
+  } else {
+    mselDomainSelected.push(val);
+    cb.checked = true;
+  }
+  renderDomainMselTags();
+  onFieldChange();
+}
+
+function renderDomainMselTags() {
+  var trigger = document.getElementById('msel-domain-trigger');
+  var placeholder = document.getElementById('msel-domain-placeholder');
+  if (!trigger) return;
+  trigger.querySelectorAll('.msel-tag').forEach(function(t){ t.parentNode.removeChild(t); });
+  // sync checkboxes
+  document.querySelectorAll('#msel-domain-dropdown .msel-option').forEach(function(opt) {
+    opt.querySelector('input[type=checkbox]').checked = mselDomainSelected.indexOf(opt.dataset.val) > -1;
+  });
+  if (mselDomainSelected.length === 0) {
+    placeholder.style.display = '';
+  } else {
+    placeholder.style.display = 'none';
+    mselDomainSelected.forEach(function(val) {
+      var tag = document.createElement('span');
+      tag.className = 'msel-tag';
+      tag.innerHTML = val + '&nbsp;<button type="button" class="msel-tag-del" data-val="' + val + '">×</button>';
+      tag.querySelector('.msel-tag-del').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var v = e.target.dataset.val;
+        mselDomainSelected = mselDomainSelected.filter(function(x){ return x !== v; });
+        renderDomainMselTags();
+        onFieldChange();
+      });
+      trigger.insertBefore(tag, placeholder);
+    });
+  }
+}
+
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('msel-domain-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    var dd = document.getElementById('msel-domain-dropdown');
+    var trigger = document.getElementById('msel-domain-trigger');
+    if (dd) dd.classList.remove('open');
+    if (trigger) trigger.classList.remove('open');
+  }
+});
 
 function getEnabledMetrics() {
   var rows = document.querySelectorAll('tbody tr[data-id][data-status="on"]');
