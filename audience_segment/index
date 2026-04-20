@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 投放人群包圈选</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #1677FF;
+      --primary-light:#E6F0FF;
+      --primary-hover:#0958D9;
+      --sidebar-w:    220px;
+      --header-h:     52px;
+      --subbar-h:     44px;
+      --bg:           #F5F7FA;
+      --card:         #FFFFFF;
+      --border:       #E8ECF0;
+      --text:         #1D2129;
+      --sub:          #86909C;
+      --link:         #1677FF;
+    }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+
+    /* ══════════════════════════════════════════════
+       TOP HEADER
+    ══════════════════════════════════════════════ */
+    .header {
+      height: var(--header-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 0; flex-shrink: 0;
+      position: relative; z-index: 20;
+    }
+
+    .logo-wrap {
+      display: flex; align-items: center; gap: 8px;
+      min-width: var(--sidebar-w); padding-right: 16px;
+      border-right: 1px solid var(--border);
+    }
+    .logo-name {
+      font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .3px;
+    }
+
+    .header-nav {
+      display: flex; align-items: center; height: 100%; margin-left: 20px; gap: 4px;
+    }
+    .header-tab {
+      height: 100%; display: flex; align-items: center; padding: 0 18px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s;
+    }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+
+    .header-right {
+      margin-left: auto; display: flex; align-items: center; gap: 6px;
+    }
+    .hdr-action {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 4px 8px; border-radius: 4px; cursor: pointer;
+      color: var(--sub); background: none; border: none; transition: color .15s;
+    }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; cursor: pointer;
+      background: none; border: none; color: var(--text);
+    }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+
+    /* ══════════════════════════════════════════════
+       SUB-HEADER
+    ══════════════════════════════════════════════ */
+    .subbar {
+      height: var(--subbar-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 0 0 var(--sidebar-w);
+      flex-shrink: 0; z-index: 10;
+    }
+    .subbar-inner {
+      display: flex; align-items: center; gap: 14px; padding: 0 20px;
+    }
+    .breadcrumb {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 13px; color: var(--sub);
+    }
+    .breadcrumb a { color: var(--sub); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+    /* ══════════════════════════════════════════════
+       BODY = SIDEBAR + CONTENT
+    ══════════════════════════════════════════════ */
+    .body-wrap {
+      flex: 1; display: flex; overflow: hidden;
+    }
+
+    /* ──── Sidebar ──── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: #fff; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto; height: 100%;
+    }
+
+    .nav-group { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .nav-group:last-child { border-bottom: none; }
+
+    .nav-l2 {
+      display: flex; align-items: center;
+      padding: 10px 16px; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active {
+      color: var(--primary); font-weight: 500;
+      background: var(--primary-light);
+    }
+    .nav-l2.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+    .nav-l2 .nav-icon {
+      width: 16px; height: 16px; margin-right: 8px; flex-shrink: 0;
+    }
+
+    /* ──── Content ──── */
+    .content {
+      flex: 1; overflow-y: auto; padding: 20px 24px;
+    }
+
+    /* ══════════════════════════════════════════════
+       PAGE STYLES
+    ══════════════════════════════════════════════ */
+
+    /* Page title */
+    .page-title-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .page-title {
+      font-size: 16px; font-weight: 700; color: var(--text);
+    }
+
+    /* Filter box */
+    .filter-box {
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 16px; margin-bottom: 14px;
+    }
+    .filter-row {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .filter-row + .filter-row {
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    }
+    .filter-item {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .filter-lbl {
+      color: var(--sub); font-size: 12px; white-space: nowrap; min-width: fit-content;
+    }
+    .filter-input {
+      height: 32px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 10px; outline: none;
+      transition: border-color .15s;
+      appearance: none;
+    }
+    .filter-input::placeholder { color: #C2C7CF; }
+    .filter-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.08); }
+    .filter-select {
+      height: 32px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 28px 0 10px; outline: none; cursor: pointer;
+      min-width: 120px; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    .filter-select:focus { border-color: var(--primary); }
+
+    /* Date range */
+    .date-range {
+      display: flex; align-items: center; gap: 4px;
+    }
+    .date-range-sep { color: var(--sub); font-size: 12px; }
+    input[type="date"].filter-input {
+      width: 148px; padding: 0 8px; cursor: pointer;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 0 16px; height: 32px; border-radius: 5px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid transparent; transition: all .15s; white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-default { background: #fff; color: var(--text); border-color: var(--border); }
+    .btn-default:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* Result info bar */
+    .result-info-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .result-count {
+      font-size: 13px; color: var(--sub);
+    }
+    .result-count strong { color: var(--text); }
+    .result-actions {
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* Table card */
+    .table-card {
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #FAFBFC; }
+    th {
+      text-align: left; padding: 11px 14px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    td {
+      padding: 11px 14px; border-bottom: 1px solid var(--border);
+      vertical-align: middle; font-size: 13px; color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #F7F9FD; }
+
+    .mono { font-family: monospace; font-size: 12px; color: var(--sub); }
+    .link { color: var(--link); text-decoration: none; font-weight: 500; cursor: pointer; }
+    .link:hover { text-decoration: underline; }
+
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 3px;
+      font-size: 12px; font-weight: 500;
+    }
+    .tag-computing  { background: #E6F0FF; color: #1677FF; }
+    .tag-completed  { background: #F0F9EB; color: #389E0D; }
+    .tag-failed     { background: #FFF1F0; color: #CF1322; }
+    .tag-pending    { background: #FFFBE6; color: #D48806; }
+    .tag-canceled   { background: #F5F7FA; color: #4E5969; }
+
+    /* Action link */
+    .action-link {
+      color: var(--link); text-decoration: none; font-size: 13px; cursor: pointer;
+      background: none; border: none; padding: 0; font-family: inherit;
+      transition: opacity .15s;
+    }
+    .action-link:hover { opacity: .75; text-decoration: underline; }
+    .action-sep { color: #C2C7CF; margin: 0 6px; }
+
+    /* Dropdown menu for actions */
+    .action-wrap { position: relative; display: inline-block; }
+    .action-dropdown {
+      display: none; position: absolute; top: calc(100% + 4px); right: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.1); z-index: 200;
+      min-width: 120px; padding: 4px 0;
+    }
+    .action-dropdown.open { display: block; }
+    .action-dropdown-item {
+      display: flex; align-items: center; gap: 7px;
+      padding: 8px 14px; font-size: 13px; color: var(--text);
+      cursor: pointer; transition: background .1s; white-space: nowrap;
+    }
+    .action-dropdown-item:hover { background: var(--primary-light); color: var(--primary); }
+    .action-dropdown-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* Pagination */
+    .pagination {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 12px 16px; border-top: 1px solid var(--border); gap: 8px;
+    }
+    .page-info { color: var(--sub); font-size: 12px; margin-right: 4px; }
+    .page-btn {
+      min-width: 30px; height: 30px; border-radius: 4px;
+      border: 1px solid var(--border); background: #fff; color: var(--sub);
+      font-size: 12px; cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; padding: 0 8px;
+      transition: all .12s;
+    }
+    .page-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    .page-btn.disabled { opacity: .4; pointer-events: none; }
+    .page-size-select {
+      height: 30px; border: 1px solid var(--border); border-radius: 4px;
+      background: #fff; font-size: 12px; padding: 0 8px; color: var(--text); outline: none;
+    }
+
+    /* ══════════════════════════════════════════════
+       SORTABLE COLUMNS
+    ══════════════════════════════════════════════ */
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { background: #F0F5FF; }
+    th.sortable::after { content: ' ↕'; font-size: 10px; color: var(--sub); opacity: 0.4; font-weight: 400; }
+    th.sort-asc::after  { content: ' ↑'; color: var(--primary); opacity: 1; }
+    th.sort-desc::after { content: ' ↓'; color: var(--primary); opacity: 1; }
+
+    /* SQL条件列截断 */
+    .sql-cell {
+      max-width: 200px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+      font-family: monospace; font-size: 12px;
+      color: var(--sub); cursor: default;
+    }
+
+    /* ══════════════════════════════════════════════
+       FEEDBACK PANEL
+    ══════════════════════════════════════════════ */
+    .feedback-wrap { position: relative; }
+    .feedback-panel {
+      display: none; position: absolute; top: calc(100% + 6px); right: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.14); z-index: 600;
+      width: 292px; overflow: hidden;
+    }
+    .feedback-panel.open { display: block; animation: fpIn .15s ease; }
+    @keyframes fpIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }
+    .fp-hd { padding: 12px 16px 10px; border-bottom: 1px solid var(--border); background: #FAFBFC; }
+    .fp-hd-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .fp-hd-sub { font-size: 11px; color: var(--sub); margin-top: 2px; display: block; line-height: 1.4; }
+    .fp-row { padding: 11px 16px; border-bottom: 1px solid var(--border); }
+    .fp-row:last-child { border-bottom: none; }
+    .fp-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .fp-icon {
+      width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fp-icon.bi  { background: #E6F0FF; color: #1677FF; }
+    .fp-icon.ds  { background: #F0F9EB; color: #52C41A; }
+    .fp-icon.bug { background: #FFF1F0; color: #FF4D4F; }
+    .fp-icon svg { width: 14px; height: 14px; }
+    .fp-row-info { flex: 1; }
+    .fp-row-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .fp-row-desc { font-size: 11px; color: var(--sub); margin-top: 1px; }
+    .fp-row-btns { display: flex; gap: 8px; }
+    .fp-btn {
+      flex: 1; height: 27px; border-radius: 5px; font-size: 12px; font-weight: 500;
+      cursor: pointer; border: 1px solid transparent; transition: all .13s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .fp-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .fp-btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .fp-btn.ghost { background: #fff; color: var(--text); border-color: var(--border); }
+    .fp-btn.ghost:hover { border-color: var(--primary); color: var(--primary); }
+    .fp-btn svg { width: 11px; height: 11px; }
+    .hdr-action.fb-active { color: var(--primary); background: var(--primary-light); border-radius: 4px; }
+
+    /* ══════════════════════════════════════════════
+       MODAL
+    ══════════════════════════════════════════════ */
+    .modal-mask {
+      display: none; position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,.38); align-items: center; justify-content: center;
+    }
+    .modal-mask.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.18);
+      width: 520px; max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 60px); display: flex; flex-direction: column;
+      animation: modalIn .2s cubic-bezier(.34,1.56,.64,1);
+    }
+    .modal-box.wide { width: 700px; }
+    @keyframes modalIn { from { opacity:0; transform:scale(.93); } to { opacity:1; transform:scale(1); } }
+    .modal-hd {
+      padding: 16px 20px 13px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    }
+    .modal-hd-icon {
+      width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-hd-icon.bi  { background: #E6F0FF; color: #1677FF; }
+    .modal-hd-icon.ds  { background: #F0F9EB; color: #52C41A; }
+    .modal-hd-icon.bug { background: #FFF1F0; color: #FF4D4F; }
+    .modal-hd-icon svg { width: 17px; height: 17px; }
+    .modal-hd-text { flex: 1; }
+    .modal-hd-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .modal-hd-sub { font-size: 12px; color: var(--sub); margin-top: 1px; }
+    .modal-x {
+      width: 28px; height: 28px; border-radius: 6px; border: none; background: none;
+      cursor: pointer; color: var(--sub);
+      display: flex; align-items: center; justify-content: center; transition: background .12s;
+    }
+    .modal-x:hover { background: var(--bg); color: var(--text); }
+    .modal-x svg { width: 16px; height: 16px; }
+    .modal-body { flex: 1; overflow-y: auto; padding: 18px 20px; }
+    .modal-ft {
+      padding: 12px 20px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-shrink: 0;
+    }
+    .f-field { margin-bottom: 14px; }
+    .f-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+    .f-label .req { color: #FF4D4F; margin-left: 1px; }
+    .f-ctrl {
+      width: 100%; height: 34px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 10px; outline: none; font-family: inherit; transition: border-color .15s;
+      appearance: none; background-image: none;
+    }
+    select.f-ctrl {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center; padding-right: 28px;
+    }
+    .f-ctrl::placeholder { color: #C2C7CF; }
+    .f-ctrl:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.08); }
+    .f-ctrl.ta { height: auto; padding: 8px 10px; resize: vertical; min-height: 68px; }
+    .f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .st-filter { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .st-filter-btn {
+      height: 26px; padding: 0 12px; border-radius: 13px; border: 1px solid var(--border);
+      background: #fff; font-size: 12px; color: var(--sub); cursor: pointer; transition: all .12s;
+    }
+    .st-filter-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .st-filter-btn:not(.active):hover { border-color: var(--primary); color: var(--primary); }
+    .sbadge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 11px; font-weight: 500; }
+    .sbadge-pending  { background: #FFFBE6; color: #D48806; }
+    .sbadge-progress { background: #E6F0FF; color: #1677FF; }
+    .sbadge-done     { background: #F0F9EB; color: #389E0D; }
+    .sbadge-rejected { background: #F5F7FA; color: #4E5969; }
+
+    /* ══════════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════════ */
+    .toast {
+      position: fixed; top: 60px; right: 20px; z-index: 2000;
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.12); padding: 12px 14px;
+      display: flex; align-items: flex-start; gap: 10px;
+      min-width: 280px; max-width: 380px;
+      transform: translateX(120%); transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    }
+    .toast.show { transform: translateX(0); }
+    .toast-icon { width: 20px; height: 20px; flex-shrink: 0; }
+    .toast-body { flex: 1; }
+    .toast-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .toast-desc  { font-size: 12px; color: var(--sub); margin-top: 2px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ TOP HEADER ══════════════ -->
+<header class="header">
+  <div class="logo-wrap">
+    <span class="logo-name">Spark</span>
+  </div>
+
+  <nav class="header-nav">
+    <button class="header-tab active">工具箱</button>
+    <button class="header-tab">管理</button>
+  </nav>
+
+  <div class="header-right">
+    <!-- 反馈入口 -->
+    <div class="feedback-wrap" id="feedbackWrap">
+      <button class="hdr-action" id="feedbackBtn" onclick="toggleFeedbackPanel(event)" title="需求与反馈">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+        <span>反馈</span>
+      </button>
+
+      <div class="feedback-panel" id="feedbackPanel">
+        <div class="fp-hd">
+          <div class="fp-hd-title">需求与反馈</div>
+          <span class="fp-hd-sub">提交新需求 / 缺陷，或查询已有进度</span>
+        </div>
+        <div class="fp-row">
+          <div class="fp-row-top">
+            <div class="fp-icon bi">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>
+            </div>
+            <div class="fp-row-info">
+              <div class="fp-row-name">BI 需求</div>
+              <div class="fp-row-desc">报表 · 看板 · 指标分析</div>
+            </div>
+          </div>
+          <div class="fp-row-btns">
+            <button class="fp-btn primary" onclick="openFbForm('bi')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              填写表单
+            </button>
+            <button class="fp-btn ghost" onclick="openFbStatus('bi')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              查询进度
+            </button>
+          </div>
+        </div>
+        <div class="fp-row">
+          <div class="fp-row-top">
+            <div class="fp-icon ds">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="fp-row-info">
+              <div class="fp-row-name">数分需求</div>
+              <div class="fp-row-desc">数据分析 · 取数 · 专项研究</div>
+            </div>
+          </div>
+          <div class="fp-row-btns">
+            <button class="fp-btn primary" onclick="openFbForm('ds')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              填写表单
+            </button>
+            <button class="fp-btn ghost" onclick="openFbStatus('ds')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              查询进度
+            </button>
+          </div>
+        </div>
+        <div class="fp-row">
+          <div class="fp-row-top">
+            <div class="fp-icon bug">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="fp-row-info">
+              <div class="fp-row-name">缺陷反馈</div>
+              <div class="fp-row-desc">功能异常 · 数据错误 · 体验问题</div>
+            </div>
+          </div>
+          <div class="fp-row-btns">
+            <button class="fp-btn primary" onclick="openFbForm('bug')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              填写表单
+            </button>
+            <button class="fp-btn ghost" onclick="openFbStatus('bug')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              查询进度
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="hdr-action" title="消息" style="position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </svg>
+      <span>消息</span>
+      <span style="position:absolute;top:2px;right:6px;width:8px;height:8px;background:#FF4D4F;border-radius:50%;border:1.5px solid #fff;"></span>
+    </button>
+    <button class="hdr-action" title="帮助">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/>
+      </svg>
+      <span>帮助</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn" title="个人中心">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张三</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════ SUB-BAR ══════════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <nav class="breadcrumb">
+      <a href="#">工具箱</a>
+      <span class="sep"> / </span>
+      <span class="current">投放人群包圈选</span>
+    </nav>
+  </div>
+</div>
+
+<!-- ══════════════ BODY ══════════════ -->
+<div class="body-wrap">
+
+  <!-- ──── Sidebar ──── -->
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l2 active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        投放人群包圈选
+      </div>
+    </div>
+  </aside>
+
+  <!-- ──── Main Content ──── -->
+  <main class="content" id="page-audience-segment">
+
+    <!-- 筛选条件 -->
+    <div class="filter-box">
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-lbl">业务线</span>
+          <select class="filter-select" id="bizLineSelect" onchange="onBizLineChange()">
+            <option value="">全部</option>
+            <option value="pvp">pvp</option>
+            <option value="sc">sc</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">用户群ID</span>
+          <input class="filter-input" type="text" placeholder="请输入用户群ID" style="width:180px;" />
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">平台类型</span>
+          <select class="filter-select" id="platformSelect">
+            <option value="">全部</option>
+            <option value="APK">APK</option>
+            <option value="GP">GP</option>
+            <option value="H5">H5</option>
+            <option value="SAMSUNG">SAMSUNG</option>
+            <option value="iOS">iOS</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">计算状态</span>
+          <select class="filter-select">
+            <option value="">全部</option>
+            <option>计算中</option>
+            <option>已完成</option>
+            <option>计算失败</option>
+            <option>待计算</option>
+            <option>已取消</option>
+          </select>
+        </div>
+        <button class="btn btn-default" onclick="resetFilter()">重置</button>
+        <button class="btn btn-primary" onclick="runQuery()">查询</button>
+      </div>
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-lbl">查询开始时间</span>
+          <div class="date-range">
+            <input class="filter-input" type="date" id="startDateFrom" />
+            <span class="date-range-sep">~</span>
+            <input class="filter-input" type="date" id="startDateTo" />
+          </div>
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">查询结束时间</span>
+          <div class="date-range">
+            <input class="filter-input" type="date" id="endDateFrom" />
+            <span class="date-range-sep">~</span>
+            <input class="filter-input" type="date" id="endDateTo" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 结果区 -->
+    <div class="result-info-bar">
+      <span class="result-count">共 <strong id="totalCount">10</strong> 条记录</span>
+      <div class="result-actions">
+        <button class="btn btn-primary" onclick="openCreateModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          新建圈选
+        </button>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th class="sortable" data-col="1">用户群ID</th>
+            <th class="sortable" data-col="0">业务线</th>
+            <th class="sortable" data-col="2">查询开始时间</th>
+            <th class="sortable" data-col="3">查询结束时间</th>
+            <th class="sortable" data-col="4">平台类型</th>
+            <th class="sortable" data-col="9">是否活跃</th>
+            <th class="sortable" data-col="10">是否付费</th>
+            <th class="sortable" data-col="11">自定义SQL条件</th>
+            <th class="sortable" data-col="5">计算状态</th>
+            <th class="sortable" data-col="7">修改者</th>
+            <th class="sortable" data-col="8">完成时间</th>
+            <th data-col="6">更多操作</th>
+          </tr>
+        </thead>
+        <tbody id="mainTableBody">
+          <tr>
+            <td data-col="1"><span class="mono">seg_game_20260101_001</span></td>
+            <td data-col="0">pvp</td>
+            <td data-col="2">2026-01-01</td>
+            <td data-col="3">2026-01-31</td>
+            <td data-col="4">iOS</td>
+            <td data-col="9">1</td>
+            <td data-col="10">1</td>
+            <td data-col="11" class="sql-cell" title="AND a.u_country='US'">AND a.u_country='US'</td>
+            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
+            <td data-col="7">张三</td>
+            <td data-col="8">2026-02-01 08:32:10</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" onclick="downloadSegment('seg_game_20260101_001'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                    重新计算
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    取消
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td data-col="1"><span class="mono">seg_ec_20260105_002</span></td>
+            <td data-col="0">sc</td>
+            <td data-col="2">2026-01-05</td>
+            <td data-col="3">2026-02-05</td>
+            <td data-col="4">GP</td>
+            <td data-col="9">1</td>
+            <td data-col="10">0</td>
+            <td data-col="11" class="sql-cell" title="">—</td>
+            <td data-col="5"><span class="tag tag-computing">计算中</span></td>
+            <td data-col="7">李红</td>
+            <td data-col="8">—</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" style="opacity:.45;cursor:not-allowed;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','已取消计算任务'); closeAllActionMenus();" style="color:#CF1322;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    取消
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td data-col="1"><span class="mono">seg_ads_20260108_003</span></td>
+            <td data-col="0">pvp</td>
+            <td data-col="2">2026-01-08</td>
+            <td data-col="3">2026-02-08</td>
+            <td data-col="4">APK</td>
+            <td data-col="9">0</td>
+            <td data-col="10">—</td>
+            <td data-col="11" class="sql-cell" title="AND a.u_level>10">AND a.u_level>10</td>
+            <td data-col="5"><span class="tag tag-failed">计算失败</span></td>
+            <td data-col="7">王强</td>
+            <td data-col="8">—</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" onclick="downloadSegment('seg_ads_20260108_003'); closeAllActionMenus();" style="opacity:.45;cursor:not-allowed;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                    重新计算
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td data-col="1"><span class="mono">seg_social_20260110_004</span></td>
+            <td data-col="0">sc</td>
+            <td data-col="2">2026-01-10</td>
+            <td data-col="3">2026-02-10</td>
+            <td data-col="4">WEB</td>
+            <td data-col="9">1</td>
+            <td data-col="10">1</td>
+            <td data-col="11" class="sql-cell" title="AND a.u_country='CN'">AND a.u_country='CN'</td>
+            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
+            <td data-col="7">张明</td>
+            <td data-col="8">2026-02-11 15:20:44</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" onclick="downloadSegment('seg_social_20260110_004'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                    重新计算
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    取消
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td data-col="1"><span class="mono">seg_game_20260112_005</span></td>
+            <td data-col="0">pvp</td>
+            <td data-col="2">2026-01-12</td>
+            <td data-col="3">2026-02-12</td>
+            <td data-col="4">H5</td>
+            <td data-col="9">—</td>
+            <td data-col="10">0</td>
+            <td data-col="11" class="sql-cell" title="">—</td>
+            <td data-col="5"><span class="tag tag-pending">待计算</span></td>
+            <td data-col="7">张三</td>
+            <td data-col="8">—</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" style="opacity:.45;cursor:not-allowed;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    取消
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td data-col="1"><span class="mono">seg_ec_20260115_006</span></td>
+            <td data-col="0">sc</td>
+            <td data-col="2">2026-01-15</td>
+            <td data-col="3">2026-03-15</td>
+            <td data-col="4">SAMSUNG</td>
+            <td data-col="9">1</td>
+            <td data-col="10">1</td>
+            <td data-col="11" class="sql-cell" title="AND a.u_vip=1">AND a.u_vip=1</td>
+            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
+            <td data-col="7">赵雷</td>
+            <td data-col="8">2026-03-16 09:05:33</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" onclick="downloadSegment('seg_ec_20260115_006'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                    重新计算
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    取消
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td data-col="1"><span class="mono">seg_ads_20260118_007</span></td>
+            <td data-col="0">pvp</td>
+            <td data-col="2">2026-01-18</td>
+            <td data-col="3">2026-02-28</td>
+            <td data-col="4">APK</td>
+            <td data-col="9">0</td>
+            <td data-col="10">0</td>
+            <td data-col="11" class="sql-cell" title="">—</td>
+            <td data-col="5"><span class="tag tag-canceled">已取消</span></td>
+            <td data-col="7">李红</td>
+            <td data-col="8">—</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" style="opacity:.45;cursor:not-allowed;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                    重新计算
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td data-col="1"><span class="mono">seg_game_20260120_008</span></td>
+            <td data-col="0">sc</td>
+            <td data-col="2">2026-01-20</td>
+            <td data-col="3">2026-02-20</td>
+            <td data-col="4">GP</td>
+            <td data-col="9">1</td>
+            <td data-col="10">—</td>
+            <td data-col="11" class="sql-cell" title="AND a.u_country='JP'">AND a.u_country='JP'</td>
+            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
+            <td data-col="7">王强</td>
+            <td data-col="8">2026-02-21 11:48:27</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" onclick="downloadSegment('seg_game_20260120_008'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                    重新计算
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    取消
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td data-col="1"><span class="mono">seg_social_20260122_009</span></td>
+            <td data-col="0">pvp</td>
+            <td data-col="2">2026-01-22</td>
+            <td data-col="3">2026-03-22</td>
+            <td data-col="4">H5</td>
+            <td data-col="9">—</td>
+            <td data-col="10">1</td>
+            <td data-col="11" class="sql-cell" title="">—</td>
+            <td data-col="5"><span class="tag tag-computing">计算中</span></td>
+            <td data-col="7">张明</td>
+            <td data-col="8">—</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" style="opacity:.45;cursor:not-allowed;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','已取消计算任务'); closeAllActionMenus();" style="color:#CF1322;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    取消
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td data-col="1"><span class="mono">seg_ec_20260125_010</span></td>
+            <td data-col="0">sc</td>
+            <td data-col="2">2026-01-25</td>
+            <td data-col="3">2026-04-01</td>
+            <td data-col="4">WEB</td>
+            <td data-col="9">1</td>
+            <td data-col="10">0</td>
+            <td data-col="11" class="sql-cell" title="AND a.u_country='US' AND a.u_level>5">AND a.u_country='US' AND a.u_level>5</td>
+            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
+            <td data-col="7">张三</td>
+            <td data-col="8">2026-04-02 07:55:09</td>
+            <td data-col="6">
+              <div class="action-wrap">
+                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
+                <div class="action-dropdown">
+                  <div class="action-dropdown-item" onclick="downloadSegment('seg_ec_20260125_010'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    下载
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                    重新计算
+                  </div>
+                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    取消
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <span class="page-info">共 10 条</span>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <button class="page-btn disabled">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin-left:8px;">
+          每页
+          <select class="page-size-select">
+            <option>10</option><option>20</option><option>50</option>
+          </select>
+          条
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+</div><!-- /body-wrap -->
+
+<!-- ══════════════ 反馈表单弹窗 ══════════════ -->
+<div class="modal-mask" id="fbFormModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <div class="modal-hd-icon" id="fbFormIcon"></div>
+      <div class="modal-hd-text">
+        <div class="modal-hd-title" id="fbFormTitle">提交需求</div>
+        <div class="modal-hd-sub" id="fbFormSub">请填写需求详情</div>
+      </div>
+      <button class="modal-x" onclick="closeFbModal('fbFormModal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="fbFormBi">
+        <div class="f-field">
+          <label class="f-label">需求标题 <span class="req">*</span></label>
+          <input class="f-ctrl" type="text" placeholder="请简明描述您的需求（30字以内）" maxlength="60" />
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">所属产品 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>游戏业务</option><option>电商业务</option><option>广告业务</option><option>社交业务</option>
+            </select>
+          </div>
+          <div class="f-field">
+            <label class="f-label">优先级 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>低</option><option>中</option><option>高</option><option>紧急</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-field">
+          <label class="f-label">需求描述 <span class="req">*</span></label>
+          <textarea class="f-ctrl ta" placeholder="请描述希望实现的分析内容、看板指标或数据报表，尽量包含业务背景和使用场景"></textarea>
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">期望交付日期</label>
+            <input class="f-ctrl" type="date" />
+          </div>
+          <div class="f-field">
+            <label class="f-label">联系人</label>
+            <input class="f-ctrl" type="text" value="张三" />
+          </div>
+        </div>
+      </div>
+      <div id="fbFormDs" style="display:none;">
+        <div class="f-field">
+          <label class="f-label">需求标题 <span class="req">*</span></label>
+          <input class="f-ctrl" type="text" placeholder="请简明描述您的需求（30字以内）" maxlength="60" />
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">所属产品 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>游戏业务</option><option>电商业务</option><option>广告业务</option><option>社交业务</option>
+            </select>
+          </div>
+          <div class="f-field">
+            <label class="f-label">优先级 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>低</option><option>中</option><option>高</option><option>紧急</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-field">
+          <label class="f-label">分析目标 <span class="req">*</span></label>
+          <textarea class="f-ctrl ta" placeholder="请描述希望回答的业务问题"></textarea>
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">期望交付日期</label>
+            <input class="f-ctrl" type="date" />
+          </div>
+          <div class="f-field">
+            <label class="f-label">联系人</label>
+            <input class="f-ctrl" type="text" value="张三" />
+          </div>
+        </div>
+      </div>
+      <div id="fbFormBug" style="display:none;">
+        <div class="f-field">
+          <label class="f-label">缺陷标题 <span class="req">*</span></label>
+          <input class="f-ctrl" type="text" placeholder="请简明描述缺陷现象（30字以内）" maxlength="60" />
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">所属模块 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>投放人群包圈选</option><option>其他</option>
+            </select>
+          </div>
+          <div class="f-field">
+            <label class="f-label">严重程度 <span class="req">*</span></label>
+            <select class="f-ctrl">
+              <option value="">请选择</option>
+              <option>轻微</option><option>一般</option><option>严重</option><option>致命</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-field">
+          <label class="f-label">缺陷描述 <span class="req">*</span></label>
+          <textarea class="f-ctrl ta" placeholder="请描述缺陷的具体表现：期望结果是什么，实际结果是什么"></textarea>
+        </div>
+        <div class="f-row">
+          <div class="f-field">
+            <label class="f-label">期望修复日期</label>
+            <input class="f-ctrl" type="date" />
+          </div>
+          <div class="f-field">
+            <label class="f-label">联系人</label>
+            <input class="f-ctrl" type="text" value="张三" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-default" onclick="closeFbModal('fbFormModal')">取 消</button>
+      <button class="btn btn-primary" onclick="submitFbForm()">提 交</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ 反馈进度查询弹窗 ══════════════ -->
+<div class="modal-mask" id="fbStatusModal">
+  <div class="modal-box wide">
+    <div class="modal-hd">
+      <div class="modal-hd-icon" id="fbStatusIcon"></div>
+      <div class="modal-hd-text">
+        <div class="modal-hd-title" id="fbStatusTitle">需求进度查询</div>
+        <div class="modal-hd-sub" id="fbStatusSub">查看已提交的需求及处理进度</div>
+      </div>
+      <button class="modal-x" onclick="closeFbModal('fbStatusModal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="st-filter" id="stFilterBar">
+        <button class="st-filter-btn active" onclick="filterStatus(this,'all')">全部</button>
+        <button class="st-filter-btn" onclick="filterStatus(this,'pending')">待评估</button>
+        <button class="st-filter-btn" onclick="filterStatus(this,'progress')">进行中</button>
+        <button class="st-filter-btn" onclick="filterStatus(this,'done')">已完成</button>
+        <button class="st-filter-btn" onclick="filterStatus(this,'rejected')">已关闭</button>
+      </div>
+      <div id="stBi">
+        <div class="table-card">
+          <table>
+            <thead><tr><th>编号</th><th>需求标题</th><th>优先级</th><th>状态</th><th>提交时间</th><th>负责人</th><th>备注</th></tr></thead>
+            <tbody>
+              <tr data-status="progress"><td><span class="mono">BR-2026-001</span></td><td>人群包覆盖率分析看板</td><td>高</td><td><span class="sbadge sbadge-progress">进行中</span></td><td>2026-02-15</td><td>数据分析组</td><td>预计3月底上线</td></tr>
+              <tr data-status="done"><td><span class="mono">BR-2026-002</span></td><td>圈选任务耗时统计报表</td><td>中</td><td><span class="sbadge sbadge-done">已完成</span></td><td>2026-01-20</td><td>数据分析组</td><td>已上线</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div id="stDs" style="display:none;">
+        <div class="table-card">
+          <table>
+            <thead><tr><th>编号</th><th>需求标题</th><th>优先级</th><th>状态</th><th>提交时间</th><th>负责人</th><th>备注</th></tr></thead>
+            <tbody>
+              <tr data-status="done"><td><span class="mono">DS-2026-001</span></td><td>Q1人群包下载量分析</td><td>高</td><td><span class="sbadge sbadge-done">已完成</span></td><td>2026-01-10</td><td>张明</td><td>结论已同步给PM</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div id="stBug" style="display:none;">
+        <div class="table-card">
+          <table>
+            <thead><tr><th>编号</th><th>缺陷标题</th><th>严重程度</th><th>状态</th><th>提交时间</th><th>负责人</th><th>备注</th></tr></thead>
+            <tbody>
+              <tr data-status="progress"><td><span class="mono">BUG-2026-001</span></td><td>人群包下载文件为空</td><td>严重</td><td><span class="sbadge sbadge-progress">进行中</span></td><td>2026-03-05</td><td>王强</td><td>已定位原因，修复中</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-default" onclick="closeFbModal('fbStatusModal')">关 闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ 新建圈选弹窗 ══════════════ -->
+<div class="modal-mask" id="createModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <div class="modal-hd-icon bi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <div class="modal-hd-text">
+        <div class="modal-hd-title">新建圈选</div>
+        <div class="modal-hd-sub">配置人群包圈选参数，提交后将进入待计算队列</div>
+      </div>
+      <button class="modal-x" onclick="closeCreateModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="f-row">
+        <div class="f-field">
+          <label class="f-label">业务线 <span class="req">*</span></label>
+          <select class="f-ctrl" id="createBizLine" onchange="onCreateBizLineChange()">
+            <option value="">请选择</option>
+            <option value="pvp">pvp</option>
+            <option value="sc">sc</option>
+          </select>
+        </div>
+        <div class="f-field">
+          <label class="f-label">平台类型 <span class="req">*</span></label>
+          <select class="f-ctrl" id="createPlatform">
+            <option value="">请先选择业务线</option>
+          </select>
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-field">
+          <label class="f-label">查询开始时间 <span class="req">*</span></label>
+          <input class="f-ctrl" type="date" id="createStartDate" />
+        </div>
+        <div class="f-field">
+          <label class="f-label">查询结束时间 <span class="req">*</span></label>
+          <input class="f-ctrl" type="date" id="createEndDate" />
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-field">
+          <label class="f-label">是否活跃</label>
+          <select class="f-ctrl" id="createIsActive">
+            <option value="">空</option>
+            <option value="1">是</option>
+            <option value="0">否</option>
+          </select>
+        </div>
+        <div class="f-field">
+          <label class="f-label">是否付费</label>
+          <select class="f-ctrl" id="createIsPaid">
+            <option value="">空</option>
+            <option value="1">是</option>
+            <option value="0">否</option>
+          </select>
+        </div>
+      </div>
+      <div class="f-field" style="margin-bottom:0;">
+        <label class="f-label">自定义SQL查询条件</label>
+        <input class="f-ctrl" type="text" id="createSqlCond" placeholder="AND a.u_country='US'" />
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-default" onclick="cancelCreateModal()">取 消</button>
+      <button class="btn btn-primary" onclick="submitCreateForm()">确 认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div class="toast" id="toast">
+  <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2">
+    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+  </svg>
+  <div class="toast-body">
+    <div class="toast-title" id="toastTitle">操作成功</div>
+    <div class="toast-desc" id="toastDesc">操作已完成</div>
+  </div>
+</div>
+
+<script>
+  /* ── Business line change → platform options ── */
+  var basePlatformOptions = [
+    { value: 'APK',     text: 'APK' },
+    { value: 'GP',      text: 'GP' },
+    { value: 'H5',      text: 'H5' },
+    { value: 'SAMSUNG', text: 'SAMSUNG' },
+    { value: 'iOS',     text: 'iOS' }
+  ];
+
+  function onBizLineChange() {
+    var biz = document.getElementById('bizLineSelect').value;
+    var sel = document.getElementById('platformSelect');
+    var prev = sel.value;
+    sel.innerHTML = '<option value="">全部</option>';
+    basePlatformOptions.forEach(function(o) {
+      var opt = document.createElement('option');
+      opt.value = o.value; opt.textContent = o.text;
+      sel.appendChild(opt);
+    });
+    if (biz === 'sc') {
+      var webOpt = document.createElement('option');
+      webOpt.value = 'WEB'; webOpt.textContent = 'WEB';
+      sel.appendChild(webOpt);
+    }
+    // restore previous selection if still valid
+    if (prev) {
+      var found = Array.from(sel.options).some(function(o) { return o.value === prev; });
+      sel.value = found ? prev : '';
+    }
+  }
+
+  /* ── Filter reset ── */
+  function resetFilter() {
+    document.querySelectorAll('.filter-input').forEach(function(i) { i.value = ''; });
+    document.querySelectorAll('.filter-select').forEach(function(s) { s.selectedIndex = 0; });
+  }
+
+  function runQuery() {
+    showToast('查询成功', '已返回匹配的人群包圈选记录');
+  }
+
+  /* ── Action menu ── */
+  function toggleActionMenu(btn, event) {
+    if (event) event.stopPropagation();
+    var dropdown = btn.nextElementSibling;
+    var isOpen = dropdown.classList.contains('open');
+    closeAllActionMenus();
+    if (!isOpen) dropdown.classList.add('open');
+  }
+
+  function closeAllActionMenus() {
+    document.querySelectorAll('.action-dropdown').forEach(function(d) {
+      d.classList.remove('open');
+    });
+  }
+
+  document.addEventListener('click', function(e) {
+    closeAllActionMenus();
+    var fbWrap = document.getElementById('feedbackWrap');
+    if (fbWrap && !fbWrap.contains(e.target)) {
+      document.getElementById('feedbackPanel').classList.remove('open');
+      document.getElementById('feedbackBtn').classList.remove('fb-active');
+    }
+  });
+
+  /* ── Download ── */
+  function downloadSegment(segId) {
+    var content = 'user_id\n10086001\n10086002\n10086003\n10086004\n10086005\n';
+    var blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = segId + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('下载成功', '人群包 ' + segId + ' 已开始下载');
+  }
+
+  /* ── Table sort ── */
+  var sortState = {};
+  document.getElementById('mainTable').querySelectorAll('thead th.sortable').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var col = th.getAttribute('data-col');
+      var tbody = document.getElementById('mainTableBody');
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      var dir = (sortState.col === col && sortState.dir === 'asc') ? 'desc' : 'asc';
+      sortState = { col: col, dir: dir };
+
+      document.getElementById('mainTable').querySelectorAll('thead th').forEach(function(h) {
+        h.classList.remove('sort-asc', 'sort-desc');
+      });
+      th.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
+
+      rows.sort(function(a, b) {
+        var aVal = (a.querySelector('[data-col="' + col + '"]') || {}).textContent || '';
+        var bVal = (b.querySelector('[data-col="' + col + '"]') || {}).textContent || '';
+        aVal = aVal.trim(); bVal = bVal.trim();
+        var aDate = /^\d{4}-\d{2}-\d{2}/.test(aVal) ? Date.parse(aVal) : NaN;
+        var bDate = /^\d{4}-\d{2}-\d{2}/.test(bVal) ? Date.parse(bVal) : NaN;
+        if (!isNaN(aDate) && !isNaN(bDate)) return dir === 'asc' ? aDate - bDate : bDate - aDate;
+        var cmp = aVal.localeCompare(bVal, 'zh-CN');
+        return dir === 'asc' ? cmp : -cmp;
+      });
+      rows.forEach(function(r) { tbody.appendChild(r); });
+    });
+  });
+
+  /* ── New Segment Modal ── */
+  function openCreateModal() {
+    document.getElementById('createBizLine').value = '';
+    document.getElementById('createStartDate').value = '';
+    document.getElementById('createEndDate').value = '';
+    document.getElementById('createIsActive').value = '';
+    document.getElementById('createIsPaid').value = '';
+    document.getElementById('createSqlCond').value = '';
+    onCreateBizLineChange();
+    document.getElementById('createModal').classList.add('open');
+  }
+
+  function closeCreateModal() {
+    document.getElementById('createModal').classList.remove('open');
+  }
+
+  function cancelCreateModal() {
+    closeCreateModal();
+    showToast('已取消', '新建圈选操作已取消');
+  }
+
+  function onCreateBizLineChange() {
+    var biz = document.getElementById('createBizLine').value;
+    var sel = document.getElementById('createPlatform');
+    var prev = sel.value;
+    if (!biz) {
+      sel.innerHTML = '<option value="">请先选择业务线</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">请选择</option>';
+    ['APK', 'GP', 'H5', 'SAMSUNG', 'iOS'].forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      sel.appendChild(opt);
+    });
+    if (biz === 'sc') {
+      var webOpt = document.createElement('option');
+      webOpt.value = 'WEB'; webOpt.textContent = 'WEB';
+      sel.appendChild(webOpt);
+    }
+    var found = Array.from(sel.options).some(function(o) { return o.value === prev; });
+    sel.value = found ? prev : '';
+  }
+
+  function submitCreateForm() {
+    var fields = [
+      document.getElementById('createBizLine'),
+      document.getElementById('createStartDate'),
+      document.getElementById('createEndDate'),
+      document.getElementById('createPlatform')
+    ];
+    var firstInvalid = null;
+    fields.forEach(function(el) {
+      if (!el.value) {
+        el.style.borderColor = '#FF4D4F';
+        el.style.boxShadow = '0 0 0 2px rgba(255,77,79,.1)';
+        setTimeout(function() { el.style.borderColor = ''; el.style.boxShadow = ''; }, 2200);
+        if (!firstInvalid) firstInvalid = el;
+      }
+    });
+    if (firstInvalid) { firstInvalid.focus(); return; }
+    var startDate = document.getElementById('createStartDate').value;
+    var endDate   = document.getElementById('createEndDate').value;
+    if (startDate > endDate) {
+      var endEl = document.getElementById('createEndDate');
+      endEl.style.borderColor = '#FF4D4F';
+      endEl.style.boxShadow = '0 0 0 2px rgba(255,77,79,.1)';
+      setTimeout(function() { endEl.style.borderColor = ''; endEl.style.boxShadow = ''; }, 2200);
+      endEl.focus();
+      showToast('日期有误', '查询结束时间不能早于开始时间');
+      return;
+    }
+    closeCreateModal();
+    showToast('创建成功', '人群包圈选任务已提交，即将进入待计算队列');
+  }
+
+  document.getElementById('createModal').addEventListener('click', function(e) {
+    if (e.target === this) closeCreateModal();
+  });
+
+  /* ── Feedback panel ── */
+  var fbCurrentType = null;
+  var fbCfg = {
+    bi:  { cls: 'bi',  formTitle: '提交 BI 需求',  formSub: '报表 · 看板 · 指标分析需求',     statusTitle: 'BI 需求进度',   statusSub: '查看已提交的 BI 需求及处理进度' },
+    ds:  { cls: 'ds',  formTitle: '提交数分需求',  formSub: '数据分析 · 取数 · 专项研究需求', statusTitle: '数分需求进度',  statusSub: '查看已提交的数分需求及处理进度' },
+    bug: { cls: 'bug', formTitle: '提交缺陷反馈',  formSub: '功能异常 · 数据错误 · 体验问题', statusTitle: '缺陷处理进度',  statusSub: '查看已提交的缺陷及修复进度' }
+  };
+  var fbIcons = {
+    bi:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>',
+    ds:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    bug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+  };
+  var fbFormMap   = { bi: 'fbFormBi', ds: 'fbFormDs', bug: 'fbFormBug' };
+  var fbStatusMap = { bi: 'stBi',     ds: 'stDs',     bug: 'stBug' };
+
+  function toggleFeedbackPanel(event) {
+    if (event) event.stopPropagation();
+    var panel = document.getElementById('feedbackPanel');
+    var btn   = document.getElementById('feedbackBtn');
+    var isOpen = panel.classList.contains('open');
+    if (!isOpen) { panel.classList.add('open'); btn.classList.add('fb-active'); }
+    else         { panel.classList.remove('open'); btn.classList.remove('fb-active'); }
+  }
+
+  function openFbForm(type) {
+    closeFeedbackPanel();
+    fbCurrentType = type;
+    var cfg = fbCfg[type];
+    var iconEl = document.getElementById('fbFormIcon');
+    iconEl.className = 'modal-hd-icon ' + cfg.cls;
+    iconEl.innerHTML = fbIcons[type];
+    document.getElementById('fbFormTitle').textContent = cfg.formTitle;
+    document.getElementById('fbFormSub').textContent   = cfg.formSub;
+    Object.keys(fbFormMap).forEach(function(k) {
+      document.getElementById(fbFormMap[k]).style.display = k === type ? 'block' : 'none';
+    });
+    document.getElementById('fbFormModal').classList.add('open');
+  }
+
+  function openFbStatus(type) {
+    closeFeedbackPanel();
+    fbCurrentType = type;
+    var cfg = fbCfg[type];
+    var iconEl = document.getElementById('fbStatusIcon');
+    iconEl.className = 'modal-hd-icon ' + cfg.cls;
+    iconEl.innerHTML = fbIcons[type];
+    document.getElementById('fbStatusTitle').textContent = cfg.statusTitle;
+    document.getElementById('fbStatusSub').textContent   = cfg.statusSub;
+    Object.keys(fbStatusMap).forEach(function(k) {
+      document.getElementById(fbStatusMap[k]).style.display = k === type ? 'block' : 'none';
+    });
+    document.querySelectorAll('.st-filter-btn').forEach(function(b, i) { b.classList.toggle('active', i === 0); });
+    filterStatus(null, 'all');
+    document.getElementById('fbStatusModal').classList.add('open');
+  }
+
+  function closeFbModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  function closeFeedbackPanel() {
+    document.getElementById('feedbackPanel').classList.remove('open');
+    document.getElementById('feedbackBtn').classList.remove('fb-active');
+  }
+
+  function submitFbForm() {
+    var activeForm = document.getElementById(fbFormMap[fbCurrentType]);
+    var titleInput = activeForm.querySelector('input[type=text]');
+    if (!titleInput.value.trim()) {
+      titleInput.focus();
+      titleInput.style.borderColor = '#FF4D4F';
+      titleInput.style.boxShadow = '0 0 0 2px rgba(255,77,79,.1)';
+      setTimeout(function() { titleInput.style.borderColor = ''; titleInput.style.boxShadow = ''; }, 2200);
+      return;
+    }
+    closeFbModal('fbFormModal');
+    showToast('提交成功', fbCfg[fbCurrentType].formTitle + ' 已收到，稍后会有负责人跟进');
+  }
+
+  function filterStatus(btnEl, status) {
+    if (btnEl) {
+      document.querySelectorAll('.st-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      btnEl.classList.add('active');
+    }
+    var container = document.getElementById(fbStatusMap[fbCurrentType]);
+    if (!container) return;
+    container.querySelectorAll('tbody tr').forEach(function(r) {
+      r.style.display = (status === 'all' || r.getAttribute('data-status') === status) ? '' : 'none';
+    });
+  }
+
+  ['fbFormModal','fbStatusModal'].forEach(function(id) {
+    document.getElementById(id).addEventListener('click', function(e) {
+      if (e.target === this) closeFbModal(id);
+    });
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeFbModal('fbFormModal');
+      closeFbModal('fbStatusModal');
+      closeCreateModal();
+    }
+  });
+
+  /* ── Toast ── */
+  function showToast(title, desc) {
+    var t = document.getElementById('toast');
+    document.getElementById('toastTitle').textContent = title;
+    document.getElementById('toastDesc').textContent  = desc;
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2500);
+  }
+</script>
+
+</body>
+</html>
