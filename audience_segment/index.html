@@ -222,6 +222,12 @@
     .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
     .btn-default { background: #fff; color: var(--text); border-color: var(--border); }
     .btn-default:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-primary:disabled, .btn-primary[aria-disabled="true"] {
+      background: #B0C4E8; border-color: #B0C4E8; cursor: not-allowed; opacity: 1;
+    }
+    .btn-primary:disabled:hover, .btn-primary[aria-disabled="true"]:hover {
+      background: #B0C4E8; border-color: #B0C4E8;
+    }
 
     /* Result info bar */
     .result-info-bar {
@@ -708,7 +714,7 @@
         <div class="filter-item">
           <span class="filter-lbl">业务线<span class="req">*</span></span>
           <select class="filter-select" id="bizLineSelect" onchange="onBizLineChange()">
-            <option value="">全部</option>
+            <option value="">请选择</option>
             <option value="pvp">pvp</option>
             <option value="sc">sc</option>
           </select>
@@ -747,7 +753,7 @@
           </select>
         </div>
         <button class="btn btn-default" onclick="resetFilter()">重置</button>
-        <button class="btn btn-primary" onclick="runDownload()">
+        <button class="btn btn-primary" id="downloadBtn" onclick="runDownload()" aria-disabled="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           下载
         </button>
@@ -1036,6 +1042,16 @@
     document.getElementById('sqlCopyBtn').classList.remove('copied');
     document.getElementById('sqlCopyBtn').innerHTML =
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> 复制';
+    checkRequired();
+  }
+
+  function checkRequired() {
+    var biz       = document.getElementById('bizLineSelect').value;
+    var platforms = document.querySelectorAll('#platformMsDropdown input:checked').length;
+    var startDt   = document.getElementById('startDate').value;
+    var endDt     = document.getElementById('endDate').value;
+    var ok = biz && platforms > 0 && startDt && endDt;
+    document.getElementById('downloadBtn').setAttribute('aria-disabled', ok ? 'false' : 'true');
   }
 
   function copySql() {
@@ -1113,6 +1129,10 @@
   }
 
   function runDownload() {
+    if (document.getElementById('downloadBtn').getAttribute('aria-disabled') === 'true') {
+      showToast('请先完成必填项', '请完成必填项选择再下载');
+      return;
+    }
     showToast('下载成功', '人群包数据已开始下载');
   }
 
@@ -1120,9 +1140,11 @@
   ['filterIsActive', 'filterIsPaid'].forEach(function(id) {
     document.getElementById(id).addEventListener('change', updateSqlPreview);
   });
-  ['startDate', 'endDate', 'filterSqlCond'].forEach(function(id) {
+  ['startDate', 'endDate'].forEach(function(id) {
     document.getElementById(id).addEventListener('input', updateSqlPreview);
+    document.getElementById(id).addEventListener('change', updateSqlPreview);
   });
+  document.getElementById('filterSqlCond').addEventListener('input', updateSqlPreview);
   updateSqlPreview();
 
   document.addEventListener('click', function(e) {
