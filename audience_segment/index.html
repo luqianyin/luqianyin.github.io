@@ -421,6 +421,7 @@
     .f-field { margin-bottom: 14px; }
     .f-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
     .f-label .req { color: #FF4D4F; margin-left: 1px; }
+    .filter-lbl .req { color: #FF4D4F; margin-left: 1px; }
     .f-ctrl {
       width: 100%; height: 34px; border: 1px solid var(--border); border-radius: 5px;
       background: #fff; font-size: 13px; color: var(--text);
@@ -705,7 +706,7 @@
     <div class="filter-box">
       <div class="filter-row">
         <div class="filter-item">
-          <span class="filter-lbl">业务线</span>
+          <span class="filter-lbl">业务线<span class="req">*</span></span>
           <select class="filter-select" id="bizLineSelect" onchange="onBizLineChange()">
             <option value="">全部</option>
             <option value="pvp">pvp</option>
@@ -713,7 +714,7 @@
           </select>
         </div>
         <div class="filter-item">
-          <span class="filter-lbl">平台类型</span>
+          <span class="filter-lbl">平台类型<span class="req">*</span></span>
           <div class="ms-wrap" id="platformMsWrap">
             <button type="button" class="ms-trigger" id="platformMsTrigger" onclick="toggleMs(event)">
               <span id="platformMsLabel">全部</span>
@@ -753,11 +754,11 @@
       </div>
       <div class="filter-row">
         <div class="filter-item">
-          <span class="filter-lbl">查询开始时间</span>
+          <span class="filter-lbl">查询开始时间<span class="req">*</span></span>
           <input class="filter-input" type="date" id="startDate" />
         </div>
         <div class="filter-item">
-          <span class="filter-lbl">查询结束时间</span>
+          <span class="filter-lbl">查询结束时间<span class="req">*</span></span>
           <input class="filter-input" type="date" id="endDate" />
         </div>
       </div>
