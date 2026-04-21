@@ -1096,7 +1096,7 @@
 
   function onPlatformChange() {
     var checked = Array.from(document.querySelectorAll('#platformMsDropdown input:checked')).map(function(cb) { return cb.value; });
-    document.getElementById('platformMsLabel').textContent = checked.length ? checked.join(', ') : '全部';
+    document.getElementById('platformMsLabel').textContent = checked.length ? checked.join(', ') : '请选择';
     updateSqlPreview();
   }
 
@@ -1124,7 +1124,7 @@
     document.querySelectorAll('.filter-input').forEach(function(i) { i.value = ''; });
     document.querySelectorAll('.filter-select').forEach(function(s) { s.selectedIndex = 0; });
     document.querySelectorAll('#platformMsDropdown input').forEach(function(cb) { cb.checked = false; });
-    document.getElementById('platformMsLabel').textContent = '全部';
+    document.getElementById('platformMsLabel').textContent = '请选择';
     updateSqlPreview();
   }
 
