@@ -464,6 +464,94 @@
     .toast-body { flex: 1; }
     .toast-title { font-size: 13px; font-weight: 600; color: var(--text); }
     .toast-desc  { font-size: 12px; color: var(--sub); margin-top: 2px; line-height: 1.5; }
+    /* ══════════════════════════════════════════════
+       MULTI-SELECT
+    ══════════════════════════════════════════════ */
+    .ms-wrap { position: relative; }
+    .ms-trigger {
+      height: 32px; min-width: 120px; max-width: 220px;
+      border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 28px 0 10px; cursor: pointer; outline: none;
+      display: flex; align-items: center; gap: 4px;
+      transition: border-color .15s; white-space: nowrap; overflow: hidden;
+    }
+    .ms-trigger:focus, .ms-wrap.open .ms-trigger { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.08); }
+    .ms-trigger span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    .ms-arrow { width: 12px; height: 12px; flex-shrink: 0; color: #86909C; position: absolute; right: 8px; transition: transform .15s; }
+    .ms-wrap.open .ms-arrow { transform: rotate(180deg); }
+    .ms-dropdown {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.1); z-index: 300;
+      min-width: 130px; padding: 4px 0; max-height: 220px; overflow-y: auto;
+    }
+    .ms-wrap.open .ms-dropdown { display: block; }
+    .ms-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px; font-size: 13px; color: var(--text);
+      cursor: pointer; transition: background .1s; white-space: nowrap;
+    }
+    .ms-option:hover { background: var(--primary-light); }
+    .ms-option input[type="checkbox"] { accent-color: var(--primary); width: 13px; height: 13px; cursor: pointer; }
+
+    .tip-wrap {
+      position: relative; display: inline-flex; align-items: center; vertical-align: middle; margin-left: 3px;
+    }
+    .tip-icon {
+      width: 13px; height: 13px; color: #C2C7CF; cursor: default; flex-shrink: 0;
+      transition: color .15s;
+    }
+    .tip-wrap:hover .tip-icon { color: var(--primary); }
+    .tip-bubble {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+      transform: translateX(-50%);
+      background: #1D2129; color: #fff; font-size: 12px; font-weight: 400;
+      white-space: nowrap; padding: 6px 10px; border-radius: 5px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.18); pointer-events: none; z-index: 500;
+      line-height: 1.5;
+    }
+    .tip-bubble::after {
+      content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 5px solid transparent; border-top-color: #1D2129;
+    }
+    .tip-wrap:hover .tip-bubble { display: block; }
+
+    /* ══════════════════════════════════════════════
+       SQL PREVIEW
+    ══════════════════════════════════════════════ */
+    .sql-preview-card {
+      background: #1E1E2E; border-radius: 6px;
+      margin-bottom: 14px; overflow: hidden;
+    }
+    .sql-preview-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px; background: #16162A; border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .sql-preview-title {
+      font-size: 12px; font-weight: 600; color: #8B8FA8; letter-spacing: .5px; text-transform: uppercase;
+    }
+    .sql-copy-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06); color: #8B8FA8; font-size: 12px; cursor: pointer;
+      transition: all .15s;
+    }
+    .sql-copy-btn:hover { background: rgba(255,255,255,.12); color: #C9D1E8; }
+    .sql-copy-btn.copied { border-color: #52C41A; color: #52C41A; background: rgba(82,196,26,.1); }
+    .sql-preview-body {
+      margin: 0; padding: 14px 16px;
+      font-family: "Fira Code", "Cascadia Code", Consolas, monospace;
+      font-size: 13px; line-height: 1.7; color: #CDD6F4;
+      white-space: pre-wrap; word-break: break-all; overflow-x: auto;
+    }
+    /* token colors */
+    .sq-kw  { color: #CBA6F7; }  /* keywords: SELECT FROM WHERE AND */
+    .sq-fn  { color: #89B4FA; }  /* field names */
+    .sq-str { color: #A6E3A1; }  /* string values */
+    .sq-num { color: #FAB387; }  /* numeric / date values */
+    .sq-cm  { color: #6C7086; }  /* placeholder comment */
+
   </style>
 </head>
 <body>
@@ -626,14 +714,20 @@
         </div>
         <div class="filter-item">
           <span class="filter-lbl">平台类型</span>
-          <select class="filter-select" id="platformSelect">
-            <option value="">全部</option>
-            <option value="APK">APK</option>
-            <option value="GP">GP</option>
-            <option value="H5">H5</option>
-            <option value="SAMSUNG">SAMSUNG</option>
-            <option value="iOS">iOS</option>
-          </select>
+          <div class="ms-wrap" id="platformMsWrap">
+            <button type="button" class="ms-trigger" id="platformMsTrigger" onclick="toggleMs(event)">
+              <span id="platformMsLabel">全部</span>
+              <svg class="ms-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="ms-dropdown" id="platformMsDropdown">
+              <label class="ms-option"><input type="checkbox" value="APK" onchange="onPlatformChange()"> APK</label>
+              <label class="ms-option"><input type="checkbox" value="GP" onchange="onPlatformChange()"> GP</label>
+              <label class="ms-option"><input type="checkbox" value="H5" onchange="onPlatformChange()"> H5</label>
+              <label class="ms-option"><input type="checkbox" value="SAMSUNG" onchange="onPlatformChange()"> SAMSUNG</label>
+              <label class="ms-option"><input type="checkbox" value="iOS" onchange="onPlatformChange()"> iOS</label>
+              <label class="ms-option" id="platformOptWEB" style="display:none;"><input type="checkbox" value="WEB" onchange="onPlatformChange()"> WEB</label>
+            </div>
+          </div>
         </div>
         <div class="filter-item">
           <span class="filter-lbl">是否活跃</span>
@@ -669,10 +763,27 @@
       </div>
       <div class="filter-row">
         <div class="filter-item" style="flex:1;">
-          <span class="filter-lbl">自定义SQL条件</span>
+          <span class="filter-lbl">自定义SQL条件
+            <span class="tip-wrap">
+              <svg class="tip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+              <span class="tip-bubble">更多自定义SQL查询条件可咨询数据分析师</span>
+            </span>
+          </span>
           <input class="filter-input" type="text" id="filterSqlCond" placeholder="AND a.u_country='US'" style="flex:1;width:100%;" />
         </div>
       </div>
+    </div>
+
+    <!-- SQL 预览 -->
+    <div class="sql-preview-card" id="sqlPreviewCard">
+      <div class="sql-preview-hd">
+        <span class="sql-preview-title">SQL 预览</span>
+        <button class="sql-copy-btn" id="sqlCopyBtn" onclick="copySql()" title="复制SQL">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          复制
+        </button>
+      </div>
+      <pre class="sql-preview-body" id="sqlPreviewBody"></pre>
     </div>
 
   </main>
@@ -880,34 +991,114 @@
 </div>
 
 <script>
-  /* ── Business line change → platform options ── */
-  var basePlatformOptions = [
-    { value: 'APK',     text: 'APK' },
-    { value: 'GP',      text: 'GP' },
-    { value: 'H5',      text: 'H5' },
-    { value: 'SAMSUNG', text: 'SAMSUNG' },
-    { value: 'iOS',     text: 'iOS' }
-  ];
+  /* ── SQL Preview ── */
+  function kw(s)  { return '<span class="sq-kw">'  + s + '</span>'; }
+  function fn(s)  { return '<span class="sq-fn">'  + s + '</span>'; }
+  function str(s) { return '<span class="sq-str">' + s + '</span>'; }
+  function num(s) { return '<span class="sq-num">' + s + '</span>'; }
+  function cm(s)  { return '<span class="sq-cm">'  + s + '</span>'; }
 
+  function buildSql() {
+    var biz      = document.getElementById('bizLineSelect').value;
+    var platforms = Array.from(document.querySelectorAll('#platformMsDropdown input:checked')).map(function(cb) { return cb.value; });
+    var isActive = document.getElementById('filterIsActive').value;
+    var isPaid   = document.getElementById('filterIsPaid').value;
+    var startDt  = document.getElementById('startDate').value;
+    var endDt    = document.getElementById('endDate').value;
+    var custom   = (document.getElementById('filterSqlCond').value || '').trim();
+
+    var lines = [];
+    lines.push(kw('SELECT') + ' ' + fn('a.user_id'));
+    lines.push(kw('FROM')   + ' ' + fn('dwd_user_info') + ' ' + fn('a'));
+    lines.push(kw('WHERE')  + ' ' + fn('1') + ' = ' + num('1'));
+
+    if (biz)                lines.push('  ' + kw('AND') + ' ' + fn('a.biz_line')   + ' = ' + str("'" + biz + "'"));
+    if (platforms.length === 1) {
+      lines.push('  ' + kw('AND') + ' ' + fn('a.platform') + ' = ' + str("'" + platforms[0] + "'"));
+    } else if (platforms.length > 1) {
+      lines.push('  ' + kw('AND') + ' ' + fn('a.platform') + ' ' + kw('IN') + ' (' + platforms.map(function(p) { return str("'" + p + "'"); }).join(', ') + ')');
+    }
+    if (startDt)            lines.push('  ' + kw('AND') + ' ' + fn('a.query_date') + ' &gt;= ' + num("'" + startDt + "'"));
+    if (endDt)              lines.push('  ' + kw('AND') + ' ' + fn('a.query_date') + ' &lt;= ' + num("'" + endDt + "'"));
+    if (isActive !== '')    lines.push('  ' + kw('AND') + ' ' + fn('a.is_active')  + ' = ' + num(isActive));
+    if (isPaid   !== '')    lines.push('  ' + kw('AND') + ' ' + fn('a.is_paid')    + ' = ' + num(isPaid));
+    if (custom)             lines.push('  ' + custom);
+
+    var anyFilter = biz || platforms.length || startDt || endDt || isActive !== '' || isPaid !== '' || custom;
+    if (!anyFilter) lines.push('  ' + cm('-- 请配置筛选条件'));
+
+    return lines.join('\n');
+  }
+
+  function updateSqlPreview() {
+    document.getElementById('sqlPreviewBody').innerHTML = buildSql();
+    document.getElementById('sqlCopyBtn').classList.remove('copied');
+    document.getElementById('sqlCopyBtn').innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> 复制';
+  }
+
+  function copySql() {
+    var rawLines = [];
+    var biz      = document.getElementById('bizLineSelect').value;
+    var platforms = Array.from(document.querySelectorAll('#platformMsDropdown input:checked')).map(function(cb) { return cb.value; });
+    var isActive = document.getElementById('filterIsActive').value;
+    var isPaid   = document.getElementById('filterIsPaid').value;
+    var startDt  = document.getElementById('startDate').value;
+    var endDt    = document.getElementById('endDate').value;
+    var custom   = (document.getElementById('filterSqlCond').value || '').trim();
+
+    rawLines.push('SELECT a.user_id');
+    rawLines.push('FROM dwd_user_info a');
+    rawLines.push('WHERE 1 = 1');
+    if (biz)      rawLines.push("  AND a.biz_line = '" + biz + "'");
+    if (platforms.length === 1) rawLines.push("  AND a.platform = '" + platforms[0] + "'");
+    else if (platforms.length > 1) rawLines.push("  AND a.platform IN ('" + platforms.join("', '") + "')");
+    if (startDt)  rawLines.push("  AND a.query_date >= '" + startDt + "'");
+    if (endDt)    rawLines.push("  AND a.query_date <= '" + endDt + "'");
+    if (isActive !== '') rawLines.push('  AND a.is_active = ' + isActive);
+    if (isPaid   !== '') rawLines.push('  AND a.is_paid = '   + isPaid);
+    if (custom)   rawLines.push('  ' + custom);
+
+    navigator.clipboard.writeText(rawLines.join('\n')).then(function() {
+      var btn = document.getElementById('sqlCopyBtn');
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="20 6 9 17 4 12"/></svg> 已复制';
+      setTimeout(function() {
+        btn.classList.remove('copied');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> 复制';
+      }, 2000);
+    });
+  }
+
+  /* ── Multi-select: platform ── */
+  function toggleMs(event) {
+    if (event) event.stopPropagation();
+    var wrap = document.getElementById('platformMsWrap');
+    wrap.classList.toggle('open');
+  }
+
+  function onPlatformChange() {
+    var checked = Array.from(document.querySelectorAll('#platformMsDropdown input:checked')).map(function(cb) { return cb.value; });
+    document.getElementById('platformMsLabel').textContent = checked.length ? checked.join(', ') : '全部';
+    updateSqlPreview();
+  }
+
+  document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('platformMsWrap');
+    if (wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
+  });
+
+  /* ── Business line change → show/hide WEB option ── */
   function onBizLineChange() {
     var biz = document.getElementById('bizLineSelect').value;
-    var sel = document.getElementById('platformSelect');
-    var prev = sel.value;
-    sel.innerHTML = '<option value="">全部</option>';
-    basePlatformOptions.forEach(function(o) {
-      var opt = document.createElement('option');
-      opt.value = o.value; opt.textContent = o.text;
-      sel.appendChild(opt);
-    });
-    if (biz === 'sc') {
-      var webOpt = document.createElement('option');
-      webOpt.value = 'WEB'; webOpt.textContent = 'WEB';
-      sel.appendChild(webOpt);
-    }
-    // restore previous selection if still valid
-    if (prev) {
-      var found = Array.from(sel.options).some(function(o) { return o.value === prev; });
-      sel.value = found ? prev : '';
+    var webOpt = document.getElementById('platformOptWEB');
+    var webCb  = webOpt.querySelector('input');
+    webOpt.style.display = (biz === 'sc') ? '' : 'none';
+    if (biz !== 'sc' && webCb.checked) {
+      webCb.checked = false;
+      onPlatformChange();
+    } else {
+      updateSqlPreview();
     }
   }
 
@@ -915,11 +1106,23 @@
   function resetFilter() {
     document.querySelectorAll('.filter-input').forEach(function(i) { i.value = ''; });
     document.querySelectorAll('.filter-select').forEach(function(s) { s.selectedIndex = 0; });
+    document.querySelectorAll('#platformMsDropdown input').forEach(function(cb) { cb.checked = false; });
+    document.getElementById('platformMsLabel').textContent = '全部';
+    updateSqlPreview();
   }
 
   function runDownload() {
     showToast('下载成功', '人群包数据已开始下载');
   }
+
+  /* ── Wire filter controls to SQL preview ── */
+  ['filterIsActive', 'filterIsPaid'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', updateSqlPreview);
+  });
+  ['startDate', 'endDate', 'filterSqlCond'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', updateSqlPreview);
+  });
+  updateSqlPreview();
 
   document.addEventListener('click', function(e) {
     var fbWrap = document.getElementById('feedbackWrap');
