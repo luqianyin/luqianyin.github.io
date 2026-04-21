@@ -625,10 +625,6 @@
           </select>
         </div>
         <div class="filter-item">
-          <span class="filter-lbl">用户群ID</span>
-          <input class="filter-input" type="text" placeholder="请输入用户群ID" style="width:180px;" />
-        </div>
-        <div class="filter-item">
           <span class="filter-lbl">平台类型</span>
           <select class="filter-select" id="platformSelect">
             <option value="">全部</option>
@@ -640,389 +636,41 @@
           </select>
         </div>
         <div class="filter-item">
-          <span class="filter-lbl">计算状态</span>
-          <select class="filter-select">
+          <span class="filter-lbl">是否活跃</span>
+          <select class="filter-select" id="filterIsActive">
             <option value="">全部</option>
-            <option>计算中</option>
-            <option>已完成</option>
-            <option>计算失败</option>
-            <option>待计算</option>
-            <option>已取消</option>
+            <option value="1">是</option>
+            <option value="0">否</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <span class="filter-lbl">是否付费</span>
+          <select class="filter-select" id="filterIsPaid">
+            <option value="">全部</option>
+            <option value="1">是</option>
+            <option value="0">否</option>
           </select>
         </div>
         <button class="btn btn-default" onclick="resetFilter()">重置</button>
-        <button class="btn btn-primary" onclick="runQuery()">查询</button>
+        <button class="btn btn-primary" onclick="runDownload()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          下载
+        </button>
       </div>
       <div class="filter-row">
         <div class="filter-item">
           <span class="filter-lbl">查询开始时间</span>
-          <div class="date-range">
-            <input class="filter-input" type="date" id="startDateFrom" />
-            <span class="date-range-sep">~</span>
-            <input class="filter-input" type="date" id="startDateTo" />
-          </div>
+          <input class="filter-input" type="date" id="startDate" />
         </div>
         <div class="filter-item">
           <span class="filter-lbl">查询结束时间</span>
-          <div class="date-range">
-            <input class="filter-input" type="date" id="endDateFrom" />
-            <span class="date-range-sep">~</span>
-            <input class="filter-input" type="date" id="endDateTo" />
-          </div>
+          <input class="filter-input" type="date" id="endDate" />
         </div>
       </div>
-    </div>
-
-    <!-- 结果区 -->
-    <div class="result-info-bar">
-      <span class="result-count">共 <strong id="totalCount">10</strong> 条记录</span>
-      <div class="result-actions">
-        <button class="btn btn-primary" onclick="openCreateModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          新建圈选
-        </button>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <table id="mainTable">
-        <thead>
-          <tr>
-            <th class="sortable" data-col="1">用户群ID</th>
-            <th class="sortable" data-col="0">业务线</th>
-            <th class="sortable" data-col="2">查询开始时间</th>
-            <th class="sortable" data-col="3">查询结束时间</th>
-            <th class="sortable" data-col="4">平台类型</th>
-            <th class="sortable" data-col="9">是否活跃</th>
-            <th class="sortable" data-col="10">是否付费</th>
-            <th class="sortable" data-col="11">自定义SQL条件</th>
-            <th class="sortable" data-col="5">计算状态</th>
-            <th class="sortable" data-col="7">修改者</th>
-            <th class="sortable" data-col="8">完成时间</th>
-            <th data-col="6">更多操作</th>
-          </tr>
-        </thead>
-        <tbody id="mainTableBody">
-          <tr>
-            <td data-col="1"><span class="mono">seg_game_20260101_001</span></td>
-            <td data-col="0">pvp</td>
-            <td data-col="2">2026-01-01</td>
-            <td data-col="3">2026-01-31</td>
-            <td data-col="4">iOS</td>
-            <td data-col="9">1</td>
-            <td data-col="10">1</td>
-            <td data-col="11" class="sql-cell" title="AND a.u_country='US'">AND a.u_country='US'</td>
-            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
-            <td data-col="7">张三</td>
-            <td data-col="8">2026-02-01 08:32:10</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" onclick="downloadSegment('seg_game_20260101_001'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-                    重新计算
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    取消
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td data-col="1"><span class="mono">seg_ec_20260105_002</span></td>
-            <td data-col="0">sc</td>
-            <td data-col="2">2026-01-05</td>
-            <td data-col="3">2026-02-05</td>
-            <td data-col="4">GP</td>
-            <td data-col="9">1</td>
-            <td data-col="10">0</td>
-            <td data-col="11" class="sql-cell" title="">—</td>
-            <td data-col="5"><span class="tag tag-computing">计算中</span></td>
-            <td data-col="7">李红</td>
-            <td data-col="8">—</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" style="opacity:.45;cursor:not-allowed;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','已取消计算任务'); closeAllActionMenus();" style="color:#CF1322;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    取消
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td data-col="1"><span class="mono">seg_ads_20260108_003</span></td>
-            <td data-col="0">pvp</td>
-            <td data-col="2">2026-01-08</td>
-            <td data-col="3">2026-02-08</td>
-            <td data-col="4">APK</td>
-            <td data-col="9">0</td>
-            <td data-col="10">—</td>
-            <td data-col="11" class="sql-cell" title="AND a.u_level>10">AND a.u_level>10</td>
-            <td data-col="5"><span class="tag tag-failed">计算失败</span></td>
-            <td data-col="7">王强</td>
-            <td data-col="8">—</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" onclick="downloadSegment('seg_ads_20260108_003'); closeAllActionMenus();" style="opacity:.45;cursor:not-allowed;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-                    重新计算
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td data-col="1"><span class="mono">seg_social_20260110_004</span></td>
-            <td data-col="0">sc</td>
-            <td data-col="2">2026-01-10</td>
-            <td data-col="3">2026-02-10</td>
-            <td data-col="4">WEB</td>
-            <td data-col="9">1</td>
-            <td data-col="10">1</td>
-            <td data-col="11" class="sql-cell" title="AND a.u_country='CN'">AND a.u_country='CN'</td>
-            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
-            <td data-col="7">张明</td>
-            <td data-col="8">2026-02-11 15:20:44</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" onclick="downloadSegment('seg_social_20260110_004'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-                    重新计算
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    取消
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td data-col="1"><span class="mono">seg_game_20260112_005</span></td>
-            <td data-col="0">pvp</td>
-            <td data-col="2">2026-01-12</td>
-            <td data-col="3">2026-02-12</td>
-            <td data-col="4">H5</td>
-            <td data-col="9">—</td>
-            <td data-col="10">0</td>
-            <td data-col="11" class="sql-cell" title="">—</td>
-            <td data-col="5"><span class="tag tag-pending">待计算</span></td>
-            <td data-col="7">张三</td>
-            <td data-col="8">—</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" style="opacity:.45;cursor:not-allowed;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    取消
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td data-col="1"><span class="mono">seg_ec_20260115_006</span></td>
-            <td data-col="0">sc</td>
-            <td data-col="2">2026-01-15</td>
-            <td data-col="3">2026-03-15</td>
-            <td data-col="4">SAMSUNG</td>
-            <td data-col="9">1</td>
-            <td data-col="10">1</td>
-            <td data-col="11" class="sql-cell" title="AND a.u_vip=1">AND a.u_vip=1</td>
-            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
-            <td data-col="7">赵雷</td>
-            <td data-col="8">2026-03-16 09:05:33</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" onclick="downloadSegment('seg_ec_20260115_006'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-                    重新计算
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    取消
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td data-col="1"><span class="mono">seg_ads_20260118_007</span></td>
-            <td data-col="0">pvp</td>
-            <td data-col="2">2026-01-18</td>
-            <td data-col="3">2026-02-28</td>
-            <td data-col="4">APK</td>
-            <td data-col="9">0</td>
-            <td data-col="10">0</td>
-            <td data-col="11" class="sql-cell" title="">—</td>
-            <td data-col="5"><span class="tag tag-canceled">已取消</span></td>
-            <td data-col="7">李红</td>
-            <td data-col="8">—</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" style="opacity:.45;cursor:not-allowed;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-                    重新计算
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td data-col="1"><span class="mono">seg_game_20260120_008</span></td>
-            <td data-col="0">sc</td>
-            <td data-col="2">2026-01-20</td>
-            <td data-col="3">2026-02-20</td>
-            <td data-col="4">GP</td>
-            <td data-col="9">1</td>
-            <td data-col="10">—</td>
-            <td data-col="11" class="sql-cell" title="AND a.u_country='JP'">AND a.u_country='JP'</td>
-            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
-            <td data-col="7">王强</td>
-            <td data-col="8">2026-02-21 11:48:27</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" onclick="downloadSegment('seg_game_20260120_008'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-                    重新计算
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    取消
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td data-col="1"><span class="mono">seg_social_20260122_009</span></td>
-            <td data-col="0">pvp</td>
-            <td data-col="2">2026-01-22</td>
-            <td data-col="3">2026-03-22</td>
-            <td data-col="4">H5</td>
-            <td data-col="9">—</td>
-            <td data-col="10">1</td>
-            <td data-col="11" class="sql-cell" title="">—</td>
-            <td data-col="5"><span class="tag tag-computing">计算中</span></td>
-            <td data-col="7">张明</td>
-            <td data-col="8">—</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" style="opacity:.45;cursor:not-allowed;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','已取消计算任务'); closeAllActionMenus();" style="color:#CF1322;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    取消
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td data-col="1"><span class="mono">seg_ec_20260125_010</span></td>
-            <td data-col="0">sc</td>
-            <td data-col="2">2026-01-25</td>
-            <td data-col="3">2026-04-01</td>
-            <td data-col="4">WEB</td>
-            <td data-col="9">1</td>
-            <td data-col="10">0</td>
-            <td data-col="11" class="sql-cell" title="AND a.u_country='US' AND a.u_level>5">AND a.u_country='US' AND a.u_level>5</td>
-            <td data-col="5"><span class="tag tag-completed">已完成</span></td>
-            <td data-col="7">张三</td>
-            <td data-col="8">2026-04-02 07:55:09</td>
-            <td data-col="6">
-              <div class="action-wrap">
-                <button class="action-link" onclick="toggleActionMenu(this, event)">更多 ▾</button>
-                <div class="action-dropdown">
-                  <div class="action-dropdown-item" onclick="downloadSegment('seg_ec_20260125_010'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    下载
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','已重新触发计算'); closeAllActionMenus();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-                    重新计算
-                  </div>
-                  <div class="action-dropdown-item" onclick="showToast('操作成功','圈选任务已取消'); closeAllActionMenus();" style="color:#CF1322;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    取消
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="pagination">
-        <span class="page-info">共 10 条</span>
-        <div style="display:flex;align-items:center;gap:4px;">
-          <button class="page-btn disabled">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <button class="page-btn active">1</button>
-          <button class="page-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin-left:8px;">
-          每页
-          <select class="page-size-select">
-            <option>10</option><option>20</option><option>50</option>
-          </select>
-          条
+      <div class="filter-row">
+        <div class="filter-item" style="flex:1;">
+          <span class="filter-lbl">自定义SQL条件</span>
+          <input class="filter-input" type="text" id="filterSqlCond" placeholder="AND a.u_country='US'" style="flex:1;width:100%;" />
         </div>
       </div>
     </div>
@@ -1220,78 +868,6 @@
   </div>
 </div>
 
-<!-- ══════════════ 新建圈选弹窗 ══════════════ -->
-<div class="modal-mask" id="createModal">
-  <div class="modal-box">
-    <div class="modal-hd">
-      <div class="modal-hd-icon bi">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="modal-hd-text">
-        <div class="modal-hd-title">新建圈选</div>
-        <div class="modal-hd-sub">配置人群包圈选参数，提交后将进入待计算队列</div>
-      </div>
-      <button class="modal-x" onclick="closeCreateModal()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="f-row">
-        <div class="f-field">
-          <label class="f-label">业务线 <span class="req">*</span></label>
-          <select class="f-ctrl" id="createBizLine" onchange="onCreateBizLineChange()">
-            <option value="">请选择</option>
-            <option value="pvp">pvp</option>
-            <option value="sc">sc</option>
-          </select>
-        </div>
-        <div class="f-field">
-          <label class="f-label">平台类型 <span class="req">*</span></label>
-          <select class="f-ctrl" id="createPlatform">
-            <option value="">请先选择业务线</option>
-          </select>
-        </div>
-      </div>
-      <div class="f-row">
-        <div class="f-field">
-          <label class="f-label">查询开始时间 <span class="req">*</span></label>
-          <input class="f-ctrl" type="date" id="createStartDate" />
-        </div>
-        <div class="f-field">
-          <label class="f-label">查询结束时间 <span class="req">*</span></label>
-          <input class="f-ctrl" type="date" id="createEndDate" />
-        </div>
-      </div>
-      <div class="f-row">
-        <div class="f-field">
-          <label class="f-label">是否活跃</label>
-          <select class="f-ctrl" id="createIsActive">
-            <option value="">空</option>
-            <option value="1">是</option>
-            <option value="0">否</option>
-          </select>
-        </div>
-        <div class="f-field">
-          <label class="f-label">是否付费</label>
-          <select class="f-ctrl" id="createIsPaid">
-            <option value="">空</option>
-            <option value="1">是</option>
-            <option value="0">否</option>
-          </select>
-        </div>
-      </div>
-      <div class="f-field" style="margin-bottom:0;">
-        <label class="f-label">自定义SQL查询条件</label>
-        <input class="f-ctrl" type="text" id="createSqlCond" placeholder="AND a.u_country='US'" />
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-default" onclick="cancelCreateModal()">取 消</button>
-      <button class="btn btn-primary" onclick="submitCreateForm()">确 认</button>
-    </div>
-  </div>
-</div>
-
 <!-- ══════════════ TOAST ══════════════ -->
 <div class="toast" id="toast">
   <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2">
@@ -1341,156 +917,16 @@
     document.querySelectorAll('.filter-select').forEach(function(s) { s.selectedIndex = 0; });
   }
 
-  function runQuery() {
-    showToast('查询成功', '已返回匹配的人群包圈选记录');
-  }
-
-  /* ── Action menu ── */
-  function toggleActionMenu(btn, event) {
-    if (event) event.stopPropagation();
-    var dropdown = btn.nextElementSibling;
-    var isOpen = dropdown.classList.contains('open');
-    closeAllActionMenus();
-    if (!isOpen) dropdown.classList.add('open');
-  }
-
-  function closeAllActionMenus() {
-    document.querySelectorAll('.action-dropdown').forEach(function(d) {
-      d.classList.remove('open');
-    });
+  function runDownload() {
+    showToast('下载成功', '人群包数据已开始下载');
   }
 
   document.addEventListener('click', function(e) {
-    closeAllActionMenus();
     var fbWrap = document.getElementById('feedbackWrap');
     if (fbWrap && !fbWrap.contains(e.target)) {
       document.getElementById('feedbackPanel').classList.remove('open');
       document.getElementById('feedbackBtn').classList.remove('fb-active');
     }
-  });
-
-  /* ── Download ── */
-  function downloadSegment(segId) {
-    var content = 'user_id\n10086001\n10086002\n10086003\n10086004\n10086005\n';
-    var blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = segId + '.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('下载成功', '人群包 ' + segId + ' 已开始下载');
-  }
-
-  /* ── Table sort ── */
-  var sortState = {};
-  document.getElementById('mainTable').querySelectorAll('thead th.sortable').forEach(function(th) {
-    th.addEventListener('click', function() {
-      var col = th.getAttribute('data-col');
-      var tbody = document.getElementById('mainTableBody');
-      var rows = Array.from(tbody.querySelectorAll('tr'));
-      var dir = (sortState.col === col && sortState.dir === 'asc') ? 'desc' : 'asc';
-      sortState = { col: col, dir: dir };
-
-      document.getElementById('mainTable').querySelectorAll('thead th').forEach(function(h) {
-        h.classList.remove('sort-asc', 'sort-desc');
-      });
-      th.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
-
-      rows.sort(function(a, b) {
-        var aVal = (a.querySelector('[data-col="' + col + '"]') || {}).textContent || '';
-        var bVal = (b.querySelector('[data-col="' + col + '"]') || {}).textContent || '';
-        aVal = aVal.trim(); bVal = bVal.trim();
-        var aDate = /^\d{4}-\d{2}-\d{2}/.test(aVal) ? Date.parse(aVal) : NaN;
-        var bDate = /^\d{4}-\d{2}-\d{2}/.test(bVal) ? Date.parse(bVal) : NaN;
-        if (!isNaN(aDate) && !isNaN(bDate)) return dir === 'asc' ? aDate - bDate : bDate - aDate;
-        var cmp = aVal.localeCompare(bVal, 'zh-CN');
-        return dir === 'asc' ? cmp : -cmp;
-      });
-      rows.forEach(function(r) { tbody.appendChild(r); });
-    });
-  });
-
-  /* ── New Segment Modal ── */
-  function openCreateModal() {
-    document.getElementById('createBizLine').value = '';
-    document.getElementById('createStartDate').value = '';
-    document.getElementById('createEndDate').value = '';
-    document.getElementById('createIsActive').value = '';
-    document.getElementById('createIsPaid').value = '';
-    document.getElementById('createSqlCond').value = '';
-    onCreateBizLineChange();
-    document.getElementById('createModal').classList.add('open');
-  }
-
-  function closeCreateModal() {
-    document.getElementById('createModal').classList.remove('open');
-  }
-
-  function cancelCreateModal() {
-    closeCreateModal();
-    showToast('已取消', '新建圈选操作已取消');
-  }
-
-  function onCreateBizLineChange() {
-    var biz = document.getElementById('createBizLine').value;
-    var sel = document.getElementById('createPlatform');
-    var prev = sel.value;
-    if (!biz) {
-      sel.innerHTML = '<option value="">请先选择业务线</option>';
-      return;
-    }
-    sel.innerHTML = '<option value="">请选择</option>';
-    ['APK', 'GP', 'H5', 'SAMSUNG', 'iOS'].forEach(function(p) {
-      var opt = document.createElement('option');
-      opt.value = p; opt.textContent = p;
-      sel.appendChild(opt);
-    });
-    if (biz === 'sc') {
-      var webOpt = document.createElement('option');
-      webOpt.value = 'WEB'; webOpt.textContent = 'WEB';
-      sel.appendChild(webOpt);
-    }
-    var found = Array.from(sel.options).some(function(o) { return o.value === prev; });
-    sel.value = found ? prev : '';
-  }
-
-  function submitCreateForm() {
-    var fields = [
-      document.getElementById('createBizLine'),
-      document.getElementById('createStartDate'),
-      document.getElementById('createEndDate'),
-      document.getElementById('createPlatform')
-    ];
-    var firstInvalid = null;
-    fields.forEach(function(el) {
-      if (!el.value) {
-        el.style.borderColor = '#FF4D4F';
-        el.style.boxShadow = '0 0 0 2px rgba(255,77,79,.1)';
-        setTimeout(function() { el.style.borderColor = ''; el.style.boxShadow = ''; }, 2200);
-        if (!firstInvalid) firstInvalid = el;
-      }
-    });
-    if (firstInvalid) { firstInvalid.focus(); return; }
-    var startDate = document.getElementById('createStartDate').value;
-    var endDate   = document.getElementById('createEndDate').value;
-    if (startDate > endDate) {
-      var endEl = document.getElementById('createEndDate');
-      endEl.style.borderColor = '#FF4D4F';
-      endEl.style.boxShadow = '0 0 0 2px rgba(255,77,79,.1)';
-      setTimeout(function() { endEl.style.borderColor = ''; endEl.style.boxShadow = ''; }, 2200);
-      endEl.focus();
-      showToast('日期有误', '查询结束时间不能早于开始时间');
-      return;
-    }
-    closeCreateModal();
-    showToast('创建成功', '人群包圈选任务已提交，即将进入待计算队列');
-  }
-
-  document.getElementById('createModal').addEventListener('click', function(e) {
-    if (e.target === this) closeCreateModal();
   });
 
   /* ── Feedback panel ── */
@@ -1592,7 +1028,6 @@
     if (e.key === 'Escape') {
       closeFbModal('fbFormModal');
       closeFbModal('fbStatusModal');
-      closeCreateModal();
     }
   });
 
