@@ -232,6 +232,27 @@
     }
     .filter-date-range .filter-input { flex: 1; }
     .filter-date-sep { font-size: 12px; color: var(--sub); flex-shrink: 0; }
+    .filter-card-header {
+      display: flex; align-items: center; justify-content: flex-end;
+      margin-bottom: 12px;
+    }
+    .filter-product-wrap {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .filter-product-label {
+      font-size: 12px; color: var(--sub); font-weight: 500; white-space: nowrap;
+    }
+    .filter-product-select {
+      height: 30px; border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; color: var(--text); font-size: 13px;
+      padding: 0 28px 0 10px; outline: none; cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+      min-width: 200px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .filter-product-select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
     .filter-footer {
       display: flex; align-items: center; justify-content: flex-end;
       gap: 8px; margin-top: 14px; padding-top: 12px;
@@ -510,6 +531,18 @@
 
     <!-- ─── 筛选器 ─── -->
     <div class="filter-card">
+      <div class="filter-card-header">
+        <div class="filter-product-wrap">
+          <span class="filter-product-label">产品</span>
+          <select class="filter-product-select">
+            <option value="9001">9001 - Polaris Game</option>
+            <option value="9007" selected>9007 - Spark Core</option>
+            <option value="9012">9012 - Nova App</option>
+            <option value="9018">9018 - Titan Platform</option>
+            <option value="9024">9024 - Aurora SDK</option>
+          </select>
+        </div>
+      </div>
       <div class="filter-grid">
         <div class="filter-item">
           <label class="filter-label">实验ID</label>
