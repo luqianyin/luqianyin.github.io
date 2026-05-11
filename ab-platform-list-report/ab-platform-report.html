@@ -307,6 +307,48 @@
     .tl-dot { width: 8px; height: 8px; border-radius: 50%; }
 
     /* 右侧累计进组用户量图表 */
+    /* 业务结论（直接结束 / 结束并铺开 后展示） */
+    .biz-conclusion {
+      border-top: 1px solid var(--border);
+      padding: 14px 20px 16px;
+      background: #FAFBFC;
+    }
+    .biz-conclusion-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 12px;
+    }
+    .biz-conclusion-header svg { flex-shrink: 0; }
+    .biz-conclusion-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .biz-conclusion-source {
+      font-size: 11px; color: var(--primary);
+      background: #EEF5FF; padding: 1px 8px; border-radius: 10px;
+    }
+    .biz-conclusion-time { font-size: 12px; color: var(--sub); margin-left: auto; }
+    .biz-conclusion-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px 18px;
+    }
+    .biz-conclusion-item { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .biz-conclusion-item.full { grid-column: 1 / -1; }
+    .biz-conclusion-label { font-size: 11px; color: var(--sub); }
+    .biz-conclusion-value {
+      font-size: 13px; color: var(--text); font-weight: 500;
+      word-break: break-word;
+    }
+    .biz-conclusion-value.muted { color: var(--sub); font-weight: 400; }
+    .biz-conclusion-value.text {
+      font-weight: 400; line-height: 1.6; white-space: pre-wrap;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 10px; min-height: 36px;
+    }
+    .biz-conclusion-dir-tag {
+      display: inline-flex; align-items: center; padding: 2px 10px;
+      border-radius: 4px; font-size: 12px; font-weight: 500;
+    }
+    .biz-conclusion-dir-tag.positive { background: #E8FFEA; color: #00B42A; border: 1px solid #A3E8B0; }
+    .biz-conclusion-dir-tag.negative { background: #FFECE8; color: #F53F3F; border: 1px solid #FFC1B8; }
+    .biz-conclusion-dir-tag.neutral  { background: #F5F5F5; color: #86909C; border: 1px solid #E0E0E0; }
+
     .overview-right {
       flex: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
     }
@@ -1196,6 +1238,34 @@
           </div>
           <div class="ov-chart-container">
             <canvas id="enrollCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 业务结论（操作"直接结束"或"结束并铺开"并确认后展示） -->
+      <div class="biz-conclusion" id="bizConclusion" style="display:none;">
+        <div class="biz-conclusion-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span class="biz-conclusion-title">业务结论</span>
+          <span class="biz-conclusion-source" id="bizConclusionSource"></span>
+          <span class="biz-conclusion-time" id="bizConclusionTime"></span>
+        </div>
+        <div class="biz-conclusion-grid">
+          <div class="biz-conclusion-item">
+            <div class="biz-conclusion-label">铺开版本</div>
+            <div class="biz-conclusion-value" id="bizRolloutVersion">—</div>
+          </div>
+          <div class="biz-conclusion-item">
+            <div class="biz-conclusion-label">铺开至用户群</div>
+            <div class="biz-conclusion-value" id="bizRolloutUG">—</div>
+          </div>
+          <div class="biz-conclusion-item">
+            <div class="biz-conclusion-label">实验结论方向</div>
+            <div class="biz-conclusion-value" id="bizConclusionDir">—</div>
+          </div>
+          <div class="biz-conclusion-item full">
+            <div class="biz-conclusion-label">实验结论（选填）</div>
+            <div class="biz-conclusion-value text" id="bizConclusionText">—</div>
           </div>
         </div>
       </div>
@@ -2579,10 +2649,19 @@
   }
 
   function confirmDirectEnd() {
+    var dir = document.getElementById('endConclusionDir').value;
+    var text = document.getElementById('endConclusionText').value;
     closeEndModal();
     updateStatusBadge('已结束', 'stopped');
     showToast('实验已结束', '🔴');
     disableEndButtons();
+    showBizConclusion({
+      source: '直接结束',
+      version: '',
+      ugList: [],
+      dir: dir,
+      text: text
+    });
   }
 
   /* ── 结束并铺开 ── */
@@ -2664,10 +2743,67 @@
       return;
     }
     document.getElementById('rolloutUGErr').style.display = 'none';
+    var dir = document.getElementById('rolloutConclusionDir').value;
+    var text = document.getElementById('rolloutConclusionText').value;
+    var ugList = Array.from(ugChecked).map(function(cb){ return cb.parentElement.textContent.trim(); });
     closeRolloutModal();
     updateStatusBadge('已铺开', 'paused');
     showToast('实验已结束并铺开', '🚀');
     disableEndButtons();
+    showBizConclusion({
+      source: '结束并铺开',
+      version: ver,
+      ugList: ugList,
+      dir: dir,
+      text: text
+    });
+  }
+
+  /* ── 渲染业务结论 ── */
+  function showBizConclusion(data) {
+    var versionMap = { expA: '实验组A', expB: '实验组B' };
+    var dirMap = { positive: '正向', negative: '负向', neutral: '波动' };
+
+    var verEl = document.getElementById('bizRolloutVersion');
+    if (data.version) {
+      verEl.textContent = versionMap[data.version] || data.version;
+      verEl.classList.remove('muted');
+    } else {
+      verEl.textContent = '未铺开';
+      verEl.classList.add('muted');
+    }
+
+    var ugEl = document.getElementById('bizRolloutUG');
+    if (data.ugList && data.ugList.length) {
+      ugEl.textContent = data.ugList.join('、');
+      ugEl.classList.remove('muted');
+    } else {
+      ugEl.textContent = '未铺开';
+      ugEl.classList.add('muted');
+    }
+
+    var dirEl = document.getElementById('bizConclusionDir');
+    var dirKey = data.dir || 'neutral';
+    dirEl.innerHTML = '<span class="biz-conclusion-dir-tag ' + dirKey + '">' + (dirMap[dirKey] || '波动') + '</span>';
+
+    var txtEl = document.getElementById('bizConclusionText');
+    if (data.text && data.text.trim()) {
+      txtEl.textContent = data.text.trim();
+      txtEl.classList.remove('muted');
+    } else {
+      txtEl.textContent = '未填写';
+      txtEl.classList.add('muted');
+    }
+
+    document.getElementById('bizConclusionSource').textContent = data.source || '';
+
+    var now = new Date();
+    var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+    document.getElementById('bizConclusionTime').textContent =
+      '记录时间：' + now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate())
+      + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+    document.getElementById('bizConclusion').style.display = '';
   }
 
   document.addEventListener('keydown', function(e) {
