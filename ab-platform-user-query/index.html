@@ -562,11 +562,11 @@
             </div>
           </div>
           <div class="fp-row-btns">
-            <button class="fp-btn primary" onclick="openFbForm('bi')">
+            <button class="fp-btn primary" onclick="openFbLink('https://t1ump51mul2.feishu.cn/share/base/form/shrcnxKxEvRE0jz51pMCul4lard')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               填写表单
             </button>
-            <button class="fp-btn ghost" onclick="openFbStatus('bi')">
+            <button class="fp-btn ghost" onclick="openFbLink('https://t1ump51mul2.feishu.cn/share/base/view/shrcn65LBufLn4KIM5fZUIR3oAb')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               查询进度
             </button>
@@ -585,11 +585,11 @@
             </div>
           </div>
           <div class="fp-row-btns">
-            <button class="fp-btn primary" onclick="openFbForm('ds')">
+            <button class="fp-btn primary" onclick="openFbLink('https://t1ump51mul2.feishu.cn/share/base/form/shrcn4y7VteUmS1bX0jw0427HRd')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               填写表单
             </button>
-            <button class="fp-btn ghost" onclick="openFbStatus('ds')">
+            <button class="fp-btn ghost" onclick="openFbLink('https://t1ump51mul2.feishu.cn/share/base/view/shrcneLgWSd7BdfeqRaGUm0JWFc')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               查询进度
             </button>
@@ -608,11 +608,11 @@
             </div>
           </div>
           <div class="fp-row-btns">
-            <button class="fp-btn primary" onclick="openFbForm('bug')">
+            <button class="fp-btn primary" onclick="openFbLink('https://t1ump51mul2.feishu.cn/share/base/form/shrcn7bNmc29pphfofBrxOQlQ9g')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               填写表单
             </button>
-            <button class="fp-btn ghost" onclick="openFbStatus('bug')">
+            <button class="fp-btn ghost" onclick="openFbLink('https://t1ump51mul2.feishu.cn/share/base/view/shrcnOobybKq0GQdnZRDvRceQud')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               查询进度
             </button>
@@ -1201,284 +1201,6 @@
 
 </div><!-- /body-wrap -->
 
-<!-- ══════════════ 反馈表单弹窗 ══════════════ -->
-<div class="modal-mask" id="fbFormModal">
-  <div class="modal-box">
-    <div class="modal-hd">
-      <div class="modal-hd-icon" id="fbFormIcon"></div>
-      <div class="modal-hd-text">
-        <div class="modal-hd-title" id="fbFormTitle">提交需求</div>
-        <div class="modal-hd-sub" id="fbFormSub">请填写需求详情</div>
-      </div>
-      <button class="modal-x" onclick="closeFbModal('fbFormModal')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-
-      <!-- BI 需求表单 -->
-      <div id="fbFormBi">
-        <div class="f-field">
-          <label class="f-label">需求标题 <span class="req">*</span></label>
-          <input class="f-ctrl" type="text" placeholder="请简明描述您的需求（30字以内）" maxlength="60" />
-        </div>
-        <div class="f-row">
-          <div class="f-field">
-            <label class="f-label">所属产品 <span class="req">*</span></label>
-            <select class="f-ctrl">
-              <option value="">请选择</option>
-              <option>9007-Polaris Game</option>
-              <option>9008-StarRacer</option>
-              <option>9009-MythicWorld</option>
-              <option>9010-ZenRun</option>
-            </select>
-          </div>
-          <div class="f-field">
-            <label class="f-label">优先级 <span class="req">*</span></label>
-            <select class="f-ctrl">
-              <option value="">请选择</option>
-              <option>低</option><option>中</option><option>高</option><option>紧急</option>
-            </select>
-          </div>
-        </div>
-        <div class="f-field">
-          <label class="f-label">需求描述 <span class="req">*</span></label>
-          <textarea class="f-ctrl ta" placeholder="请描述希望实现的分析内容、看板指标或数据报表，尽量包含业务背景和使用场景"></textarea>
-        </div>
-        <div class="f-row">
-          <div class="f-field">
-            <label class="f-label">期望交付日期</label>
-            <input class="f-ctrl" type="date" />
-          </div>
-          <div class="f-field">
-            <label class="f-label">联系人</label>
-            <input class="f-ctrl" type="text" value="张三" />
-          </div>
-        </div>
-      </div>
-
-      <!-- 数分需求表单 -->
-      <div id="fbFormDs" style="display:none;">
-        <div class="f-field">
-          <label class="f-label">需求标题 <span class="req">*</span></label>
-          <input class="f-ctrl" type="text" placeholder="请简明描述您的需求（30字以内）" maxlength="60" />
-        </div>
-        <div class="f-row">
-          <div class="f-field">
-            <label class="f-label">所属产品 <span class="req">*</span></label>
-            <select class="f-ctrl">
-              <option value="">请选择</option>
-              <option>9007-Polaris Game</option>
-              <option>9008-StarRacer</option>
-              <option>9009-MythicWorld</option>
-              <option>9010-ZenRun</option>
-            </select>
-          </div>
-          <div class="f-field">
-            <label class="f-label">优先级 <span class="req">*</span></label>
-            <select class="f-ctrl">
-              <option value="">请选择</option>
-              <option>低</option><option>中</option><option>高</option><option>紧急</option>
-            </select>
-          </div>
-        </div>
-        <div class="f-field">
-          <label class="f-label">分析目标 <span class="req">*</span></label>
-          <textarea class="f-ctrl ta" placeholder="请描述希望回答的业务问题，例如：分析Q4付费用户的留存情况，找出流失原因"></textarea>
-        </div>
-        <div class="f-field">
-          <label class="f-label">数据范围 / 维度说明</label>
-          <textarea class="f-ctrl ta" style="min-height:54px;" placeholder="时间范围、用户群体、分析粒度等，例如：近3个月、付费用户、按关卡维度拆分"></textarea>
-        </div>
-        <div class="f-row">
-          <div class="f-field">
-            <label class="f-label">期望交付日期</label>
-            <input class="f-ctrl" type="date" />
-          </div>
-          <div class="f-field">
-            <label class="f-label">联系人</label>
-            <input class="f-ctrl" type="text" value="张三" />
-          </div>
-        </div>
-      </div>
-
-      <!-- 缺陷表单 -->
-      <div id="fbFormBug" style="display:none;">
-        <div class="f-field">
-          <label class="f-label">缺陷标题 <span class="req">*</span></label>
-          <input class="f-ctrl" type="text" placeholder="请简明描述缺陷现象（30字以内）" maxlength="60" />
-        </div>
-        <div class="f-row">
-          <div class="f-field">
-            <label class="f-label">所属模块 <span class="req">*</span></label>
-            <select class="f-ctrl">
-              <option value="">请选择</option>
-              <option>实验管理</option>
-              <option>用户群配置</option>
-              <option>远程配置</option>
-              <option>实验用户查询</option>
-              <option>用户群/参数下发查询</option>
-              <option>指标管理</option>
-              <option>其他</option>
-            </select>
-          </div>
-          <div class="f-field">
-            <label class="f-label">严重程度 <span class="req">*</span></label>
-            <select class="f-ctrl">
-              <option value="">请选择</option>
-              <option>轻微</option><option>一般</option><option>严重</option><option>致命</option>
-            </select>
-          </div>
-        </div>
-        <div class="f-field">
-          <label class="f-label">缺陷描述 <span class="req">*</span></label>
-          <textarea class="f-ctrl ta" placeholder="请描述缺陷的具体表现：期望结果是什么，实际结果是什么"></textarea>
-        </div>
-        <div class="f-field">
-          <label class="f-label">复现步骤</label>
-          <textarea class="f-ctrl ta" style="min-height:54px;" placeholder="1. 进入页面 xxx&#10;2. 执行操作 xxx&#10;3. 观察到异常现象"></textarea>
-        </div>
-        <div class="f-row">
-          <div class="f-field">
-            <label class="f-label">期望修复日期</label>
-            <input class="f-ctrl" type="date" />
-          </div>
-          <div class="f-field">
-            <label class="f-label">联系人</label>
-            <input class="f-ctrl" type="text" value="张三" />
-          </div>
-        </div>
-      </div>
-
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-default" onclick="closeFbModal('fbFormModal')">取 消</button>
-      <button class="btn btn-primary" onclick="submitFbForm()">提 交</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════ 反馈进度查询弹窗 ══════════════ -->
-<div class="modal-mask" id="fbStatusModal">
-  <div class="modal-box wide">
-    <div class="modal-hd">
-      <div class="modal-hd-icon" id="fbStatusIcon"></div>
-      <div class="modal-hd-text">
-        <div class="modal-hd-title" id="fbStatusTitle">需求进度查询</div>
-        <div class="modal-hd-sub" id="fbStatusSub">查看已提交的需求及处理进度</div>
-      </div>
-      <button class="modal-x" onclick="closeFbModal('fbStatusModal')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="st-filter" id="stFilterBar">
-        <button class="st-filter-btn active" onclick="filterStatus(this,'all')">全部</button>
-        <button class="st-filter-btn" onclick="filterStatus(this,'pending')">待评估</button>
-        <button class="st-filter-btn" onclick="filterStatus(this,'progress')">进行中</button>
-        <button class="st-filter-btn" onclick="filterStatus(this,'done')">已完成</button>
-        <button class="st-filter-btn" onclick="filterStatus(this,'rejected')">已关闭</button>
-      </div>
-
-      <!-- BI 进度列表 -->
-      <div id="stBi">
-        <div class="table-card">
-          <table>
-            <thead><tr><th>编号</th><th>需求标题</th><th>优先级</th><th>状态</th><th>提交时间</th><th>负责人</th><th>备注</th></tr></thead>
-            <tbody>
-              <tr data-status="progress">
-                <td><span class="mono">BR-2025-001</span></td>
-                <td>游戏留存率分析看板</td><td>高</td>
-                <td><span class="sbadge sbadge-progress">进行中</span></td>
-                <td>2025-11-15</td><td>数据分析组</td><td>预计12月底上线</td>
-              </tr>
-              <tr data-status="done">
-                <td><span class="mono">BR-2025-002</span></td>
-                <td>付费漏斗分析报表</td><td>中</td>
-                <td><span class="sbadge sbadge-done">已完成</span></td>
-                <td>2025-10-20</td><td>数据分析组</td><td>已上线，见钉钉群链接</td>
-              </tr>
-              <tr data-status="pending">
-                <td><span class="mono">BR-2025-003</span></td>
-                <td>用户分层活跃度趋势图</td><td>低</td>
-                <td><span class="sbadge sbadge-pending">待评估</span></td>
-                <td>2025-12-01</td><td>—</td><td>—</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- 数分 进度列表 -->
-      <div id="stDs" style="display:none;">
-        <div class="table-card">
-          <table>
-            <thead><tr><th>编号</th><th>需求标题</th><th>优先级</th><th>状态</th><th>提交时间</th><th>负责人</th><th>备注</th></tr></thead>
-            <tbody>
-              <tr data-status="progress">
-                <td><span class="mono">DS-2025-001</span></td>
-                <td>Q4游戏付费行为专项分析</td><td>高</td>
-                <td><span class="sbadge sbadge-progress">进行中</span></td>
-                <td>2025-11-20</td><td>张明</td><td>产出PPT报告</td>
-              </tr>
-              <tr data-status="done">
-                <td><span class="mono">DS-2025-002</span></td>
-                <td>新手引导完成率问题排查</td><td>紧急</td>
-                <td><span class="sbadge sbadge-done">已完成</span></td>
-                <td>2025-10-10</td><td>李红</td><td>结论已同步给PM</td>
-              </tr>
-              <tr data-status="done">
-                <td><span class="mono">DS-2025-003</span></td>
-                <td>广告ROI效果评估</td><td>中</td>
-                <td><span class="sbadge sbadge-done">已完成</span></td>
-                <td>2025-09-28</td><td>张明</td><td>—</td>
-              </tr>
-              <tr data-status="rejected">
-                <td><span class="mono">DS-2025-004</span></td>
-                <td>全量用户7日行为明细取数</td><td>低</td>
-                <td><span class="sbadge sbadge-rejected">已关闭</span></td>
-                <td>2025-09-05</td><td>李红</td><td>数据量超限，建议分批</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- 缺陷 进度列表 -->
-      <div id="stBug" style="display:none;">
-        <div class="table-card">
-          <table>
-            <thead><tr><th>编号</th><th>缺陷标题</th><th>严重程度</th><th>状态</th><th>提交时间</th><th>负责人</th><th>备注</th></tr></thead>
-            <tbody>
-              <tr data-status="progress">
-                <td><span class="mono">BUG-2025-001</span></td>
-                <td>实验列表翻页后数据错乱</td><td>严重</td>
-                <td><span class="sbadge sbadge-progress">进行中</span></td>
-                <td>2025-12-05</td><td>王强</td><td>已定位原因，修复中</td>
-              </tr>
-              <tr data-status="done">
-                <td><span class="mono">BUG-2025-002</span></td>
-                <td>导出CSV中文乱码</td><td>一般</td>
-                <td><span class="sbadge sbadge-done">已完成</span></td>
-                <td>2025-11-22</td><td>王强</td><td>已添加UTF-8 BOM，已上线</td>
-              </tr>
-              <tr data-status="pending">
-                <td><span class="mono">BUG-2025-003</span></td>
-                <td>时间筛选器无法清空</td><td>轻微</td>
-                <td><span class="sbadge sbadge-pending">待评估</span></td>
-                <td>2025-12-08</td><td>—</td><td>—</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn btn-default" onclick="closeFbModal('fbStatusModal')">关 闭</button>
-    </div>
-  </div>
-</div>
-
 <!-- ══════════════ TOAST ══════════════ -->
 <div class="toast" id="toast">
   <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2">
@@ -1701,25 +1423,8 @@
   });
 
   /* ════════════════════════
-     反馈面板 & 弹窗逻辑
+     反馈面板逻辑
   ════════════════════════ */
-  var fbCurrentType = null;
-
-  var fbCfg = {
-    bi:  { cls: 'bi',  formTitle: '提交 BI 需求',  formSub: '报表 · 看板 · 指标分析需求',        statusTitle: 'BI 需求进度',   statusSub: '查看已提交的 BI 需求及处理进度' },
-    ds:  { cls: 'ds',  formTitle: '提交数分需求',  formSub: '数据分析 · 取数 · 专项研究需求',    statusTitle: '数分需求进度',  statusSub: '查看已提交的数分需求及处理进度' },
-    bug: { cls: 'bug', formTitle: '提交缺陷反馈',  formSub: '功能异常 · 数据错误 · 体验问题',    statusTitle: '缺陷处理进度',  statusSub: '查看已提交的缺陷及修复进度' }
-  };
-
-  var fbIcons = {
-    bi:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>',
-    ds:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
-    bug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-  };
-
-  var fbFormMap   = { bi: 'fbFormBi', ds: 'fbFormDs', bug: 'fbFormBug' };
-  var fbStatusMap = { bi: 'stBi',     ds: 'stDs',     bug: 'stBug' };
-
   function toggleFeedbackPanel(event) {
     if (event) event.stopPropagation();
     var panel = document.getElementById('feedbackPanel');
@@ -1735,96 +1440,15 @@
     }
   }
 
-  function openFbForm(type) {
-    closeFeedbackPanel();
-    fbCurrentType = type;
-    var cfg = fbCfg[type];
-
-    var iconEl = document.getElementById('fbFormIcon');
-    iconEl.className = 'modal-hd-icon ' + cfg.cls;
-    iconEl.innerHTML = fbIcons[type];
-    document.getElementById('fbFormTitle').textContent = cfg.formTitle;
-    document.getElementById('fbFormSub').textContent   = cfg.formSub;
-
-    Object.keys(fbFormMap).forEach(function(k) {
-      document.getElementById(fbFormMap[k]).style.display = k === type ? 'block' : 'none';
-    });
-    document.getElementById('fbFormModal').classList.add('open');
-  }
-
-  function openFbStatus(type) {
-    closeFeedbackPanel();
-    fbCurrentType = type;
-    var cfg = fbCfg[type];
-
-    var iconEl = document.getElementById('fbStatusIcon');
-    iconEl.className = 'modal-hd-icon ' + cfg.cls;
-    iconEl.innerHTML = fbIcons[type];
-    document.getElementById('fbStatusTitle').textContent = cfg.statusTitle;
-    document.getElementById('fbStatusSub').textContent   = cfg.statusSub;
-
-    Object.keys(fbStatusMap).forEach(function(k) {
-      document.getElementById(fbStatusMap[k]).style.display = k === type ? 'block' : 'none';
-    });
-
-    // reset filter to "全部"
-    document.querySelectorAll('.st-filter-btn').forEach(function(b, i) {
-      b.classList.toggle('active', i === 0);
-    });
-    filterStatus(null, 'all');
-
-    document.getElementById('fbStatusModal').classList.add('open');
-  }
-
-  function closeFbModal(id) {
-    document.getElementById(id).classList.remove('open');
-  }
-
   function closeFeedbackPanel() {
     document.getElementById('feedbackPanel').classList.remove('open');
     document.getElementById('feedbackBtn').classList.remove('fb-active');
   }
 
-  function submitFbForm() {
-    var activeForm = document.getElementById(fbFormMap[fbCurrentType]);
-    var titleInput = activeForm.querySelector('input[type=text]');
-    if (!titleInput.value.trim()) {
-      titleInput.focus();
-      titleInput.style.borderColor = '#FF4D4F';
-      titleInput.style.boxShadow = '0 0 0 2px rgba(255,77,79,.1)';
-      setTimeout(function() { titleInput.style.borderColor = ''; titleInput.style.boxShadow = ''; }, 2200);
-      return;
-    }
-    closeFbModal('fbFormModal');
-    showToast('提交成功', fbCfg[fbCurrentType].formTitle + ' 已收到，稍后会有负责人跟进');
+  function openFbLink(url) {
+    closeFeedbackPanel();
+    window.open(url, '_blank', 'noopener');
   }
-
-  function filterStatus(btnEl, status) {
-    if (btnEl) {
-      document.querySelectorAll('.st-filter-btn').forEach(function(b) { b.classList.remove('active'); });
-      btnEl.classList.add('active');
-    }
-    var container = document.getElementById(fbStatusMap[fbCurrentType]);
-    if (!container) return;
-    container.querySelectorAll('tbody tr').forEach(function(r) {
-      r.style.display = (status === 'all' || r.getAttribute('data-status') === status) ? '' : 'none';
-    });
-  }
-
-  // Close modals on overlay click
-  ['fbFormModal','fbStatusModal'].forEach(function(id) {
-    document.getElementById(id).addEventListener('click', function(e) {
-      if (e.target === this) closeFbModal(id);
-    });
-  });
-
-  // Close modals on ESC
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      closeFbModal('fbFormModal');
-      closeFbModal('fbStatusModal');
-    }
-  });
 
   /* ── Toast ── */
   function showToast(title, desc) {
