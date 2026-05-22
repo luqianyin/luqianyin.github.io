@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 数据源详情</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1677FF; --primary-light: #E6F0FF; --primary-hover: #0958D9;
+      --green: #00B42A; --green-light: #E8FFEA;
+      --red: #F53F3F; --red-light: #FFECE8;
+      --orange: #FF7D00; --orange-light: #FFF3E8;
+      --purple: #7B61FF; --purple-light: #F0EDFF;
+      --gray-light: #F7F8FA;
+      --sidebar-w: 220px; --header-h: 52px; --subbar-h: 44px;
+      --bg: #F5F7FA; --card: #FFFFFF; --border: #E8ECF0;
+      --text: #1D2129; --sub: #86909C;
+    }
+    body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* HEADER */
+    .header { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; flex-shrink: 0; position: sticky; top: 0; z-index: 30; }
+    .logo-wrap { display: flex; align-items: center; gap: 8px; }
+    .logo-name { font-size: 16px; font-weight: 700; }
+    .global-search { display: flex; align-items: center; width: 280px; height: 32px; background: var(--gray-light); border: 1px solid transparent; border-radius: 8px; padding: 0 10px; cursor: pointer; transition: all .15s; flex-shrink: 0; }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd { font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: #fff; font-family: ui-monospace, monospace; color: var(--sub); }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; }
+    .header-tab { height: 100%; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: var(--sub); cursor: pointer; position: relative; border: none; background: none; text-decoration: none; }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 8px; border-radius: 4px; cursor: pointer; color: var(--sub); background: none; border: none; position: relative; }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-badge { position: absolute; top: 1px; right: 4px; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px; background: var(--red); color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; cursor: pointer; background: none; border: none; }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+    /* SUB-HEADER */
+    .subbar { height: var(--subbar-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w); flex-shrink: 0; position: sticky; top: var(--header-h); z-index: 10; }
+    .subbar-inner { display: flex; align-items: center; padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .subbar-right { margin-left: auto; }
+    .back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--sub); border: none; background: none; cursor: pointer; }
+    .back-btn:hover { color: var(--primary); }
+    .back-btn svg { width: 12px; height: 12px; }
+
+    /* BODY */
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar { width: var(--sidebar-w); flex-shrink: 0; background: #fff; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; position: sticky; top: calc(var(--header-h) + var(--subbar-h)); height: calc(100vh - var(--header-h) - var(--subbar-h)); }
+    .nav-group { padding: 8px 0; }
+    .nav-l1 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; }
+    .nav-l1 .chevron { margin-left: auto; width: 14px; height: 14px; transition: transform .2s; }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+    .nav-l1-children { display: none; }
+    .nav-l1.open + .nav-l1-children { display: block; }
+    .nav-l2 { display: flex; align-items: center; padding: 9px 16px 9px 40px; font-size: 13px; color: var(--sub); cursor: pointer; position: relative; text-decoration: none; }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active { color: var(--primary); font-weight: 500; background: var(--primary-light); }
+    .nav-l2.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--primary); border-radius: 0 3px 3px 0; }
+
+    .content { flex: 1; min-width: 0; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* HERO */
+    .detail-hero { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; display: flex; gap: 16px; align-items: flex-start; }
+    .src-hero-icon { width: 56px; height: 56px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
+    .src-hero-icon.hive { background: linear-gradient(135deg,#FFE4B5,#FFCC80); color: #E65100; }
+    .src-hero-icon.mysql { background: linear-gradient(135deg,#E1F5FE,#4FC3F7); color: #00838F; }
+    .src-hero-icon.oracle { background: linear-gradient(135deg,#FFE0E0,#EF5350); color: #B71C1C; }
+    .src-hero-icon.dm { background: linear-gradient(135deg,#E1F5E1,#66BB6A); color: #1B5E20; }
+    .src-hero-icon.ck { background: linear-gradient(135deg,#FFF3E0,#FFB74D); color: #E65100; }
+    .src-hero-icon.kafka { background: linear-gradient(135deg,#F3E5F5,#BA68C8); color: #4A148C; }
+    .src-hero-icon.fileset { background: linear-gradient(135deg,#FCE4EC,#F06292); color: #880E4F; }
+    .src-hero-icon.mlflow { background: linear-gradient(135deg,#F0EDFF,#B39DDB); color: #4527A0; }
+    .src-hero-icon.feast { background: linear-gradient(135deg,#E8F4FF,#64B5F6); color: #0D47A1; }
+    .src-hero-icon.milvus { background: linear-gradient(135deg,#E6FFFB,#4DD0E1); color: #006064; }
+    .src-hero-icon.qdrant { background: linear-gradient(135deg,#F9F0FF,#B388FF); color: #4527A0; }
+    .src-hero-icon.hf { background: linear-gradient(135deg,#FFF3E8,#FFCA28); color: #E65100; }
+
+    .hero-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .hero-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .hero-name { font-size: 18px; font-weight: 600; }
+    .hero-en { font-size: 13px; font-family: ui-monospace, monospace; color: var(--sub); background: var(--gray-light); padding: 2px 8px; border-radius: 4px; }
+    .copy-btn { width: 22px; height: 22px; border-radius: 4px; border: none; background: none; color: var(--sub); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .copy-btn:hover { background: var(--bg); color: var(--primary); }
+    .copy-btn svg { width: 13px; height: 13px; }
+    .hero-tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; background: var(--primary-light); color: var(--primary); }
+    .hero-status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; border: 1px solid; }
+    .hero-status .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .hero-status.online { background: var(--green-light); color: var(--green); border-color: #A3E8B0; }
+    .hero-status.failed { background: var(--red-light); color: var(--red); border-color: #FFC1B8; }
+    .hero-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--sub); }
+    .hero-meta .label { color: var(--sub); }
+    .hero-meta .value { color: var(--text); }
+    .hero-meta .sep { color: #C2C7CF; }
+    .hero-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); transition: all .15s; white-space: nowrap; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    .btn-danger { color: var(--red); border-color: #FFC1B8; }
+    .btn-danger:hover { background: var(--red-light); border-color: var(--red); }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+    .btn svg { width: 14px; height: 14px; }
+
+    /* DETAIL SPLIT */
+    .detail-split { display: flex; gap: 14px; align-items: flex-start; }
+    .detail-left { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; }
+    .detail-right { flex: 1; min-width: 0; }
+    @media (max-width: 1100px) { .detail-split { flex-direction: column; } .detail-left { width: 100%; } }
+
+    /* INFO CARDS */
+    .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+    .info-card-title { font-size: 14px; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+    .info-card-title::before { content: ''; width: 3px; height: 14px; background: var(--primary); border-radius: 2px; }
+    .info-rows { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .info-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: start; font-size: 12px; }
+    .info-row .ir-label { color: var(--sub); }
+    .info-row .ir-value { color: var(--text); word-break: break-all; }
+    .info-row .ir-value.mono { font-family: ui-monospace, monospace; }
+    .info-row .ir-value a { color: var(--primary); text-decoration: none; cursor: pointer; }
+    .ir-tag-mini { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 11px; background: var(--gray-light); color: var(--sub); }
+    .ir-tag-mini.online { background: var(--green-light); color: var(--green); }
+
+    /* DETAIL TABS */
+    .detail-tabs-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .detail-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--border); padding: 0 20px; overflow-x: auto; }
+    .detail-tab { height: 44px; padding: 0 14px; font-size: 13px; font-weight: 500; color: var(--sub); cursor: pointer; border: none; background: none; position: relative; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+    .detail-tab:hover { color: var(--text); }
+    .detail-tab.active { color: var(--primary); font-weight: 600; }
+    .detail-tab.active::after { content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .detail-tab .tab-count { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--gray-light); color: var(--sub); font-weight: 400; }
+    .detail-tab.active .tab-count { background: var(--primary-light); color: var(--primary); }
+    .detail-pane { display: none; padding: 16px 20px; }
+    .detail-pane.active { display: block; }
+
+    /* 概览：摘要 + 表分布 */
+    .ov-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+    .ov-card { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .ov-card .ol { font-size: 11px; color: var(--sub); }
+    .ov-card .ov { font-size: 22px; font-weight: 700; margin: 4px 0; }
+    .ov-card .oe { font-size: 11px; color: var(--green); }
+    .ov-card .oe.down { color: var(--red); }
+
+    .schema-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .schema-card { padding: 12px 14px; background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all .15s; }
+    .schema-card:hover { border-color: var(--primary); }
+    .schema-card .sn { font-family: ui-monospace, monospace; font-weight: 600; font-size: 13px; }
+    .schema-card .si { font-size: 11px; color: var(--sub); margin-top: 4px; display: flex; gap: 12px; }
+
+    /* 表 */
+    .data-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .data-table-scroll { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+    .data-table thead th { background: #FAFBFC; border-bottom: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+    .data-table tbody td { padding: 10px 14px; border-bottom: 1px solid #F0F3F6; vertical-align: middle; }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover td { background: #FAFBFC; }
+    .data-table .mono { font-family: ui-monospace, monospace; }
+    .data-table a { color: var(--primary); text-decoration: none; cursor: pointer; }
+    .data-table a:hover { text-decoration: underline; }
+
+    /* 任务 status */
+    .job-status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+    .job-status.running { background: var(--green-light); color: var(--green); }
+    .job-status.failed { background: var(--red-light); color: var(--red); }
+    .job-status.success { background: var(--primary-light); color: var(--primary); }
+    .job-status.paused { background: var(--gray-light); color: var(--sub); }
+
+    /* 实时日志 */
+    .live-log {
+      background: #1F2329; color: #C9D1D9; border-radius: 8px; padding: 12px;
+      font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.7;
+      height: 360px; overflow-y: auto;
+    }
+    .live-log .lt { color: #8B949E; }
+    .live-log .li { color: #79C0FF; }
+    .live-log .lo { color: #56D364; }
+    .live-log .lw { color: #FFA657; }
+    .live-log .le { color: #FF7B72; }
+    .live-log-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .log-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; font-size: 11px; border-radius: 12px; background: var(--gray-light); color: var(--sub); }
+    .log-pill .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.7); } }
+
+    /* TOAST */
+    .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 13px; pointer-events: auto; animation: ti .25s ease-out; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.success .ti-i { color: var(--green); }
+    .toast.info { border-color: #ADC6FF; }
+    .toast.info .ti-i { color: var(--primary); }
+    .ti-i svg { width: 16px; height: 16px; }
+    @keyframes ti { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* CMD+K */
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 96px); }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search svg { width: 16px; height: 16px; color: var(--sub); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; background: transparent; }
+    .cmdk-esc { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--sub); font-family: ui-monospace, monospace; }
+    .cmdk-filters { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+    .cmdk-chip { padding: 3px 10px; font-size: 12px; border-radius: 12px; cursor: pointer; background: var(--gray-light); color: var(--sub); }
+    .cmdk-chip.active { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); font-weight: 500; }
+    .cmdk-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cmdk-group-title { font-size: 11px; color: var(--sub); padding: 6px 16px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+    .cmdk-item:hover, .cmdk-item.focused { background: var(--primary-light); }
+    .cmdk-item-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+    .cmdk-item-icon svg { width: 14px; height: 14px; }
+    .cmdk-item-icon.metric { background: var(--primary-light); color: var(--primary); }
+    .cmdk-item-icon.table { background: var(--purple-light); color: var(--purple); }
+    .cmdk-item-icon.report { background: var(--orange-light); color: var(--orange); }
+    .cmdk-item-icon.term { background: var(--green-light); color: var(--green); }
+    .cmdk-item-icon.source { background: #FFE7E7; color: var(--red); }
+    .cmdk-item-icon.model { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.agent { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.tool { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.kb { background: #FFF1F0; color: #CF1322; }
+    .cmdk-item-icon.prompt { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.vector { background: #F9F0FF; color: #722ED1; }
+    .cmdk-item-meta { flex: 1; min-width: 0; }
+    .cmdk-item-title { font-size: 13px; }
+    .cmdk-item-title .hl { background: #FFF3CD; color: #663C00; padding: 0 1px; }
+    .cmdk-item-sub { font-size: 11px; color: var(--sub); }
+    .cmdk-item-type { font-size: 11px; color: var(--sub); padding: 1px 7px; border-radius: 3px; background: var(--gray-light); }
+    .cmdk-empty { padding: 40px 20px; text-align: center; color: var(--sub); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .cmdk-empty svg { width: 48px; height: 48px; color: #C2C7CF; }
+    .cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .cmdk-foot kbd { font-family: ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab active" href="metadata-source.html">数据资产</a>
+    <a class="header-tab" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" onclick="location.href='metadata-request.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>工单</span><span class="hdr-badge">3</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-4-5.7V5a2 2 0 10-4 0v.3C7.7 6.2 6 8.4 6 11v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1"/></svg>
+      <span>通知</span><span class="hdr-badge">5</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn"><div class="user-avatar">张</div><span style="font-size:13px;font-weight:500;">张晓明</span></button>
+  </div>
+</header>
+
+<div class="subbar"><div class="subbar-inner"><div class="breadcrumb"><a href="home.html">数据资产</a><span class="sep">›</span><a href="metadata-source.html">数据源管理</a><span class="sep">›</span><span class="current" id="bc-name">Hive 主仓</span></div><div class="subbar-right"><button class="back-btn" onclick="history.back()"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 2 3 6 7 10"/></svg>返回</button></div></div></div>
+
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l1 open">
+        <svg class="l1-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        数据资产
+        <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
+      </div>
+      <div class="nav-l1-children">
+        <a class="nav-l2" href="home.html">资产概览</a>
+        <a class="nav-l2" href="metadata-asset.html">指标管理</a>
+        <a class="nav-l2" href="metadata-table.html">库表管理</a>
+        <a class="nav-l2" href="metadata-report.html">报表管理</a>
+        <a class="nav-l2 active" href="metadata-source.html">数据源管理</a>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- HERO -->
+    <div class="detail-hero">
+      <div class="src-hero-icon hive" id="srcIcon">Hi</div>
+      <div class="hero-info">
+        <div class="hero-title-row">
+          <span class="hero-name" id="src-name">Hive 主仓</span>
+          <span class="hero-en" id="src-en">hive_prod_cluster</span>
+          <button class="copy-btn" onclick="copyName()" title="复制英文名"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="8" height="8" rx="1"/><path d="M2 9V3a1 1 0 011-1h6"/></svg></button>
+          <span class="hero-tag" id="src-type">Hive</span>
+          <span class="hero-status online" id="src-status"><span class="dot"></span><span id="src-status-text">已连接</span></span>
+        </div>
+        <div class="hero-meta">
+          <span><span class="label">JDBC：</span><span class="value mono" style="font-family:ui-monospace,monospace;font-size:11px;" id="src-url">jdbc:hive2://hive-master.prod.spark.com:10000/default</span></span>
+        </div>
+        <div class="hero-meta">
+          <span><span class="label">已采集表：</span><span class="value">86</span></span>
+          <span class="sep">·</span>
+          <span><span class="label">采集任务：</span><span class="value">2</span></span>
+          <span class="sep">·</span>
+          <span><span class="label">最近采集：</span><span class="value">2026-05-20 03:08</span></span>
+          <span class="sep">·</span>
+          <span><span class="label">负责人：</span><span class="value">平台组</span></span>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn" onclick="testConn()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>测试连接</button>
+        <button class="btn" onclick="syncNow()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="11 4 11 1 8 1"/><path d="M11 4A5 5 0 002 7"/><polyline points="3 10 3 13 6 13"/><path d="M3 10a5 5 0 009 -3"/></svg>立即同步</button>
+        <button class="btn btn-primary" onclick="showToast('打开编辑（演示）','info')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 10l8-8 2 2-8 8H2v-2z"/></svg>编辑</button>
+      </div>
+    </div>
+
+    <div class="detail-split">
+      <div class="detail-left">
+
+        <div class="info-card">
+          <div class="info-card-title">连接信息</div>
+          <div class="info-rows">
+            <div class="info-row"><span class="ir-label">数据源类型</span><span class="ir-value">Apache Hive · v3.1.2</span></div>
+            <div class="info-row"><span class="ir-label">JDBC URL</span><span class="ir-value mono" style="font-size:11px;">jdbc:hive2://hive-master.prod.spark.com:10000/default</span></div>
+            <div class="info-row"><span class="ir-label">认证方式</span><span class="ir-value">Kerberos / Keytab</span></div>
+            <div class="info-row"><span class="ir-label">用户名</span><span class="ir-value mono">spark_meta_collector</span></div>
+            <div class="info-row"><span class="ir-label">连接状态</span><span class="ir-value"><span class="ir-tag-mini online">已连接</span></span></div>
+            <div class="info-row"><span class="ir-label">连接超时</span><span class="ir-value">300 秒</span></div>
+            <div class="info-row"><span class="ir-label">网络延迟</span><span class="ir-value">38 ms</span></div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title">采集策略</div>
+          <div class="info-rows">
+            <div class="info-row"><span class="ir-label">采集模式</span><span class="ir-value">全量 + 小时级增量</span></div>
+            <div class="info-row"><span class="ir-label">调度频率</span><span class="ir-value">全量：每日 03:00<br/>增量：每小时 :05</span></div>
+            <div class="info-row"><span class="ir-label">库白名单</span><span class="ir-value mono">dwd, dws, ads, dim, ods</span></div>
+            <div class="info-row"><span class="ir-label">表名匹配</span><span class="ir-value mono">.* (全量)</span></div>
+            <div class="info-row"><span class="ir-label">字段画像</span><span class="ir-value">已开启 (NULL率/NDV/Min/Max)</span></div>
+            <div class="info-row"><span class="ir-label">血缘解析</span><span class="ir-value">已开启 (HQL 静态解析)</span></div>
+            <div class="info-row"><span class="ir-label">敏感识别</span><span class="ir-value">已开启 (规则 + 模型)</span></div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title">采集统计</div>
+          <div class="info-rows">
+            <div class="info-row"><span class="ir-label">总库数</span><span class="ir-value">5</span></div>
+            <div class="info-row"><span class="ir-label">总表数</span><span class="ir-value">86</span></div>
+            <div class="info-row"><span class="ir-label">总字段数</span><span class="ir-value">2,148</span></div>
+            <div class="info-row"><span class="ir-label">总分区数</span><span class="ir-value">12,486</span></div>
+            <div class="info-row"><span class="ir-label">数据量</span><span class="ir-value">28.4 TB</span></div>
+            <div class="info-row"><span class="ir-label">最近采集时长</span><span class="ir-value">8 min 24 s</span></div>
+            <div class="info-row"><span class="ir-label">近 7 日成功率</span><span class="ir-value" style="color:var(--green);font-weight:600;">100%</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="detail-right">
+        <div class="detail-tabs-card">
+          <div class="detail-tabs">
+            <button class="detail-tab active" data-pane="overview" onclick="switchTab(this)">概览</button>
+            <button class="detail-tab" data-pane="tables" onclick="switchTab(this)">已采集表 <span class="tab-count">86</span></button>
+            <button class="detail-tab" data-pane="history" onclick="switchTab(this)">采集任务历史</button>
+            <button class="detail-tab" data-pane="livelog" onclick="switchTab(this)">实时同步日志</button>
+          </div>
+
+          <!-- 概览 -->
+          <div class="detail-pane active" id="pane-overview">
+            <div class="ov-grid">
+              <div class="ov-card"><div class="ol">已采集表数</div><div class="ov">86</div><div class="oe">↑ 本周新增 5</div></div>
+              <div class="ov-card"><div class="ol">字段总数</div><div class="ov">2,148</div><div class="oe">↑ 本周新增 22</div></div>
+              <div class="ov-card"><div class="ol">数据量</div><div class="ov" style="font-size:18px;line-height:1.4;">28.4 TB</div><div class="oe">↑ 本周 +1.2 TB</div></div>
+              <div class="ov-card"><div class="ol">采集成功率</div><div class="ov" style="color:var(--green);">100%</div><div class="oe">近 7 日</div></div>
+            </div>
+
+            <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;">库 / Schema 分布</h4>
+            <div class="schema-grid">
+              <div class="schema-card" onclick="location.href='metadata-table.html'">
+                <div class="sn">dwd</div>
+                <div class="si"><span>32 张表</span><span>·</span><span>12.4 TB</span></div>
+              </div>
+              <div class="schema-card" onclick="location.href='metadata-table.html'">
+                <div class="sn">dws</div>
+                <div class="si"><span>24 张表</span><span>·</span><span>8.2 TB</span></div>
+              </div>
+              <div class="schema-card" onclick="location.href='metadata-table.html'">
+                <div class="sn">ads</div>
+                <div class="si"><span>12 张表</span><span>·</span><span>1.8 TB</span></div>
+              </div>
+              <div class="schema-card" onclick="location.href='metadata-table.html'">
+                <div class="sn">dim</div>
+                <div class="si"><span>10 张表</span><span>·</span><span>0.6 TB</span></div>
+              </div>
+              <div class="schema-card" onclick="location.href='metadata-table.html'">
+                <div class="sn">ods</div>
+                <div class="si"><span>8 张表</span><span>·</span><span>5.4 TB</span></div>
+              </div>
+            </div>
+
+            <h4 style="font-size:13px;font-weight:600;margin:18px 0 10px;">最近 30 天采集趋势</h4>
+            <div style="background:var(--gray-light);border:1px solid var(--border);border-radius:8px;padding:14px;height:160px;">
+              <svg viewBox="0 0 800 110" preserveAspectRatio="none" style="width:100%;height:100%;">
+                <line x1="0" y1="30" x2="800" y2="30" stroke="#F0F3F6" stroke-width="1" stroke-dasharray="2 2"/>
+                <line x1="0" y1="60" x2="800" y2="60" stroke="#F0F3F6" stroke-width="1" stroke-dasharray="2 2"/>
+                <line x1="0" y1="90" x2="800" y2="90" stroke="#F0F3F6" stroke-width="1" stroke-dasharray="2 2"/>
+                <path d="M0,80 L27,75 L54,72 L80,68 L107,70 L134,65 L160,62 L187,58 L213,60 L240,55 L267,52 L293,50 L320,52 L347,48 L373,45 L400,42 L427,40 L453,38 L480,35 L507,38 L533,35 L560,32 L587,30 L613,28 L640,26 L667,24 L693,22 L720,20 L747,18 L773,18 L800,16" fill="none" stroke="#1677FF" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 已采集表 -->
+          <div class="detail-pane" id="pane-tables">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+              <span style="font-size:12px;color:var(--sub);">本数据源已采集 86 张表，按更新时间排序</span>
+              <span style="margin-left:auto;display:flex;align-items:center;min-height:30px;border:1px solid var(--border);border-radius:6px;background:#fff;width:240px;">
+                <span style="padding:0 0 0 10px;color:var(--sub);"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg></span>
+                <input type="text" placeholder="搜索表名..." style="flex:1;height:28px;border:none;outline:none;padding:0 10px;font-size:12px;background:transparent;">
+              </span>
+            </div>
+            <div class="data-table-wrap">
+              <div class="data-table-scroll">
+                <table class="data-table">
+                  <thead><tr>
+                    <th>表名</th>
+                    <th>中文名</th>
+                    <th>分级</th>
+                    <th style="text-align:right;">字段数</th>
+                    <th style="text-align:right;">分区数</th>
+                    <th style="text-align:right;">数据量</th>
+                    <th>最近采集</th>
+                    <th>状态</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr><td><a class="mono" onclick="location.href='metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志'">HIVE.DWD.user_active_log</a></td><td>用户活跃日志</td><td><span class="ir-tag-mini" style="background:var(--orange-light);color:var(--orange);">关键</span></td><td style="text-align:right;">42</td><td style="text-align:right;">328</td><td style="text-align:right;">12.4 TB</td><td>03:08</td><td><span class="ir-tag-mini online">已上架</span></td></tr>
+                    <tr><td><a class="mono" onclick="location.href='metadata-table-detail.html?code=hive_dws_order_user_d&name=用户订单汇总日'">HIVE.DWS.dws_order_user_d</a></td><td>用户订单汇总日</td><td><span class="ir-tag-mini">一般</span></td><td style="text-align:right;">14</td><td style="text-align:right;">128</td><td style="text-align:right;">680 GB</td><td>03:12</td><td><span class="ir-tag-mini" style="background:#F5F5F5;color:var(--sub);">已下线</span></td></tr>
+                    <tr><td><a class="mono">HIVE.DWS.dws_revenue_user_d</a></td><td>用户收入汇总日</td><td><span class="ir-tag-mini" style="background:var(--orange-light);color:var(--orange);">关键</span></td><td style="text-align:right;">22</td><td style="text-align:right;">156</td><td style="text-align:right;">2.8 TB</td><td>03:14</td><td><span class="ir-tag-mini online">已上架</span></td></tr>
+                    <tr><td><a class="mono">HIVE.DWD.user_register_log</a></td><td>用户注册日志</td><td><span class="ir-tag-mini" style="background:var(--red-light);color:var(--red);">核心</span></td><td style="text-align:right;">18</td><td style="text-align:right;">328</td><td style="text-align:right;">320 GB</td><td>03:09</td><td><span class="ir-tag-mini online">已上架</span></td></tr>
+                    <tr><td><a class="mono">HIVE.DIM.dim_user</a></td><td>用户维度表</td><td><span class="ir-tag-mini" style="background:var(--red-light);color:var(--red);">核心</span></td><td style="text-align:right;">28</td><td style="text-align:right;">1</td><td style="text-align:right;">86 GB</td><td>03:18</td><td><span class="ir-tag-mini online">已上架</span></td></tr>
+                    <tr><td><a class="mono">HIVE.DWD.user_pay_log</a></td><td>用户支付日志</td><td><span class="ir-tag-mini" style="background:var(--red-light);color:var(--red);">核心</span></td><td style="text-align:right;">26</td><td style="text-align:right;">328</td><td style="text-align:right;">5.2 TB</td><td>03:10</td><td><span class="ir-tag-mini online">已上架</span></td></tr>
+                    <tr><td><a class="mono">HIVE.ADS.ads_dau_d</a></td><td>DAU 日报</td><td><span class="ir-tag-mini" style="background:var(--red-light);color:var(--red);">核心</span></td><td style="text-align:right;">8</td><td style="text-align:right;">90</td><td style="text-align:right;">2.4 GB</td><td>03:25</td><td><span class="ir-tag-mini online">已上架</span></td></tr>
+                    <tr><td><a class="mono">HIVE.ADS.ads_retention_d</a></td><td>留存日报</td><td><span class="ir-tag-mini" style="background:var(--orange-light);color:var(--orange);">关键</span></td><td style="text-align:right;">12</td><td style="text-align:right;">90</td><td style="text-align:right;">5.8 GB</td><td>03:28</td><td><span class="ir-tag-mini online">已上架</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div style="margin-top:8px;font-size:11px;color:var(--sub);text-align:right;">已展示 8 / 86 张表 · <a style="color:var(--primary);cursor:pointer;" onclick="location.href='metadata-table.html'">查看全部</a></div>
+          </div>
+
+          <!-- 采集任务历史 -->
+          <div class="detail-pane" id="pane-history">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+              <span style="font-size:13px;font-weight:500;">最近 10 次采集运行历史</span>
+              <span style="margin-left:auto;font-size:12px;color:var(--sub);">成功率 <strong style="color:var(--green);">100%</strong> · 平均耗时 <strong style="color:var(--text);">8 min</strong></span>
+            </div>
+            <div class="data-table-wrap">
+              <div class="data-table-scroll">
+                <table class="data-table">
+                  <thead><tr>
+                    <th>运行 ID</th>
+                    <th>任务名</th>
+                    <th>开始时间</th>
+                    <th>耗时</th>
+                    <th style="text-align:right;">采集表数</th>
+                    <th style="text-align:right;">变更检测</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240520_0308</span></td><td>hive_prod_full_collect</td><td>2026-05-20 03:08</td><td>8 min 24 s</td><td style="text-align:right;">86</td><td style="text-align:right;">+ 2 表 / Δ 5 字段</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240520_0205</span></td><td>hive_prod_incr_collect</td><td>2026-05-20 02:05</td><td>1 min 06 s</td><td style="text-align:right;">86</td><td style="text-align:right;">无变化</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240519_0308</span></td><td>hive_prod_full_collect</td><td>2026-05-19 03:08</td><td>8 min 12 s</td><td style="text-align:right;">84</td><td style="text-align:right;">无变化</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240518_0308</span></td><td>hive_prod_full_collect</td><td>2026-05-18 03:08</td><td>9 min 02 s</td><td style="text-align:right;">84</td><td style="text-align:right;">+ 1 表 / Δ 3 字段</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240517_0308</span></td><td>hive_prod_full_collect</td><td>2026-05-17 03:08</td><td>7 min 56 s</td><td style="text-align:right;">83</td><td style="text-align:right;">无变化</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240516_0308</span></td><td>hive_prod_full_collect</td><td>2026-05-16 03:08</td><td>8 min 18 s</td><td style="text-align:right;">83</td><td style="text-align:right;">+ 1 表</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240515_0308</span></td><td>hive_prod_full_collect</td><td>2026-05-15 03:08</td><td>8 min 02 s</td><td style="text-align:right;">82</td><td style="text-align:right;">无变化</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240514_0308</span></td><td>hive_prod_full_collect</td><td>2026-05-14 03:08</td><td>7 min 48 s</td><td style="text-align:right;">82</td><td style="text-align:right;">Δ 2 字段</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240513_0308</span></td><td>hive_prod_full_collect</td><td>2026-05-13 03:08</td><td>8 min 30 s</td><td style="text-align:right;">82</td><td style="text-align:right;">无变化</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                    <tr><td><span class="mono" style="font-size:11px;color:var(--sub);">RUN_240512_0308</span></td><td>hive_prod_full_collect</td><td>2026-05-12 03:08</td><td>8 min 14 s</td><td style="text-align:right;">82</td><td style="text-align:right;">+ 3 表</td><td><span class="job-status success">● 成功</span></td><td><a>日志</a></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 实时同步日志 -->
+          <div class="detail-pane" id="pane-livelog">
+            <div class="live-log-toolbar">
+              <span class="log-pill"><span class="pulse"></span>实时同步中</span>
+              <span style="font-size:12px;color:var(--sub);">显示最近 200 条 · 每 2s 刷新</span>
+              <span style="margin-left:auto;display:flex;gap:6px;">
+                <button class="btn btn-sm" onclick="showToast('已暂停日志流','info')">⏸ 暂停</button>
+                <button class="btn btn-sm" onclick="document.getElementById('liveLog').innerHTML='';showToast('已清空','info')">清空</button>
+                <button class="btn btn-sm" onclick="showToast('已下载日志.txt','success')">下载</button>
+              </span>
+            </div>
+            <div class="live-log" id="liveLog"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产..." oninput="renderCmdK()" />
+      <span class="cmdk-esc">ESC</span>
+    </div>
+    <div class="cmdk-filters">
+      <span class="cmdk-chip active" data-type="all" onclick="setCmdKFilter(this)">全部</span>
+      <span class="cmdk-chip" data-type="metric" onclick="setCmdKFilter(this)">指标</span>
+      <span class="cmdk-chip" data-type="table" onclick="setCmdKFilter(this)">库表</span>
+      <span class="cmdk-chip" data-type="report" onclick="setCmdKFilter(this)">报表</span>
+      <span class="cmdk-chip" data-type="agent" onclick="setCmdKFilter(this)">Agent</span>
+      <span class="cmdk-chip" data-type="tool" onclick="setCmdKFilter(this)">工具</span>
+      <span class="cmdk-chip" data-type="model" onclick="setCmdKFilter(this)">LLM</span>
+      <span class="cmdk-chip" data-type="kb" onclick="setCmdKFilter(this)">知识库</span>
+      <span class="cmdk-chip" data-type="prompt" onclick="setCmdKFilter(this)">Prompt</span>
+      <span class="cmdk-chip" data-type="vector" onclick="setCmdKFilter(this)">向量集合</span>
+      <span class="cmdk-chip" data-type="term" onclick="setCmdKFilter(this)">术语</span>
+      <span class="cmdk-chip" data-type="source" onclick="setCmdKFilter(this)">数据源</span>
+    </div>
+    <div class="cmdk-results" id="cmdkResults"></div>
+    <div class="cmdk-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> 选择</span><span><kbd>Enter</kbd> 打开</span><span><kbd>ESC</kbd> 关闭</span><span style="margin-left:auto;">Spark MDM</span></div>
+  </div>
+</div>
+
+<script>
+  /* 数据源数据集 */
+  const SOURCES = {
+    src_hive_main: { cn:'Hive 主仓', en:'hive_prod_cluster', type:'Hive', icon:'hive', label:'Hi', url:'jdbc:hive2://hive-master.prod.spark.com:10000/default', status:'online', catalog:'hive', entityType:'table' },
+    src_mysql_ad: { cn:'MySQL 广告库', en:'mysql_ad_db', type:'MySQL', icon:'mysql', label:'My', url:'jdbc:mysql://mysql-ad.prod.spark.com:3306/spark_ad', status:'online', catalog:'mysql', entityType:'table' },
+    src_orcl_main: { cn:'Oracle 业务库', en:'orcl_wedatadb', type:'Oracle', icon:'oracle', label:'Or', url:'jdbc:oracle:thin:@orcl-prod.spark.com:1521:WEDATADB', status:'online', catalog:'jdbc-oracle', entityType:'table' },
+    src_dm_fuwu: { cn:'达梦 DM 库', en:'dm_fuwu', type:'达梦DM', icon:'dm', label:'DM', url:'jdbc:dm://dm-server.spark.com:5236/SYSDBA', status:'online', catalog:'jdbc-dm', entityType:'table' },
+    src_ck_pay: { cn:'ClickHouse 支付库', en:'ck_pay', type:'ClickHouse', icon:'ck', label:'CK', url:'jdbc:clickhouse://ck-cluster.prod.spark.com:8123/spark_pay', status:'online', catalog:'jdbc-clickhouse', entityType:'table' },
+    src_kafka: { cn:'Kafka 实时流', en:'kafka_realtime', type:'Kafka', icon:'kafka', label:'Kf', url:'kafka-broker-1.prod.spark.com:9092', status:'failed', catalog:'kafka', entityType:'topic' },
+    /* 🤖 AI 数据源（Agent-only：Fileset + Vector） */
+    src_s3_train: { cn:'S3 RAG 语料湖', en:'s3_rag_corpus', type:'Fileset (S3)', icon:'fileset', label:'FS', url:'s3://spark-ai-rag/{kb_cs,kb_legal,kb_product}/', status:'online', catalog:'fileset', entityType:'fileset' },
+    src_milvus_main: { cn:'Milvus 向量主库', en:'milvus_prod', type:'Milvus 向量库', icon:'milvus', label:'Mv', url:'milvus://milvus-cluster.ai.spark.com:19530', status:'online', catalog:'vector', entityType:'collection' },
+    src_qdrant: { cn:'Qdrant 向量库', en:'qdrant_main', type:'Qdrant 向量库', icon:'qdrant', label:'Qd', url:'http://qdrant.ai.spark.com:6333', status:'online', catalog:'vector', entityType:'collection' }
+  };
+  /* Gravitino entity type → 中文展示 */
+  const ENTITY_LABEL = {
+    table:'数据表', topic:'消息 Topic', fileset:'文件集 Fileset (RAG 语料)',
+    collection:'向量集合 (Collection)'
+  };
+
+  /* URL 解析 */
+  const _code = new URLSearchParams(location.search).get('code') || 'src_hive_main';
+  const _src = SOURCES[_code] || SOURCES.src_hive_main;
+  document.getElementById('src-name').textContent = _src.cn;
+  document.getElementById('src-en').textContent = _src.en;
+  document.getElementById('src-type').textContent = _src.type;
+  document.getElementById('src-url').textContent = _src.url;
+  document.getElementById('bc-name').textContent = _src.cn;
+  document.getElementById('srcIcon').className = 'src-hero-icon ' + _src.icon;
+  document.getElementById('srcIcon').textContent = _src.label;
+  if (_src.status === 'failed') {
+    const s = document.getElementById('src-status');
+    s.className = 'hero-status failed';
+    document.getElementById('src-status-text').textContent = '连接失败';
+  }
+  document.title = 'Spark · ' + _src.cn;
+  /* 🤖 AI 数据源 - 在 Hero 加 catalog/entity 标识（P1） */
+  (function annotateGravitino(){
+    if (!_src.catalog) return;
+    const tag = document.getElementById('src-type');
+    if (tag) {
+      const isAi = ['fileset','model','feature','vector'].includes(_src.catalog);
+      tag.insertAdjacentHTML('afterend',
+        '<span class="hero-tag" style="background:'+(isAi?'#F0EDFF':'#F0F5FF')+';color:'+(isAi?'#7B61FF':'#0958D9')+';margin-left:6px;font-family:ui-monospace,monospace;" title="Gravitino Catalog 类型">'
+        + 'catalog: ' + _src.catalog + '</span>');
+      if (isAi) tag.insertAdjacentHTML('afterend', '<span class="hero-tag" style="background:#F0EDFF;color:#7B61FF;margin-left:6px;">🤖 AI 数据源</span>');
+    }
+    /* 改造"已采集表"为通用"已采集实体"（按 entity type） */
+    const entityLabel = ENTITY_LABEL[_src.entityType] || '实体';
+    document.querySelectorAll('.detail-tab').forEach(t => {
+      if (t.dataset.pane === 'tables') {
+        t.firstChild.textContent = '已采集' + entityLabel + ' ';
+      }
+    });
+    document.querySelectorAll('.ov-card .ol').forEach(el => {
+      if (el.textContent === '已采集表数') el.textContent = '已采集' + entityLabel + '数';
+    });
+  })();
+
+  /* 最近浏览写入 */
+  (function(){
+    try {
+      const list = JSON.parse(localStorage.getItem('mdm_recent') || '[]');
+      const filtered = list.filter(r => r.code !== _code);
+      filtered.unshift({ code: _code, type: 'source', name: _src.cn, time: new Date().toLocaleString('zh-CN') });
+      localStorage.setItem('mdm_recent', JSON.stringify(filtered.slice(0, 20)));
+    } catch (e) {}
+  })();
+
+  /* Tab 切换 */
+  function switchTab(btn){
+    document.querySelectorAll('.detail-tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.detail-pane').forEach(p=>p.classList.remove('active'));
+    document.getElementById('pane-'+btn.dataset.pane).classList.add('active');
+    if (btn.dataset.pane === 'livelog') startLogStream();
+  }
+
+  /* Hero 操作 */
+  function copyName(){ navigator.clipboard?.writeText(_src.en); showToast('已复制', 'success'); }
+  function testConn(){ showToast('正在测试连接...', 'info'); setTimeout(()=>showToast('连接测试通过 ✓', 'success'), 800); }
+  function syncNow(){ showToast('同步任务已启动，预计 8 分钟完成', 'success'); }
+
+  /* 实时日志（伪流） */
+  let _logTimer = null;
+  function startLogStream(){
+    const log = document.getElementById('liveLog');
+    if (log.children.length > 0) return;
+    const messages = [
+      { type:'info', txt:'正在连接 jdbc:hive2://hive-master.prod.spark.com:10000/default ...' },
+      { type:'ok',   txt:'✓ 连接建立 (38ms)' },
+      { type:'info', txt:'→ 列出库 (SHOW DATABASES) ...' },
+      { type:'ok',   txt:'✓ 找到 5 个库: dwd, dws, ads, dim, ods' },
+      { type:'info', txt:'→ 扫描 dwd 库 ...' },
+      { type:'ok',   txt:'  ✓ 发现 32 张表，开始采集元信息' },
+      { type:'info', txt:'  → dwd.user_active_log: 42 字段, 328 分区' },
+      { type:'info', txt:'    ↳ 字段画像: NDV / NULL率 / Min / Max ...' },
+      { type:'ok',   txt:'    ✓ 已采集 (耗时 1240ms)' },
+      { type:'info', txt:'  → dwd.user_pay_log: 26 字段, 328 分区' },
+      { type:'ok',   txt:'    ✓ 已采集 (耗时 980ms)' },
+      { type:'info', txt:'  → dwd.user_register_log: 18 字段, 328 分区' },
+      { type:'ok',   txt:'    ✓ 已采集 (耗时 720ms)' },
+      { type:'warn', txt:'  ⚠ dwd.user_old_log: 表无新分区，已跳过字段画像' },
+      { type:'info', txt:'→ 扫描 dws 库 ...' },
+      { type:'ok',   txt:'  ✓ 发现 24 张表' },
+      { type:'info', txt:'  → dws.dws_order_user_d: 14 字段, 128 分区' },
+      { type:'ok',   txt:'    ✓ 已采集 (耗时 580ms)' },
+      { type:'info', txt:'  → dws.dws_revenue_user_d: 22 字段, 156 分区' },
+      { type:'ok',   txt:'    ✓ 已采集 (耗时 920ms)' },
+      { type:'info', txt:'→ 解析血缘 (HQL 静态分析) ...' },
+      { type:'ok',   txt:'  ✓ 解析 184 条血缘关系（表级 + 字段级）' },
+      { type:'info', txt:'→ 检测敏感字段 ...' },
+      { type:'ok',   txt:'  ✓ 识别 18 个敏感字段（手机号 12 / 邮箱 4 / 身份证 2）' },
+      { type:'info', txt:'→ 写入元数据仓库 ...' },
+      { type:'ok',   txt:'✓ 采集完成 · 总耗时 8 min 24 s · 表 86 / 字段 2148' }
+    ];
+    let idx = 0;
+    function appendNext(){
+      if (idx >= messages.length) {
+        const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        log.innerHTML += '<div><span class="lt">[' + ts + ']</span> <span class="lo">— 等待下一次同步周期 —</span></div>';
+        log.scrollTop = log.scrollHeight;
+        return;
+      }
+      const m = messages[idx++];
+      const cls = m.type === 'ok' ? 'lo' : m.type === 'warn' ? 'lw' : m.type === 'err' ? 'le' : 'li';
+      const ts = new Date(Date.now() - (messages.length - idx) * 380).toLocaleTimeString('zh-CN', { hour12: false });
+      log.innerHTML += '<div><span class="lt">[' + ts + ']</span> <span class="' + cls + '">' + m.txt + '</span></div>';
+      log.scrollTop = log.scrollHeight;
+      setTimeout(appendNext, 220);
+    }
+    appendNext();
+  }
+
+  /* Cmd+K */
+  window.__GLOBAL_INDEX = [
+    { type:'metric', code:'dau', name:'日活跃用户数', en:'dau', biz:'sport', owner:'张晓明', desc:'去重后日 UV', url:'metadata-asset-detail.html?code=dau' },
+    { type:'table', code:'hive_dwd_user_active_log', name:'HIVE.DWD.user_active_log', en:'用户活跃日志', biz:'sc', owner:'张晓明', desc:'明细层用户端上行为日志', url:'metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志' },
+    { type:'report', code:'game_core_daily', name:'游戏核心指标日报', en:'game_core_daily', biz:'sport', owner:'李明', desc:'每日核心指标日报', url:'metadata-report-detail.html?code=game_core_daily&name=游戏核心指标日报' },
+    { type:'source', code:'src_hive_main', name:'Hive 主仓', en:'hive_prod_cluster', biz:'-', owner:'平台组', desc:'主数据仓库 Hive 集群', url:'metadata-source-detail.html?code=src_hive_main' },
+    { type:'source', code:'src_mysql_ad', name:'MySQL 广告库', en:'mysql_ad_db', biz:'-', owner:'广告组', desc:'广告投放业务库', url:'metadata-source-detail.html?code=src_mysql_ad' },
+    { type:'source', code:'src_milvus_main', name:'Milvus 向量主库', en:'milvus_prod', biz:'-', owner:'AI 平台组', desc:'Vector Catalog · 商品/用户 embedding', url:'metadata-source-detail.html?code=src_milvus_main' },
+    { type:'model', code:'gpt4_turbo', name:'GPT-4 Turbo（OpenAI）', en:'gpt-4-turbo', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 128K', url:'model-detail.html?code=gpt4_turbo' },
+    { type:'model', code:'qwen2_72b', name:'Qwen2-72B-Instruct（阿里云）', en:'qwen2-72b-instruct', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 32K', url:'model-detail.html?code=qwen2_72b' },
+    { type:'agent', code:'biz_qa_agent', name:'智能问数 Agent', en:'biz_qa_agent', biz:'data', owner:'王晨', desc:'RAG+SQL · 基座 GPT-4 Turbo', url:'agent-detail.html?code=biz_qa_agent' },
+    { type:'agent', code:'cs_intent_agent', name:'客服意图 Agent', en:'cs_intent_agent', biz:'cservice', owner:'李雨', desc:'Function Agent · 基座 Qwen2-72B', url:'agent-detail.html?code=cs_intent_agent' },
+    { type:'tool', code:'call_metric_api', name:'call_metric_api 指标查询工具', en:'call_metric_api', biz:'data', owner:'王晨', desc:'API · 被 6 个 Agent 引用', url:'tool.html?code=call_metric_api' },
+    { type:'tool', code:'sql_runner', name:'sql_runner SQL 执行工具', en:'sql_runner', biz:'data', owner:'王晨', desc:'SQL · Trino 后端', url:'tool.html?code=sql_runner' },
+    { type:'kb', code:'kb_cs_main', name:'客服 FAQ KB', en:'kb_customer_service', biz:'cservice', owner:'李雨', desc:'12.4 万 chunks · bge-m3', url:'dataset-detail.html?code=kb_cs_main' },
+    { type:'vector', code:'vec_item_emb', name:'item_embedding 商品向量集合', en:'vec_item_embedding', biz:'recsys', owner:'王晨', desc:'Milvus · 128维', url:'metadata-source-detail.html?code=src_milvus_main&collection=item_embedding' }
+  ];
+  let _cmdkFilter='all', _cmdkFocus=0;
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');setTimeout(()=>document.getElementById('cmdkInput').focus(),30);renderCmdK();}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  function setCmdKFilter(el){document.querySelectorAll('.cmdk-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');_cmdkFilter=el.dataset.type;renderCmdK();}
+  function highlight(t,q){if(!q)return t;const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return t.replace(re,'<span class="hl">$1</span>');}
+  function typeName(t){return ({metric:'指标',table:'库表',report:'报表',term:'术语',source:'数据源',model:'LLM',agent:'Agent',tool:'工具',kb:'知识库',prompt:'Prompt',vector:'向量集合'})[t]||t;}
+  function typeIcon(t){return ({metric:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/></svg>',table:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/></svg>',report:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>',term:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V3z"/></svg>',source:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="4" rx="5" ry="2"/></svg>',model:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>',agent:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="12" height="9" rx="1.5"/><circle cx="6" cy="8.5" r="0.9"/><circle cx="10" cy="8.5" r="0.9"/><path d="M8 1v3"/></svg>',tool:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9.5 4.5l3 3M3 13l5-5M11 2l3 3-2 2-3-3z"/></svg>',kb:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4l6-2.5L14 4l-6 2.5z"/></svg>',prompt:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 10a1 1 0 01-1 1H5l-2 2V3a1 1 0 011-1h9a1 1 0 011 1z"/></svg>',vector:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="1.2"/><circle cx="12" cy="4" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>'})[t]||'';}
+  function renderCmdK(){const q=document.getElementById('cmdkInput').value.trim().toLowerCase();let items=window.__GLOBAL_INDEX.slice();if(_cmdkFilter!=='all')items=items.filter(i=>i.type===_cmdkFilter);if(q)items=items.filter(i=>(i.name+' '+i.en+' '+(i.desc||'')+' '+(i.code||'')).toLowerCase().includes(q));else items=items.slice(0,8);_cmdkFocus=0;const root=document.getElementById('cmdkResults');if(items.length===0){root.innerHTML='<div class="cmdk-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg><div>没有找到匹配的资产</div></div>';return;}const groups={};items.forEach(i=>{(groups[i.type]=groups[i.type]||[]).push(i);});let html='';['metric','table','report','agent','tool','model','prompt','kb','vector','term','source'].forEach(t=>{if(!groups[t])return;html+='<div class="cmdk-group-title">'+typeName(t)+' ('+groups[t].length+')</div>';groups[t].forEach(i=>{html+='<div class="cmdk-item" onclick="cmdkOpen(\''+i.url+'\')" data-url="'+i.url+'"><div class="cmdk-item-icon '+i.type+'">'+typeIcon(i.type)+'</div><div class="cmdk-item-meta"><div class="cmdk-item-title">'+highlight(i.name,q);if(i.en&&i.en!==i.name)html+=' <span style="color:var(--sub);font-size:11px;">'+highlight(i.en,q)+'</span>';html+='</div><div class="cmdk-item-sub">'+(i.desc||'')+' · '+(i.owner||'')+'</div></div><span class="cmdk-item-type">'+typeName(i.type)+'</span></div>';});});root.innerHTML=html;const all=root.querySelectorAll('.cmdk-item');if(all[0])all[0].classList.add('focused');}
+  function cmdkOpen(url){closeCmdK();location.href=url;}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();return;}if(!document.getElementById('cmdkMask').classList.contains('show'))return;if(e.key==='Escape'){closeCmdK();return;}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const items=document.querySelectorAll('#cmdkResults .cmdk-item');if(!items.length)return;items[_cmdkFocus]?.classList.remove('focused');_cmdkFocus=(_cmdkFocus+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[_cmdkFocus].classList.add('focused');items[_cmdkFocus].scrollIntoView({block:'nearest'});}else if(e.key==='Enter'){const f=document.querySelector('#cmdkResults .cmdk-item.focused');if(f)cmdkOpen(f.dataset.url);}});
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{if(e.target.id==='cmdkMask')closeCmdK();});
+
+  function showToast(msg, type){
+    type = type || 'success';
+    let c = document.getElementById('toastContainer');
+    if (!c) { c = document.createElement('div'); c.id='toastContainer'; c.className='toast-container'; document.body.appendChild(c); }
+    const t = document.createElement('div'); t.className='toast '+type;
+    const icons = { success:'<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><polyline points="5.5 9.5 8 12 13 6.5"/></svg>', info:'<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="9" y1="8" x2="9" y2="13"/><circle cx="9" cy="5.5" r=".8" fill="currentColor"/></svg>' };
+    t.innerHTML = '<span class="ti-i">'+(icons[type]||icons.info)+'</span><span>'+msg+'</span>';
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 2400);
+  }
+</script>
+</body>
+</html>
