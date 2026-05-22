@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 工具注册表</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1677FF; --primary-light: #E6F0FF; --primary-hover: #0958D9;
+      --green: #00B42A; --green-light: #E8FFEA;
+      --red: #F53F3F; --red-light: #FFECE8;
+      --orange: #FF7D00; --orange-light: #FFF3E8;
+      --purple: #7B61FF; --purple-light: #F0EDFF;
+      --gray-light: #F7F8FA;
+      --header-h: 52px; --subbar-h: 44px; --sidebar-w: 220px;
+      --bg: #F5F7FA; --card: #FFFFFF; --border: #E8ECF0;
+      --text: #1D2129; --sub: #86909C;
+      --ai-purple: #7B61FF;
+      --teal: #08979C; --teal-2: #006D75; --teal-light: #E6FFFB;
+      --ai-red: #CF1322;
+    }
+    body { font-family: -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; background: var(--bg); color: var(--text); font-size: 13px; display: flex; flex-direction: column; min-height: 100vh; }
+    /* Sidebar 左侧导航 */
+    .subbar { height: var(--subbar-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w); position: sticky; top: var(--header-h); z-index: 10; }
+    .subbar-inner { padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar { width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); position: sticky; top: calc(var(--header-h) + var(--subbar-h)); height: calc(100vh - var(--header-h) - var(--subbar-h)); flex-shrink: 0; }
+    .nav-l1 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--purple); }
+    .nav-l1 svg { width: 16px; height: 16px; }
+    .nav-l2 { display: flex; align-items: center; padding: 9px 16px 9px 40px; font-size: 13px; color: var(--sub); position: relative; text-decoration: none; }
+    .nav-l2:hover { color: var(--text); background: var(--gray-light); }
+    .nav-l2.active { color: var(--teal); font-weight: 500; background: var(--teal-light); }
+    .nav-l2.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--teal); }
+    .body-wrap > .right-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+    .header { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: sticky; top: 0; z-index: 30; gap: 16px; }
+    .logo-wrap { display: flex; align-items: center; gap: 8px; }
+    .logo-name { font-size: 16px; font-weight: 700; }
+    .global-search { display: flex; align-items: center; width: 320px; height: 32px; background: var(--gray-light); border: 1px solid transparent; border-radius: 8px; padding: 0 10px; cursor: pointer; flex-shrink: 0; }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd { font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: #fff; font-family: ui-monospace,monospace; color: var(--sub); }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; }
+    .header-tab { height: 100%; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: var(--sub); position: relative; text-decoration: none; }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .header-right { margin-left: auto; display: flex; gap: 6px; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); }
+    .user-btn { display: flex; align-items: center; gap: 6px; padding: 4px 8px; cursor: pointer; background: none; border: none; }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+    /* AI Hero（青色渐变 — 工具主题） */
+    .ai-hero { background: linear-gradient(135deg, #E6FFFB 0%, #E0F7F8 50%, #F0F9FF 100%); padding: 32px 24px 24px; }
+    .ai-hero-inner { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    .ai-hero-title-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .ai-hero-title { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .ai-hero-title .ai-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: linear-gradient(135deg, var(--teal), var(--teal-2)); color: #fff; font-weight: 500; }
+    .ai-hero-sub { font-size: 13px; color: var(--sub); }
+
+    .ai-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .ai-stat { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .ai-stat:hover { border-color: var(--teal); box-shadow: 0 2px 8px rgba(8,151,156,.10); }
+    .ai-stat-icon { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .ai-stat-icon svg { width: 20px; height: 20px; }
+    .ai-stat-icon.tool   { background: var(--teal-light); color: var(--teal); }
+    .ai-stat-icon.online { background: var(--green-light); color: var(--green); }
+    .ai-stat-icon.calls  { background: var(--orange-light); color: var(--orange); }
+    .ai-stat-icon.fail   { background: var(--red-light); color: var(--red); }
+    .ai-stat-num { font-size: 20px; font-weight: 700; line-height: 1.2; }
+    .ai-stat-label { font-size: 12px; color: var(--sub); }
+    .ai-stat-trend { font-size: 11px; color: var(--green); }
+
+    .content { flex: 1; padding: 18px 24px 28px; max-width: 1280px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-ai-teal { background: linear-gradient(135deg, var(--teal), var(--teal-2)); border-color: var(--teal); color: #fff; }
+    .btn-ai-teal:hover { background: var(--teal-2); color: #fff; border-color: var(--teal-2); }
+    .btn svg { width: 14px; height: 14px; }
+
+    /* Toolbar */
+    .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .toolbar-field { display: flex; flex-direction: column; gap: 5px; }
+    .toolbar-field-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .toolbar-search { flex: 1; min-width: 240px; max-width: 380px; display: flex; align-items: center; min-height: 32px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+    .toolbar-search input { flex: 1; min-height: 30px; border: none; outline: none; padding: 0 10px; font-size: 13px; background: transparent; }
+    .toolbar-search-prefix { padding: 0 0 0 10px; color: var(--sub); }
+    .toolbar-search-prefix svg { width: 14px; height: 14px; }
+    .toolbar-spacer { flex: 1; }
+    .toolbar-stats { font-size: 12px; color: var(--sub); padding-bottom: 8px; }
+    select.tb-select { height: 32px; padding: 0 26px 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-color: #fff; min-width: 130px; }
+
+    /* 工具表格 */
+    .tool-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .tool-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .tool-table th { background: #FAFBFC; border-bottom: 1px solid var(--border); padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+    .tool-table td { padding: 10px 12px; border-bottom: 1px solid #F0F3F6; vertical-align: middle; }
+    .tool-table tr.row-main { cursor: pointer; }
+    .tool-table tr.row-main:hover td { background: #FAFBFC; }
+    .tool-table tr.row-schema td { background: #F7F8FA; padding: 0 12px; }
+    .tool-table .mono { font-family: ui-monospace,monospace; font-size: 11px; }
+
+    .tool-name { font-weight: 600; color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
+    .tool-name .icon { width: 22px; height: 22px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; }
+    .tool-name .icon svg { width: 12px; height: 12px; }
+    .tool-name .icon.t-sql { background: var(--purple-light); color: var(--purple); }
+    .tool-name .icon.t-api { background: var(--primary-light); color: var(--primary); }
+    .tool-name .icon.t-py { background: var(--orange-light); color: var(--orange); }
+    .tool-name .icon.t-mcp { background: var(--teal-light); color: var(--teal); }
+    .tool-name .icon.t-builtin { background: var(--gray-light); color: var(--sub); }
+    .tool-desc { color: var(--sub); font-size: 11px; margin-top: 2px; }
+
+    .tag-chip { display: inline-flex; padding: 1px 7px; border-radius: 3px; font-size: 11px; }
+    .tag-chip.sql { background: var(--purple-light); color: var(--purple); }
+    .tag-chip.api { background: var(--primary-light); color: var(--primary); }
+    .tag-chip.py { background: var(--orange-light); color: var(--orange); }
+    .tag-chip.mcp { background: var(--teal-light); color: var(--teal); }
+    .tag-chip.builtin { background: var(--gray-light); color: var(--sub); }
+    .tag-chip.green { background: var(--green-light); color: var(--green); }
+    .tag-chip.warn { background: var(--orange-light); color: var(--orange); }
+    .tag-chip.red { background: var(--red-light); color: var(--red); }
+
+    .schema-toggle { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; height: 22px; font-size: 11px; border: 1px solid var(--border); border-radius: 4px; background: #fff; cursor: pointer; color: var(--sub); }
+    .schema-toggle:hover { border-color: var(--teal); color: var(--teal); }
+    .schema-toggle.open { background: var(--teal-light); border-color: var(--teal); color: var(--teal); }
+
+    .schema-pre { background: #1D2129; color: #E8ECF0; font-family: ui-monospace,monospace; font-size: 11px; line-height: 1.6; padding: 12px 14px; border-radius: 6px; overflow-x: auto; margin: 8px 0; white-space: pre; }
+    .schema-pre .k { color: #87CEEB; }
+    .schema-pre .s { color: #98D982; }
+    .schema-pre .n { color: #FFB86C; }
+    .schema-block { display: none; padding: 12px 14px 16px; }
+    .schema-block.open { display: block; }
+    .schema-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .schema-h { font-size: 11px; font-weight: 600; color: var(--teal); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: .5px; }
+
+    .ref-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ai-purple); font-weight: 500; }
+
+    /* Cmd+K（精简版） */
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; }
+    .cmdk-results { flex: 1; padding: 12px 16px; font-size: 12px; color: var(--sub); }
+
+    .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 13px; pointer-events: auto; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.info { border-color: #ADC6FF; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab" href="metadata-asset.html">数据资产</a>
+    <a class="header-tab active" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <div class="hdr-divider"></div>
+    <button class="user-btn"><div class="user-avatar">王</div><span style="font-size:13px;font-weight:500;">王晨</span></button>
+  </div>
+</header>
+
+<div class="subbar"><div class="subbar-inner"><div class="breadcrumb"><a href="ai-home.html">AI 资产</a><span class="sep">›</span><span class="current">Tool / Function</span></div></div></div>
+
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="nav-l1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>AI 资产</div>
+    <a class="nav-l2" href="ai-home.html">AI 资产首页</a>
+    <a class="nav-l2" href="agent.html">Agent 注册</a>
+    <a class="nav-l2 active" href="tool.html">Tool / Function</a>
+    <a class="nav-l2" href="model.html">LLM 接入</a>
+    <a class="nav-l2" href="llm-gateway.html">LLM 网关</a>
+    <a class="nav-l2" href="dataset.html">知识库 (RAG)</a>
+    <a class="nav-l2" href="prompt.html">Prompt 模板</a>
+    <a class="nav-l2" href="metadata-source.html?filter=vector">向量库</a>
+  </aside>
+
+  <div class="right-col">
+
+<!-- AI Hero -->
+<section class="ai-hero">
+  <div class="ai-hero-inner">
+    <div class="ai-hero-title-row">
+      <span class="ai-hero-title">🧰 工具 / Function 注册表 <span class="ai-badge">Powered by 自研 Tool Registry</span></span>
+    </div>
+    <div class="ai-hero-sub">Agent 可调用的工具集合 — 内置 SQL / API / Python / MCP（Gravitino 暂无原生工具元数据支持，沿用 Tag/Property 钩子做权限标记）</div>
+
+    <div class="ai-stats">
+      <div class="ai-stat">
+        <div class="ai-stat-icon tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14.7 6.3a4 4 0 015.7 5.7l-2.1 2.1-5.7-5.7zM3 21l5.6-5.6M9.7 8.3L3 15v6h6l6.7-6.7"/></svg></div>
+        <div><div class="ai-stat-num">38</div><div class="ai-stat-label">工具总数</div><div class="ai-stat-trend">↑ 本周新增 5</div></div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-icon online"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 12 8 17 21 4"/></svg></div>
+        <div><div class="ai-stat-num">31</div><div class="ai-stat-label">在线</div><div class="ai-stat-trend">3 灰度 · 4 离线</div></div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-icon calls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5 21 12"/></svg></div>
+        <div><div class="ai-stat-num">18.6 万</div><div class="ai-stat-label">今日调用次数</div><div class="ai-stat-trend">P95 280ms</div></div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-icon fail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16" r="0.6"/></svg></div>
+        <div><div class="ai-stat-num" style="color:var(--red);">0.42%</div><div class="ai-stat-label">失败率</div><div class="ai-stat-trend" style="color:var(--orange);">环比 -0.08pp</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main class="content">
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-field" style="flex:1;min-width:240px;max-width:380px;">
+      <span class="toolbar-field-label">关键词搜索</span>
+      <div class="toolbar-search">
+        <span class="toolbar-search-prefix"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg></span>
+        <input type="text" placeholder="搜索工具名 / 描述 / Owner" />
+      </div>
+    </div>
+    <div class="toolbar-field"><span class="toolbar-field-label">类型</span><select class="tb-select"><option>全部</option><option>SQL Runner</option><option>HTTP API</option><option>Python Function</option><option>MCP Server</option><option>内置工具</option></select></div>
+    <div class="toolbar-field"><span class="toolbar-field-label">状态</span><select class="tb-select"><option>全部</option><option>在线</option><option>灰度</option><option>离线</option><option>已下线</option></select></div>
+    <div class="toolbar-field"><span class="toolbar-field-label">鉴权方式</span><select class="tb-select"><option>全部</option><option>无</option><option>API Key</option><option>OAuth</option><option>内部签名</option></select></div>
+    <div class="toolbar-spacer"></div>
+    <span class="toolbar-stats">共 <strong>38</strong> 个工具</span>
+    <button class="btn btn-ai-teal" onclick="showToast('打开工具注册向导（演示）','info')">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+      注册新工具
+    </button>
+  </div>
+
+  <!-- 工具表格 -->
+  <div class="tool-table-wrap">
+    <table class="tool-table" id="toolTable">
+      <thead>
+        <tr>
+          <th style="width:240px;">工具名</th>
+          <th style="width:80px;">类型</th>
+          <th>描述</th>
+          <th style="width:140px;">Schema</th>
+          <th style="width:100px;">鉴权</th>
+          <th style="width:100px;">引用 Agent</th>
+          <th style="width:100px;">今日调用</th>
+          <th style="width:80px;">失败率</th>
+          <th style="width:80px;">Owner</th>
+          <th style="width:110px;">最近更新</th>
+          <th style="width:70px;">状态</th>
+        </tr>
+      </thead>
+      <tbody id="toolBody"></tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:6px;font-size:12px;color:var(--sub);text-align:center;">已展示 12 / 38 个工具 · <a style="color:var(--primary);cursor:pointer;" onclick="showToast('完整列表演示','info')">查看全部</a></div>
+
+  <div style="margin-top:14px;padding:10px 14px;background:#FAFBFC;border:1px dashed var(--border);border-radius:6px;font-size:11px;color:var(--sub);text-align:center;">
+    💡 工具元数据沿用 <strong style="color:var(--teal);">Gravitino Tag/Property</strong> 钩子做权限标记 · 调用日志由 LLM 网关统一审计
+  </div>
+</main>
+
+  </div><!-- /.right-col -->
+</div><!-- /.body-wrap -->
+
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产..." />
+    </div>
+    <div class="cmdk-results">演示版搜索 — 请回到 AI 资产首页使用完整 Cmd+K</div>
+  </div>
+</div>
+
+<script>
+  const TOOLS = [
+    {
+      code:'call_metric_api', name:'call_metric_api', kind:'api', desc:'指标查询 API — 通过指标平台 BFF 获取指定指标值',
+      auth:'内部签名', refs:6, calls:'48,200', fail:'0.18%', owner:'王晨', updated:'今天 03:50', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["metric_code", "date"],
+  "properties": {
+    "metric_code": { "type": "string", "description": "指标 code，如 dau / gmv" },
+    "date": { "type": "string", "format": "date" },
+    "biz_line": { "type": "string", "enum": ["sport","shop","cservice"] }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "value": { "type": "number" },
+    "unit": { "type": "string" },
+    "yoy": { "type": "number" },
+    "source": { "type": "string" }
+  }
+}`
+    },
+    {
+      code:'sql_runner', name:'sql_runner', kind:'sql', desc:'SQL 执行工具 — Trino 后端，自动注入字段级脱敏',
+      auth:'内部签名', refs:8, calls:'62,400', fail:'0.62%', owner:'王晨', updated:'今天 02:14', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["sql"],
+  "properties": {
+    "sql": { "type": "string", "description": "只读 SELECT 语句" },
+    "limit": { "type": "integer", "default": 1000, "maximum": 10000 },
+    "engine": { "type": "string", "enum": ["trino","spark"], "default": "trino" }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "columns": { "type": "array", "items": { "type": "string" } },
+    "rows": { "type": "array" },
+    "rowCount": { "type": "integer" },
+    "elapsedMs": { "type": "integer" }
+  }
+}`
+    },
+    {
+      code:'vector_search', name:'vector_search', kind:'builtin', desc:'向量检索 — Milvus / Qdrant top-k 召回（内置工具）',
+      auth:'无（内部）', refs:11, calls:'38,400', fail:'0.08%', owner:'李雨', updated:'昨天 18:30', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["kb_code", "query", "top_k"],
+  "properties": {
+    "kb_code": { "type": "string", "description": "知识库 code" },
+    "query":   { "type": "string" },
+    "top_k":   { "type": "integer", "default": 5, "maximum": 50 },
+    "filter":  { "type": "string", "description": "Milvus expr 表达式" }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "hits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chunk_id": { "type": "string" },
+          "score": { "type": "number" },
+          "content": { "type": "string" },
+          "source": { "type": "string" }
+        }
+      }
+    }
+  }
+}`
+    },
+    {
+      code:'send_email', name:'send_email', kind:'api', desc:'发送邮件 — 通过内部 mail-svc，支持模板变量',
+      auth:'API Key', refs:3, calls:'4,820', fail:'0.34%', owner:'陈晓', updated:'昨天 11:20', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["to", "subject", "body"],
+  "properties": {
+    "to":       { "type": "array", "items": { "type": "string", "format": "email" } },
+    "subject":  { "type": "string" },
+    "body":     { "type": "string" },
+    "template": { "type": "string", "description": "可选模板 code" }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "messageId": { "type": "string" },
+    "status": { "type": "string", "enum": ["queued","sent","failed"] }
+  }
+}`
+    },
+    {
+      code:'fetch_user_profile', name:'fetch_user_profile', kind:'api', desc:'获取用户画像 — User Profile Service，含 PII 脱敏控制',
+      auth:'OAuth', refs:5, calls:'12,600', fail:'0.24%', owner:'王晨', updated:'2 天前', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["user_id"],
+  "properties": {
+    "user_id":     { "type": "string" },
+    "include_pii": { "type": "boolean", "default": false }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "user_id":   { "type": "string" },
+    "tier":      { "type": "string" },
+    "tags":      { "type": "array", "items": { "type": "string" } },
+    "lastActive": { "type": "string", "format": "date-time" }
+  }
+}`
+    },
+    {
+      code:'generate_chart', name:'generate_chart', kind:'py', desc:'图表生成 — Python Function（matplotlib）输出 PNG/Base64',
+      auth:'无（内部）', refs:4, calls:'8,820', fail:'1.04%', owner:'李雨', updated:'昨天 09:00', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["chart_type", "data"],
+  "properties": {
+    "chart_type": { "type": "string", "enum": ["line","bar","pie","scatter"] },
+    "data":       { "type": "array" },
+    "title":      { "type": "string" },
+    "x_axis":     { "type": "string" },
+    "y_axis":     { "type": "string" }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "image_base64": { "type": "string" },
+    "width": { "type": "integer" },
+    "height": { "type": "integer" }
+  }
+}`
+    },
+    {
+      code:'create_jira_ticket', name:'create_jira_ticket', kind:'mcp', desc:'创建 Jira 工单 — 通过 Atlassian MCP Server',
+      auth:'OAuth', refs:2, calls:'1,240', fail:'0.86%', owner:'陈晓', updated:'3 天前', status:'gray',
+      input:`{
+  "type": "object",
+  "required": ["project", "summary", "type"],
+  "properties": {
+    "project":  { "type": "string", "description": "Jira project key, e.g. AI" },
+    "summary":  { "type": "string" },
+    "type":     { "type": "string", "enum": ["Bug","Task","Story"] },
+    "priority": { "type": "string", "enum": ["Low","Medium","High","Urgent"] },
+    "assignee": { "type": "string" }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "ticket_id": { "type": "string" },
+    "url":       { "type": "string", "format": "uri" }
+  }
+}`
+    },
+    {
+      code:'translate_text', name:'translate_text', kind:'api', desc:'文本翻译 — 内部翻译网关（zh / en / ja / fr 多向）',
+      auth:'API Key', refs:6, calls:'14,200', fail:'0.18%', owner:'李雨', updated:'昨天 22:00', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["text", "target_lang"],
+  "properties": {
+    "text":        { "type": "string" },
+    "source_lang": { "type": "string", "default": "auto" },
+    "target_lang": { "type": "string", "enum": ["zh","en","ja","fr"] }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "translated":   { "type": "string" },
+    "detected_src": { "type": "string" }
+  }
+}`
+    },
+    {
+      code:'search_web', name:'search_web', kind:'mcp', desc:'外部搜索 — 通过 Tavily MCP Server',
+      auth:'API Key', refs:4, calls:'6,400', fail:'1.84%', owner:'李雨', updated:'今天 12:10', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["query"],
+  "properties": {
+    "query":     { "type": "string" },
+    "max_results": { "type": "integer", "default": 5 }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "results": { "type": "array", "items": { "type": "object" } }
+  }
+}`
+    },
+    {
+      code:'rerank_results', name:'rerank_results', kind:'py', desc:'结果重排 — bge-reranker-v2 Python Function',
+      auth:'无（内部）', refs:7, calls:'20,400', fail:'0.06%', owner:'李雨', updated:'今天 04:00', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["query", "candidates"],
+  "properties": {
+    "query":      { "type": "string" },
+    "candidates": { "type": "array", "items": { "type": "string" } },
+    "top_n":      { "type": "integer", "default": 5 }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "ranked": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": { "type": "integer" },
+          "score": { "type": "number" }
+        }
+      }
+    }
+  }
+}`
+    },
+    {
+      code:'cache_redis_get', name:'cache_redis_get', kind:'builtin', desc:'Redis 缓存读取 — 内置工具（namespace 隔离）',
+      auth:'无（内部）', refs:5, calls:'9,200', fail:'0.02%', owner:'王晨', updated:'1 周前', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["namespace", "key"],
+  "properties": {
+    "namespace": { "type": "string" },
+    "key":       { "type": "string" }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "hit":   { "type": "boolean" },
+    "value": { "type": "string", "nullable": true },
+    "ttl":   { "type": "integer" }
+  }
+}`
+    },
+    {
+      code:'audit_pii_scan', name:'audit_pii_scan', kind:'py', desc:'PII 检测 — Python Function（基于 NER + 正则双重）',
+      auth:'无（内部）', refs:9, calls:'2,180', fail:'0.46%', owner:'王芳', updated:'2 天前', status:'online',
+      input:`{
+  "type": "object",
+  "required": ["text"],
+  "properties": {
+    "text":  { "type": "string" },
+    "level": { "type": "string", "enum": ["loose","strict"], "default": "strict" }
+  }
+}`,
+      output:`{
+  "type": "object",
+  "properties": {
+    "found": { "type": "boolean" },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type":  { "type": "string" },
+          "value": { "type": "string" },
+          "start": { "type": "integer" },
+          "end":   { "type": "integer" }
+        }
+      }
+    }
+  }
+}`
+    }
+  ];
+
+  function kindLabel(k){return ({sql:'SQL',api:'API',py:'Python',mcp:'MCP',builtin:'内置'})[k]||k;}
+  function kindIconHTML(k){
+    const map = {
+      sql:    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/><path d="M2 3v10c0 1.1 2.7 2 6 2s6-.9 6-2V3"/><path d="M2 8c0 1.1 2.7 2 6 2s6-.9 6-2"/></svg>',
+      api:    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 8h4M10 8h4M5 5l-3 3 3 3M11 5l3 3-3 3"/></svg>',
+      py:     '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 8h4a2 2 0 002-2V4a2 2 0 00-2-2H7a2 2 0 00-2 2v2"/><path d="M5 8a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2"/></svg>',
+      mcp:    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M8 1v3M8 12v3M1 8h3M12 8h3"/></svg>',
+      builtin:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8l2 2 4-4"/></svg>'
+    };
+    return map[k] || map.builtin;
+  }
+
+  function fmtSchema(json){
+    return json
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
+      .replace(/: ("[^"]*")/g, ': <span class="s">$1</span>')
+      .replace(/: (true|false|\d+(?:\.\d+)?)/g, ': <span class="n">$1</span>');
+  }
+
+  function statusTag(s){
+    if (s==='online') return '<span class="tag-chip green">在线</span>';
+    if (s==='gray')   return '<span class="tag-chip warn">灰度</span>';
+    if (s==='offline')return '<span class="tag-chip red">离线</span>';
+    return '<span class="tag-chip">'+s+'</span>';
+  }
+
+  function render(){
+    const tbody = document.getElementById('toolBody');
+    let html = '';
+    TOOLS.forEach(t => {
+      const failColor = parseFloat(t.fail) > 1 ? 'color:var(--red);' : (parseFloat(t.fail) > 0.5 ? 'color:var(--orange);' : '');
+      html += `<tr class="row-main" onclick="openDetail('${t.code}')">
+        <td>
+          <div class="tool-name">
+            <span class="icon t-${t.kind}">${kindIconHTML(t.kind)}</span>
+            <span class="mono">${t.name}</span>
+          </div>
+        </td>
+        <td><span class="tag-chip ${t.kind}">${kindLabel(t.kind)}</span></td>
+        <td><div class="tool-desc" style="color:var(--text);font-size:12px;">${t.desc}</div></td>
+        <td onclick="event.stopPropagation()">
+          <button class="schema-toggle" onclick="toggleSchema('${t.code}', this)">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2.5 4 5 6.5 7.5 4"/></svg>
+            in/out
+          </button>
+        </td>
+        <td>${t.auth}</td>
+        <td><span class="ref-badge">🔗 ${t.refs} 个</span></td>
+        <td class="mono">${t.calls}</td>
+        <td class="mono" style="${failColor}">${t.fail}</td>
+        <td>${t.owner}</td>
+        <td style="color:var(--sub);">${t.updated}</td>
+        <td>${statusTag(t.status)}</td>
+      </tr>
+      <tr class="row-schema" id="sch-${t.code}">
+        <td colspan="11">
+          <div class="schema-block" id="schb-${t.code}">
+            <div class="schema-grid">
+              <div>
+                <div class="schema-h">📥 Input Schema (JSON Schema)</div>
+                <div class="schema-pre">${fmtSchema(t.input)}</div>
+              </div>
+              <div>
+                <div class="schema-h">📤 Output Schema (JSON Schema)</div>
+                <div class="schema-pre">${fmtSchema(t.output)}</div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  function toggleSchema(code, btn){
+    const block = document.getElementById('schb-'+code);
+    if (!block) return;
+    const open = block.classList.toggle('open');
+    btn.classList.toggle('open', open);
+  }
+
+  function openDetail(code){
+    /* localStorage 最近访问 */
+    try {
+      const recent = JSON.parse(localStorage.getItem('mdm_recent') || '[]');
+      const item = TOOLS.find(t => t.code === code);
+      const next = [{ type:'tool', code:code, name: item ? item.name : code, time: Date.now() }, ...recent.filter(x => !(x.type==='tool' && x.code===code))].slice(0, 20);
+      localStorage.setItem('mdm_recent', JSON.stringify(next));
+    } catch(e) {}
+    showToast('工具详情页待建（演示） — 已记录最近访问 ' + code, 'info');
+  }
+
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');setTimeout(()=>document.getElementById('cmdkInput').focus(),30);}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();}else if(e.key==='Escape'){closeCmdK();}});
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{if(e.target.id==='cmdkMask')closeCmdK();});
+
+  function showToast(msg, type){
+    type = type || 'success';
+    let c = document.getElementById('toastContainer');
+    if (!c) { c = document.createElement('div'); c.id='toastContainer'; c.className='toast-container'; document.body.appendChild(c); }
+    const t = document.createElement('div'); t.className='toast '+type;
+    t.innerHTML = '<span>'+msg+'</span>';
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 2400);
+  }
+
+  /* 处理 ?code=xxx 自动打开 schema */
+  window.addEventListener('DOMContentLoaded', () => {
+    render();
+    const code = new URLSearchParams(location.search).get('code');
+    if (code) {
+      const btn = document.querySelector(`tr#sch-${code}`)?.previousElementSibling?.querySelector('.schema-toggle');
+      if (btn) {
+        toggleSchema(code, btn);
+        document.getElementById('schb-'+code)?.scrollIntoView({block:'center', behavior:'smooth'});
+      }
+    }
+  });
+</script>
+</body>
+</html>
