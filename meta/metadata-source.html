@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 数据源管理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1677FF; --primary-light: #E6F0FF; --primary-hover: #0958D9;
+      --green: #00B42A; --green-light: #E8FFEA;
+      --red: #F53F3F; --red-light: #FFECE8;
+      --orange: #FF7D00; --orange-light: #FFF3E8;
+      --purple: #7B61FF; --purple-light: #F0EDFF;
+      --gray-light: #F7F8FA;
+      --sidebar-w: 220px; --header-h: 52px; --subbar-h: 44px;
+      --bg: #F5F7FA; --card: #FFFFFF; --border: #E8ECF0;
+      --text: #1D2129; --sub: #86909C;
+    }
+    body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* HEADER */
+    .header { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; flex-shrink: 0; position: sticky; top: 0; z-index: 30; }
+    .logo-wrap { display: flex; align-items: center; gap: 8px; }
+    .logo-name { font-size: 16px; font-weight: 700; }
+    .global-search { display: flex; align-items: center; width: 280px; height: 32px; background: var(--gray-light); border: 1px solid transparent; border-radius: 8px; padding: 0 10px; cursor: pointer; transition: all .15s; flex-shrink: 0; }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd { font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: #fff; font-family: ui-monospace, monospace; color: var(--sub); }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; }
+    .header-tab { height: 100%; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: var(--sub); cursor: pointer; position: relative; border: none; background: none; transition: color .15s; text-decoration: none; }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 8px; border-radius: 4px; cursor: pointer; color: var(--sub); background: none; border: none; transition: color .15s; position: relative; }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-badge { position: absolute; top: 1px; right: 4px; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px; background: var(--red); color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; cursor: pointer; background: none; border: none; }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+    /* SUB-HEADER */
+    .subbar { height: var(--subbar-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w); flex-shrink: 0; position: sticky; top: var(--header-h); z-index: 10; }
+    .subbar-inner { display: flex; align-items: center; padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+    /* BODY */
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar { width: var(--sidebar-w); flex-shrink: 0; background: #fff; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; position: sticky; top: calc(var(--header-h) + var(--subbar-h)); height: calc(100vh - var(--header-h) - var(--subbar-h)); }
+    .nav-group { padding: 8px 0; }
+    .nav-l1 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron { margin-left: auto; width: 14px; height: 14px; transition: transform .2s; }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+    .nav-l1-children { display: none; }
+    .nav-l1.open + .nav-l1-children { display: block; }
+    .nav-l2 { display: flex; align-items: center; padding: 9px 16px 9px 40px; font-size: 13px; color: var(--sub); cursor: pointer; position: relative; transition: background .12s, color .12s; text-decoration: none; }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active { color: var(--primary); font-weight: 500; background: var(--primary-light); }
+    .nav-l2.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--primary); border-radius: 0 3px 3px 0; }
+
+    .content { flex: 1; min-width: 0; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .page-title-bar { display: flex; align-items: center; justify-content: space-between; }
+    .page-title { font-size: 18px; font-weight: 600; }
+    .page-subtitle { font-size: 12px; color: var(--sub); margin-left: 8px; }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); transition: all .15s; white-space: nowrap; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-link { border: none; background: none; color: var(--primary); padding: 0 6px; font-size: 12px; cursor: pointer; }
+    .btn-link:hover { color: var(--primary-hover); text-decoration: underline; }
+    .btn-link-danger { border: none; background: none; color: var(--red); padding: 0 6px; font-size: 12px; cursor: pointer; }
+    .btn-link-danger:hover { text-decoration: underline; }
+    .op-divider { color: var(--border); font-size: 12px; }
+
+    /* STAT CARDS */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .stat-icon { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .stat-icon svg { width: 20px; height: 20px; }
+    .stat-icon.s1 { background: var(--primary-light); color: var(--primary); }
+    .stat-icon.s2 { background: var(--purple-light); color: var(--purple); }
+    .stat-icon.s3 { background: var(--green-light); color: var(--green); }
+    .stat-icon.s4 { background: var(--red-light); color: var(--red); }
+    .stat-meta { display: flex; flex-direction: column; gap: 2px; }
+    .stat-num { font-size: 22px; font-weight: 700; line-height: 1.1; }
+    .stat-label { font-size: 12px; color: var(--sub); }
+    .stat-trend { font-size: 11px; color: var(--green); }
+    .stat-trend.down { color: var(--red); }
+
+    /* TABS (page-level) */
+    .page-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--border); }
+    .page-tab { height: 38px; padding: 0 18px; font-size: 14px; font-weight: 500; color: var(--sub); cursor: pointer; border: none; background: none; position: relative; }
+    .page-tab:hover { color: var(--text); }
+    .page-tab.active { color: var(--primary); font-weight: 600; }
+    .page-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 18px; right: 18px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .page-tab .tab-count { margin-left: 6px; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--gray-light); color: var(--sub); font-weight: 400; }
+    .page-tab.active .tab-count { background: var(--primary-light); color: var(--primary); }
+    .page-pane { display: none; }
+    .page-pane.active { display: block; display: flex; flex-direction: column; gap: 14px; }
+
+    /* TOOLBAR */
+    .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .toolbar-field { display: flex; flex-direction: column; gap: 5px; }
+    .toolbar-field-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .toolbar-search { flex: 1; min-width: 240px; max-width: 420px; display: flex; align-items: center; min-height: 32px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+    .toolbar-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .toolbar-search-prefix { padding: 0 0 0 10px; color: var(--sub); }
+    .toolbar-search-prefix svg { width: 14px; height: 14px; }
+    .toolbar-search input { flex: 1; min-height: 30px; border: none; outline: none; padding: 0 10px; font-size: 13px; background: transparent; }
+    .toolbar-spacer { flex: 1; }
+    .toolbar-stats { font-size: 12px; color: var(--sub); padding-bottom: 8px; }
+    .toolbar-stats strong { color: var(--text); font-weight: 600; }
+    select.tb-select { height: 32px; padding: 0 26px 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-color: #fff; min-width: 140px; }
+
+    /* TABLES */
+    .data-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .data-table-scroll { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1100px; }
+    .data-table thead th { background: #FAFBFC; border-bottom: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+    .data-table tbody td { padding: 12px 14px; border-bottom: 1px solid #F0F3F6; vertical-align: middle; }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover td { background: #FAFBFC; }
+    .src-icon-mini { width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .src-icon-mini svg { width: 14px; height: 14px; }
+    .src-icon-mini.hive { background: linear-gradient(135deg, #FFE4B5, #FFCC80); color: #E65100; }
+    .src-icon-mini.mysql { background: linear-gradient(135deg, #E1F5FE, #4FC3F7); color: #00838F; }
+    .src-icon-mini.oracle { background: linear-gradient(135deg, #FFE0E0, #EF5350); color: #B71C1C; }
+    .src-icon-mini.dm { background: linear-gradient(135deg, #E1F5E1, #66BB6A); color: #1B5E20; }
+    .src-icon-mini.ck { background: linear-gradient(135deg, #FFF3E0, #FFB74D); color: #E65100; }
+    .src-icon-mini.kafka { background: linear-gradient(135deg, #F3E5F5, #BA68C8); color: #4A148C; }
+    .src-icon-mini.es { background: linear-gradient(135deg, #FFFDE7, #FFD54F); color: #F57F17; }
+    .src-icon-mini.fileset { background: linear-gradient(135deg, #FCE4EC, #F06292); color: #880E4F; }
+    .src-icon-mini.mlflow { background: linear-gradient(135deg, #F0EDFF, #B39DDB); color: #4527A0; }
+    .src-icon-mini.feast { background: linear-gradient(135deg, #E8F4FF, #64B5F6); color: #0D47A1; }
+    .src-icon-mini.milvus { background: linear-gradient(135deg, #E6FFFB, #4DD0E1); color: #006064; }
+    .src-icon-mini.qdrant { background: linear-gradient(135deg, #F9F0FF, #B388FF); color: #4527A0; }
+    .src-icon-mini.hf { background: linear-gradient(135deg, #FFF3E8, #FFCA28); color: #E65100; }
+    .src-tag-ai { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 3px; background: #F0EDFF; color: #7B61FF; font-size: 10px; font-weight: 500; vertical-align: middle; }
+    .src-name { display: inline-flex; align-items: center; gap: 8px; }
+    .src-name a { color: var(--text); font-weight: 500; cursor: pointer; text-decoration: none; }
+    .src-name a:hover { color: var(--primary); text-decoration: underline; }
+    .src-en { font-family: ui-monospace, monospace; color: var(--sub); font-size: 11px; background: var(--gray-light); padding: 1px 6px; border-radius: 3px; }
+    .conn-url { font-family: ui-monospace, monospace; font-size: 11px; color: var(--sub); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+    .src-status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; }
+    .src-status .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .src-status.online .dot { background: var(--green); box-shadow: 0 0 0 3px rgba(0,180,42,.2); }
+    .src-status.failed .dot { background: var(--red); box-shadow: 0 0 0 3px rgba(245,63,63,.2); }
+    .src-status.testing .dot { background: var(--orange); }
+    .src-status.online { color: var(--green); }
+    .src-status.failed { color: var(--red); }
+    .src-status.testing { color: var(--orange); }
+
+    /* COLLECTOR JOB */
+    .job-status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+    .job-status.running { background: var(--green-light); color: var(--green); }
+    .job-status.failed { background: var(--red-light); color: var(--red); }
+    .job-status.paused { background: var(--gray-light); color: var(--sub); }
+    .job-status.success { background: var(--primary-light); color: var(--primary); }
+
+    /* CONNECTORS */
+    .conn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .conn-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; transition: all .15s; }
+    .conn-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(22,119,255,.08); }
+    .conn-head { display: flex; align-items: center; gap: 10px; }
+    .conn-icon-big { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+    .conn-name { font-size: 14px; font-weight: 600; }
+    .conn-version { font-size: 11px; color: var(--sub); }
+    .conn-tag-row { display: flex; gap: 4px; flex-wrap: wrap; }
+    .conn-tag { font-size: 11px; padding: 1px 6px; border-radius: 3px; background: var(--gray-light); color: var(--sub); }
+    .conn-desc { font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .conn-foot { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px dashed var(--border); }
+    .conn-installed { font-size: 11px; color: var(--green); display: inline-flex; align-items: center; gap: 4px; }
+    .conn-installed svg { width: 12px; height: 12px; }
+    .conn-not-installed { font-size: 11px; color: var(--sub); }
+
+    /* MODAL (新建数据源) */
+    .modal-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
+    .modal-mask.show { display: flex; }
+    .modal { background: #fff; border-radius: 10px; width: 100%; max-width: 720px; max-height: calc(100vh - 48px); display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,.18); overflow: hidden; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-close { width: 28px; height: 28px; border-radius: 6px; border: none; background: none; color: var(--sub); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .modal-close:hover { background: var(--bg); color: var(--text); }
+    .modal-close svg { width: 16px; height: 16px; }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--gray-light); }
+
+    .stepper { display: flex; align-items: center; gap: 0; margin-bottom: 22px; }
+    .step { display: flex; align-items: center; flex: 1; gap: 10px; position: relative; }
+    .step:not(:last-child)::after { content: ''; flex: 1; height: 2px; background: var(--border); margin-left: 10px; }
+    .step.active:not(:last-child)::after, .step.done:not(:last-child)::after { background: var(--primary); }
+    .step-circle { width: 26px; height: 26px; border-radius: 50%; background: var(--gray-light); color: var(--sub); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; border: 2px solid var(--border); }
+    .step.active .step-circle { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .step.done .step-circle { background: var(--green); color: #fff; border-color: var(--green); }
+    .step-name { font-size: 12px; color: var(--sub); white-space: nowrap; }
+    .step.active .step-name { color: var(--primary); font-weight: 600; }
+    .step.done .step-name { color: var(--green); }
+    .step-pane { display: none; }
+    .step-pane.active { display: block; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+    .form-item { display: flex; flex-direction: column; gap: 5px; }
+    .form-item.full { grid-column: 1 / -1; }
+    .form-label { font-size: 12px; font-weight: 500; }
+    .form-label .req { color: var(--red); margin-right: 2px; }
+    .form-input, .form-select, .form-textarea { width: 100%; border: 1px solid var(--border); border-radius: 6px; background: #fff; font-size: 13px; padding: 0 10px; outline: none; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
+    .form-input, .form-select { height: 32px; }
+    .form-textarea { padding: 8px 10px; resize: vertical; min-height: 72px; line-height: 1.5; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .form-select { padding-right: 28px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+
+    /* 类型选择 */
+    .src-type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .src-type-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 10px; }
+    .src-type-card:hover { border-color: var(--primary); }
+    .src-type-card.selected { border-color: var(--primary); background: var(--primary-light); }
+    .src-type-card .name { font-size: 13px; font-weight: 600; }
+    .src-type-card .ver { font-size: 11px; color: var(--sub); }
+
+    /* 测试连接 */
+    .test-result-card { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+    .test-loading { display: flex; align-items: center; gap: 10px; color: var(--orange); font-size: 13px; }
+    .test-loading .spinner { width: 16px; height: 16px; border: 2px solid var(--orange-light); border-top-color: var(--orange); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .test-success { color: var(--green); font-size: 13px; font-weight: 500; }
+    .test-success svg { width: 18px; height: 18px; vertical-align: middle; margin-right: 6px; }
+    .test-detail { margin-top: 10px; font-size: 12px; color: var(--sub); line-height: 1.7; font-family: ui-monospace, monospace; }
+    .test-detail .line { padding: 2px 0; }
+    .test-detail .ok { color: var(--green); }
+    .test-detail .info { color: var(--primary); }
+
+    /* PAGINATION */
+    .pagination-bar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .page-info { font-size: 12px; color: var(--sub); margin-right: auto; }
+    .page-btn { min-width: 28px; height: 28px; padding: 0 8px; border: 1px solid var(--border); border-radius: 5px; background: #fff; font-size: 12px; color: var(--sub); cursor: pointer; }
+    .page-btn:hover:not(.disabled) { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .page-btn.disabled { opacity: .4; cursor: not-allowed; }
+
+    /* TOAST */
+    .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 13px; pointer-events: auto; animation: ti .25s ease-out; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.success .ti-i { color: var(--green); }
+    .toast.info { border-color: #ADC6FF; }
+    .toast.info .ti-i { color: var(--primary); }
+    .toast.error { border-color: #FFC1B8; }
+    .toast.error .ti-i { color: var(--red); }
+    .ti-i svg { width: 16px; height: 16px; }
+    @keyframes ti { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* CMD+K (公共组件) */
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 96px); }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search svg { width: 16px; height: 16px; color: var(--sub); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; background: transparent; }
+    .cmdk-esc { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--sub); font-family: ui-monospace, monospace; }
+    .cmdk-filters { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .cmdk-chip { padding: 3px 10px; font-size: 12px; border-radius: 12px; cursor: pointer; background: var(--gray-light); color: var(--sub); white-space: nowrap; border: 1px solid transparent; }
+    .cmdk-chip:hover { color: var(--text); }
+    .cmdk-chip.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); font-weight: 500; }
+    .cmdk-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cmdk-group-title { font-size: 11px; color: var(--sub); padding: 6px 16px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+    .cmdk-item:hover, .cmdk-item.focused { background: var(--primary-light); }
+    .cmdk-item-icon { width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .cmdk-item-icon svg { width: 14px; height: 14px; }
+    .cmdk-item-icon.metric { background: var(--primary-light); color: var(--primary); }
+    .cmdk-item-icon.table { background: var(--purple-light); color: var(--purple); }
+    .cmdk-item-icon.report { background: var(--orange-light); color: var(--orange); }
+    .cmdk-item-icon.term { background: var(--green-light); color: var(--green); }
+    .cmdk-item-icon.source { background: #FFE7E7; color: var(--red); }
+    .cmdk-item-icon.model { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.agent { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.tool { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.kb { background: #FFF1F0; color: #CF1322; }
+    .cmdk-item-icon.prompt { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.vector { background: #F9F0FF; color: #722ED1; }
+    .cmdk-item-meta { flex: 1; min-width: 0; }
+    .cmdk-item-title { font-size: 13px; }
+    .cmdk-item-title .hl { background: #FFF3CD; color: #663C00; padding: 0 1px; }
+    .cmdk-item-sub { font-size: 11px; color: var(--sub); }
+    .cmdk-item-type { font-size: 11px; color: var(--sub); padding: 1px 7px; border-radius: 3px; background: var(--gray-light); }
+    .cmdk-empty { padding: 40px 20px; text-align: center; color: var(--sub); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .cmdk-empty svg { width: 48px; height: 48px; color: #C2C7CF; }
+    .cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .cmdk-foot kbd { font-family: ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab active" href="metadata-source.html">数据资产</a>
+    <a class="header-tab" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" onclick="location.href='metadata-request.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>工单</span><span class="hdr-badge">3</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-4-5.7V5a2 2 0 10-4 0v.3C7.7 6.2 6 8.4 6 11v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1"/></svg>
+      <span>通知</span><span class="hdr-badge">5</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn"><div class="user-avatar">张</div><span style="font-size:13px;font-weight:500;">张晓明</span></button>
+  </div>
+</header>
+
+<div class="subbar"><div class="subbar-inner"><div class="breadcrumb"><a href="home.html">数据资产</a><span class="sep">›</span><span class="current">数据源管理</span></div></div></div>
+
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l1 open">
+        <svg class="l1-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        数据资产
+        <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
+      </div>
+      <div class="nav-l1-children">
+        <a class="nav-l2" href="home.html">资产概览</a>
+        <a class="nav-l2" href="metadata-asset.html">指标管理</a>
+        <a class="nav-l2" href="metadata-table.html">库表管理</a>
+        <a class="nav-l2" href="metadata-report.html">报表管理</a>
+        <a class="nav-l2 active" href="metadata-source.html">数据源管理</a>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- 标题 -->
+    <div class="page-title-bar">
+      <div>
+        <span class="page-title">数据源管理</span>
+        <span class="page-subtitle">连接、采集、同步与监控企业级元数据来源</span>
+      </div>
+      <button class="btn btn-primary" onclick="openSourceModal()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+        新建数据源
+      </button>
+    </div>
+
+    <!-- 顶部统计 -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon s1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
+        <div class="stat-meta"><span class="stat-num">11</span><span class="stat-label">数据源（含 5 AI）</span><span class="stat-trend">9 已连接 · 1 失败 · 1 测试中</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon s2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+        <div class="stat-meta"><span class="stat-num">390</span><span class="stat-label">已采集实体（表/特征/模型/向量）</span><span class="stat-trend">↑ 本周新增 23</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon s3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><line x1="8" y1="6" x2="16" y2="18"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/></svg></div>
+        <div class="stat-meta"><span class="stat-num">12</span><span class="stat-label">采集任务</span><span class="stat-trend">11 运行 · 1 暂停</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon s4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2L2 22h20L12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg></div>
+        <div class="stat-meta"><span class="stat-num" style="color:var(--red);">1</span><span class="stat-label">失败任务</span><span class="stat-trend down">Kafka 连接超时</span></div>
+      </div>
+    </div>
+
+    <!-- 三 Tab -->
+    <div class="page-tabs">
+      <button class="page-tab active" data-pane="source" onclick="switchPageTab(this)">数据源 <span class="tab-count">11</span></button>
+      <button class="page-tab" data-pane="job" onclick="switchPageTab(this)">采集任务 <span class="tab-count">12</span></button>
+      <button class="page-tab" data-pane="connector" onclick="switchPageTab(this)">连接器</button>
+    </div>
+
+    <!-- ─── 数据源 Tab ─── -->
+    <div class="page-pane active" id="pane-source">
+      <div class="toolbar">
+        <div class="toolbar-field" style="flex:1;min-width:240px;max-width:420px;">
+          <span class="toolbar-field-label">关键词搜索</span>
+          <div class="toolbar-search">
+            <span class="toolbar-search-prefix"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg></span>
+            <input type="text" placeholder="搜索数据源名 / JDBC URL / 负责人" />
+          </div>
+        </div>
+        <div class="toolbar-field"><span class="toolbar-field-label">数据源类型</span><select class="tb-select"><optgroup label="📊 传统数据源"><option>全部</option><option>Hive</option><option>MySQL</option><option>Oracle</option><option>达梦DM</option><option>ClickHouse</option><option>Kafka</option></optgroup><optgroup label="🤖 AI 数据源 (Agent-only)"><option>Fileset (S3/HDFS RAG 语料)</option><option>Milvus 向量库</option><option>Qdrant 向量库</option></optgroup></select></div>
+        <div class="toolbar-field"><span class="toolbar-field-label">连接状态</span><select class="tb-select"><option>全部</option><option>已连接</option><option>失败</option><option>测试中</option></select></div>
+        <div class="toolbar-field"><span class="toolbar-field-label">负责人</span><select class="tb-select"><option>全部</option><option>平台组</option><option>广告组</option><option>支付组</option><option>张晓明</option></select></div>
+        <div class="toolbar-spacer"></div>
+        <span class="toolbar-stats">共 <strong>9</strong> 个数据源 · 含 <strong style="color:#7B61FF;">3</strong> 个 AI 数据源</span>
+        <button class="btn" style="margin-bottom:8px;" onclick="showToast('已开始下载 数据源清单.xlsx','success')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1v8m0 0l-3-3m3 3l3-3"/><path d="M2 11v1a1 1 0 001 1h8a1 1 0 001-1v-1"/></svg>
+          导出
+        </button>
+      </div>
+
+      <div class="data-table-wrap">
+        <div class="data-table-scroll">
+          <table class="data-table">
+            <thead><tr>
+              <th style="min-width:200px;">数据源名称</th>
+              <th>类型</th>
+              <th>JDBC URL / 端点</th>
+              <th>状态</th>
+              <th style="text-align:right;">已采集表数</th>
+              <th>最近采集</th>
+              <th>负责人</th>
+              <th style="width:200px;">操作</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="src-name"><span class="src-icon-mini hive"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 1L1 4l6 3 6-3-6-3z"/><path d="M1 7l6 3 6-3"/><path d="M1 10l6 3 6-3"/></svg></span><a onclick="goDetail('src_hive_main')">Hive 主仓</a><span class="src-en">hive_prod_cluster</span></div></td>
+                <td>Hive</td>
+                <td><span class="conn-url">jdbc:hive2://hive-master.prod.spark.com:10000/default</span></td>
+                <td><span class="src-status online"><span class="dot"></span>已连接</span></td>
+                <td style="text-align:right;font-weight:600;">86</td>
+                <td>2026-05-20 03:08</td>
+                <td>平台组</td>
+                <td><button class="btn-link" onclick="onTest(event)">测试</button><span class="op-divider">|</span><button class="btn-link" onclick="onSync(event)">同步</button><span class="op-divider">|</span><button class="btn-link" onclick="onEdit(event)">编辑</button><span class="op-divider">|</span><button class="btn-link-danger" onclick="onDelete(event)">删除</button></td>
+              </tr>
+              <tr>
+                <td><div class="src-name"><span class="src-icon-mini mysql"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="3" rx="5" ry="2"/><path d="M2 3v8c0 1 2.2 2 5 2s5-1 5-2V3"/></svg></span><a onclick="goDetail('src_mysql_ad')">MySQL 广告库</a><span class="src-en">mysql_ad_db</span></div></td>
+                <td>MySQL</td>
+                <td><span class="conn-url">jdbc:mysql://mysql-ad.prod.spark.com:3306/spark_ad?useSSL=true</span></td>
+                <td><span class="src-status online"><span class="dot"></span>已连接</span></td>
+                <td style="text-align:right;font-weight:600;">28</td>
+                <td>2026-05-20 03:15</td>
+                <td>广告组</td>
+                <td><button class="btn-link" onclick="onTest(event)">测试</button><span class="op-divider">|</span><button class="btn-link" onclick="onSync(event)">同步</button><span class="op-divider">|</span><button class="btn-link" onclick="onEdit(event)">编辑</button><span class="op-divider">|</span><button class="btn-link-danger" onclick="onDelete(event)">删除</button></td>
+              </tr>
+              <tr>
+                <td><div class="src-name"><span class="src-icon-mini oracle"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="2.5" x2="7" y2="11.5"/><line x1="2.5" y1="7" x2="11.5" y2="7"/></svg></span><a onclick="goDetail('src_orcl_main')">Oracle 业务库</a><span class="src-en">orcl_wedatadb</span></div></td>
+                <td>Oracle</td>
+                <td><span class="conn-url">jdbc:oracle:thin:@orcl-prod.spark.com:1521:WEDATADB</span></td>
+                <td><span class="src-status online"><span class="dot"></span>已连接</span></td>
+                <td style="text-align:right;font-weight:600;">32</td>
+                <td>2026-05-20 02:45</td>
+                <td>支付组</td>
+                <td><button class="btn-link" onclick="onTest(event)">测试</button><span class="op-divider">|</span><button class="btn-link" onclick="onSync(event)">同步</button><span class="op-divider">|</span><button class="btn-link" onclick="onEdit(event)">编辑</button><span class="op-divider">|</span><button class="btn-link-danger" onclick="onDelete(event)">删除</button></td>
+              </tr>
+              <tr>
+                <td><div class="src-name"><span class="src-icon-mini dm"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="10" height="10" rx="1"/><line x1="2" y1="6" x2="12" y2="6"/></svg></span><a onclick="goDetail('src_dm_fuwu')">达梦 DM 库</a><span class="src-en">dm_fuwu</span></div></td>
+                <td>达梦DM</td>
+                <td><span class="conn-url">jdbc:dm://dm-server.spark.com:5236/SYSDBA</span></td>
+                <td><span class="src-status online"><span class="dot"></span>已连接</span></td>
+                <td style="text-align:right;font-weight:600;">12</td>
+                <td>2026-05-20 02:08</td>
+                <td>AUTO_TEST</td>
+                <td><button class="btn-link" onclick="onTest(event)">测试</button><span class="op-divider">|</span><button class="btn-link" onclick="onSync(event)">同步</button><span class="op-divider">|</span><button class="btn-link" onclick="onEdit(event)">编辑</button><span class="op-divider">|</span><button class="btn-link-danger" onclick="onDelete(event)">删除</button></td>
+              </tr>
+              <tr>
+                <td><div class="src-name"><span class="src-icon-mini ck"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="3" height="10"/><rect x="6" y="2" width="2" height="10"/><rect x="9" y="2" width="3" height="10"/></svg></span><a onclick="goDetail('src_ck_pay')">ClickHouse 支付库</a><span class="src-en">ck_pay</span></div></td>
+                <td>ClickHouse</td>
+                <td><span class="conn-url">jdbc:clickhouse://ck-cluster.prod.spark.com:8123/spark_pay</span></td>
+                <td><span class="src-status online"><span class="dot"></span>已连接</span></td>
+                <td style="text-align:right;font-weight:600;">8</td>
+                <td>2026-05-20 03:02</td>
+                <td>支付组</td>
+                <td><button class="btn-link" onclick="onTest(event)">测试</button><span class="op-divider">|</span><button class="btn-link" onclick="onSync(event)">同步</button><span class="op-divider">|</span><button class="btn-link" onclick="onEdit(event)">编辑</button><span class="op-divider">|</span><button class="btn-link-danger" onclick="onDelete(event)">删除</button></td>
+              </tr>
+              <tr>
+                <td><div class="src-name"><span class="src-icon-mini kafka"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="3" cy="7" r="2"/><circle cx="11" cy="3" r="2"/><circle cx="11" cy="11" r="2"/><line x1="5" y1="6" x2="9" y2="4"/><line x1="5" y1="8" x2="9" y2="10"/></svg></span><a onclick="goDetail('src_kafka')">Kafka 实时流</a><span class="src-en">kafka_realtime</span></div></td>
+                <td>Kafka</td>
+                <td><span class="conn-url">kafka-broker-1.prod.spark.com:9092,broker-2:9092</span></td>
+                <td><span class="src-status failed"><span class="dot"></span>失败</span></td>
+                <td style="text-align:right;font-weight:600;color:var(--sub);">2</td>
+                <td>2026-05-20 03:00 <span style="color:var(--red);font-size:11px;">(超时)</span></td>
+                <td>张晓明</td>
+                <td><button class="btn-link" onclick="onTest(event)">测试</button><span class="op-divider">|</span><button class="btn-link" onclick="onSync(event)">同步</button><span class="op-divider">|</span><button class="btn-link" onclick="onEdit(event)">编辑</button><span class="op-divider">|</span><button class="btn-link-danger" onclick="onDelete(event)">删除</button></td>
+              </tr>
+              <tr>
+                <td><div class="src-name"><span class="src-icon-mini fileset"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4l5-2.5L12 4l-5 2.5z"/><path d="M2 7l5 2.5L12 7"/><path d="M2 10l5 2.5L12 10"/></svg></span><a onclick="goDetail('src_s3_train')">S3 训练数据湖</a><span class="src-en">s3_train_data</span><span class="src-tag-ai">AI</span></div></td>
+                <td>Fileset (S3)</td>
+                <td><span class="conn-url">s3://spark-ai-train/{recsys,nlp,cv}/</span></td>
+                <td><span class="src-status online"><span class="dot"></span>已连接</span></td>
+                <td style="text-align:right;font-weight:600;">52</td>
+                <td>2026-05-20 03:30</td>
+                <td>AI 平台组</td>
+                <td><button class="btn-link" onclick="onTest(event)">测试</button><span class="op-divider">|</span><button class="btn-link" onclick="onSync(event)">同步</button><span class="op-divider">|</span><button class="btn-link" onclick="onEdit(event)">编辑</button><span class="op-divider">|</span><button class="btn-link-danger" onclick="onDelete(event)">删除</button></td>
+              </tr>
+              <tr>
+                <td><div class="src-name"><span class="src-icon-mini milvus"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="3" cy="3" r="1.2"/><circle cx="11" cy="3" r="1.2"/><circle cx="3" cy="11" r="1.2"/><circle cx="11" cy="11" r="1.2"/><circle cx="7" cy="7" r="1.2"/><line x1="4" y1="3.5" x2="6" y2="6.5"/><line x1="10" y1="3.5" x2="8" y2="6.5"/></svg></span><a onclick="goDetail('src_milvus_main')">Milvus 向量主库</a><span class="src-en">milvus_prod</span><span class="src-tag-ai">AI · 向量</span></div></td>
+                <td>Milvus 向量库</td>
+                <td><span class="conn-url">milvus://milvus-cluster.ai.spark.com:19530</span></td>
+                <td><span class="src-status online"><span class="dot"></span>已连接</span></td>
+                <td style="text-align:right;font-weight:600;">8</td>
+                <td>2026-05-20 03:35</td>
+                <td>AI 平台组</td>
+                <td><button class="btn-link" onclick="onTest(event)">测试</button><span class="op-divider">|</span><button class="btn-link" onclick="onSync(event)">同步</button><span class="op-divider">|</span><button class="btn-link" onclick="onEdit(event)">编辑</button><span class="op-divider">|</span><button class="btn-link-danger" onclick="onDelete(event)">删除</button></td>
+              </tr>
+              <tr>
+                <td><div class="src-name"><span class="src-icon-mini hf"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><circle cx="5" cy="6" r=".8" fill="currentColor"/><circle cx="9" cy="6" r=".8" fill="currentColor"/><path d="M5 9c.5 1 1.2 1.5 2 1.5s1.5-.5 2-1.5"/></svg></span><a onclick="goDetail('src_hf_hub')">HuggingFace Hub</a><span class="src-en">hf_hub</span><span class="src-tag-ai">AI</span></div></td>
+                <td>HuggingFace Hub</td>
+                <td><span class="conn-url">https://huggingface.co/api</span></td>
+                <td><span class="src-status testing"><span class="dot"></span>测试中</span></td>
+                <td style="text-align:right;font-weight:600;color:var(--sub);">—</td>
+                <td>—</td>
+                <td>AI 平台组</td>
+                <td><button class="btn-link" onclick="onTest(event)">测试</button><span class="op-divider">|</span><button class="btn-link" onclick="onSync(event)">同步</button><span class="op-divider">|</span><button class="btn-link" onclick="onEdit(event)">编辑</button><span class="op-divider">|</span><button class="btn-link-danger" onclick="onDelete(event)">删除</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pagination-bar">
+        <span class="page-info">共 11 条记录</span>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg></button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 2 9 6 5 10"/></svg></button>
+      </div>
+    </div>
+
+    <!-- ─── 采集任务 Tab ─── -->
+    <div class="page-pane" id="pane-job">
+      <div class="toolbar">
+        <div class="toolbar-field" style="flex:1;min-width:240px;max-width:420px;">
+          <span class="toolbar-field-label">关键词搜索</span>
+          <div class="toolbar-search">
+            <span class="toolbar-search-prefix"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg></span>
+            <input type="text" placeholder="搜索任务名 / 数据源" />
+          </div>
+        </div>
+        <div class="toolbar-field"><span class="toolbar-field-label">数据源</span><select class="tb-select"><option>全部</option><option>hive_prod_cluster</option><option>mysql_ad_db</option><option>orcl_wedatadb</option><option>kafka_realtime</option></select></div>
+        <div class="toolbar-field"><span class="toolbar-field-label">运行状态</span><select class="tb-select"><option>全部</option><option>运行中</option><option>已暂停</option><option>失败</option><option>成功</option></select></div>
+        <div class="toolbar-field"><span class="toolbar-field-label">采集模式</span><select class="tb-select"><option>全部</option><option>全量</option><option>增量</option><option>实时 CDC</option></select></div>
+        <div class="toolbar-spacer"></div>
+        <span class="toolbar-stats">共 <strong>12</strong> 个任务</span>
+      </div>
+
+      <div class="data-table-wrap">
+        <div class="data-table-scroll">
+          <table class="data-table">
+            <thead><tr>
+              <th style="min-width:240px;">任务名</th>
+              <th>所属数据源</th>
+              <th>采集模式</th>
+              <th>调度</th>
+              <th>状态</th>
+              <th style="text-align:right;">表数</th>
+              <th>上次运行</th>
+              <th>耗时</th>
+              <th style="width:160px;">操作</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">hive_prod_full_collect</span></td>
+                <td>hive_prod_cluster</td>
+                <td>全量</td>
+                <td>每日 03:00</td>
+                <td><span class="job-status running">● 运行中</span></td>
+                <td style="text-align:right;">86</td>
+                <td>今天 03:08</td>
+                <td>8 min 24 s</td>
+                <td><button class="btn-link" onclick="showToast('任务已触发','success')">立即运行</button><span class="op-divider">|</span><button class="btn-link" onclick="showToast('查看运行日志','info')">日志</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">hive_prod_incr_collect</span></td>
+                <td>hive_prod_cluster</td>
+                <td>增量</td>
+                <td>每小时 :05</td>
+                <td><span class="job-status running">● 运行中</span></td>
+                <td style="text-align:right;">86</td>
+                <td>本小时 14:05</td>
+                <td>1 min 12 s</td>
+                <td><button class="btn-link" onclick="showToast('任务已触发','success')">立即运行</button><span class="op-divider">|</span><button class="btn-link">日志</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">mysql_ad_full_collect</span></td>
+                <td>mysql_ad_db</td>
+                <td>全量</td>
+                <td>每日 03:15</td>
+                <td><span class="job-status running">● 运行中</span></td>
+                <td style="text-align:right;">28</td>
+                <td>今天 03:18</td>
+                <td>3 min 45 s</td>
+                <td><button class="btn-link">立即运行</button><span class="op-divider">|</span><button class="btn-link">日志</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">mysql_ad_cdc_stream</span></td>
+                <td>mysql_ad_db</td>
+                <td>实时 CDC</td>
+                <td>实时 (Debezium)</td>
+                <td><span class="job-status running">● 运行中</span></td>
+                <td style="text-align:right;">5</td>
+                <td>持续运行</td>
+                <td>—</td>
+                <td><button class="btn-link">立即运行</button><span class="op-divider">|</span><button class="btn-link">日志</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">orcl_full_collect</span></td>
+                <td>orcl_wedatadb</td>
+                <td>全量</td>
+                <td>每日 02:30</td>
+                <td><span class="job-status running">● 运行中</span></td>
+                <td style="text-align:right;">32</td>
+                <td>今天 02:45</td>
+                <td>14 min 8 s</td>
+                <td><button class="btn-link">立即运行</button><span class="op-divider">|</span><button class="btn-link">日志</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">dm_full_collect</span></td>
+                <td>dm_fuwu</td>
+                <td>全量</td>
+                <td>每日 02:00</td>
+                <td><span class="job-status running">● 运行中</span></td>
+                <td style="text-align:right;">12</td>
+                <td>今天 02:08</td>
+                <td>2 min 30 s</td>
+                <td><button class="btn-link">立即运行</button><span class="op-divider">|</span><button class="btn-link">日志</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">ck_pay_full_collect</span></td>
+                <td>ck_pay</td>
+                <td>全量</td>
+                <td>每日 02:50</td>
+                <td><span class="job-status running">● 运行中</span></td>
+                <td style="text-align:right;">8</td>
+                <td>今天 03:02</td>
+                <td>1 min 56 s</td>
+                <td><button class="btn-link">立即运行</button><span class="op-divider">|</span><button class="btn-link">日志</button></td>
+              </tr>
+              <tr style="background:rgba(245,63,63,.04);">
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;color:var(--red);">kafka_realtime_collect</span></td>
+                <td>kafka_realtime</td>
+                <td>实时 CDC</td>
+                <td>实时 (Kafka Connect)</td>
+                <td><span class="job-status failed">⚠ 失败</span></td>
+                <td style="text-align:right;color:var(--sub);">2</td>
+                <td>今天 03:00 <span style="color:var(--red);font-size:11px;">(连接超时)</span></td>
+                <td>—</td>
+                <td><button class="btn-link" onclick="showToast('正在重启任务...','info')">重启</button><span class="op-divider">|</span><button class="btn-link" style="color:var(--red);">查看错误</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">hive_dws_summary_job</span></td>
+                <td>hive_prod_cluster</td>
+                <td>全量</td>
+                <td>每日 04:00</td>
+                <td><span class="job-status success">● 已完成</span></td>
+                <td style="text-align:right;">42</td>
+                <td>今天 04:12</td>
+                <td>5 min 34 s</td>
+                <td><button class="btn-link">立即运行</button><span class="op-divider">|</span><button class="btn-link">日志</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">orcl_partition_collect</span></td>
+                <td>orcl_wedatadb</td>
+                <td>增量</td>
+                <td>每周一 01:00</td>
+                <td><span class="job-status success">● 已完成</span></td>
+                <td style="text-align:right;">8</td>
+                <td>2026-05-13 01:14</td>
+                <td>22 min 8 s</td>
+                <td><button class="btn-link">立即运行</button><span class="op-divider">|</span><button class="btn-link">日志</button></td>
+              </tr>
+              <tr style="opacity:.6;">
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">legacy_db_archive_collect</span></td>
+                <td>orcl_wedatadb</td>
+                <td>全量</td>
+                <td>每月 1 号</td>
+                <td><span class="job-status paused">⏸ 已暂停</span></td>
+                <td style="text-align:right;">15</td>
+                <td>2026-04-01 02:00</td>
+                <td>8 min 24 s</td>
+                <td><button class="btn-link">恢复</button><span class="op-divider">|</span><button class="btn-link">日志</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:ui-monospace,monospace;font-weight:500;">elasticsearch_log_collect</span></td>
+                <td><span style="color:var(--sub);">es_observe (待接入)</span></td>
+                <td>实时 CDC</td>
+                <td>实时</td>
+                <td><span class="job-status paused">⏸ 配置中</span></td>
+                <td style="text-align:right;color:var(--sub);">—</td>
+                <td>—</td>
+                <td>—</td>
+                <td><button class="btn-link">完善配置</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 连接器 Tab ─── -->
+    <div class="page-pane" id="pane-connector">
+      <div class="toolbar" style="padding:12px 16px;">
+        <div style="font-size:13px;color:var(--text);">支持的元数据连接器，由 <strong>Apache Gravitino Catalog Connector</strong> 提供 · 点击"使用"创建对应数据源</div>
+        <div class="toolbar-spacer"></div>
+        <div class="toolbar-field"><select class="tb-select"><option>全部分类</option><option>关系型数据库</option><option>大数据 / Hadoop</option><option>NoSQL</option><option>消息队列</option><option>对象存储</option><option>BI / 报表</option><option>🤖 AI / ML</option></select></div>
+      </div>
+
+      <div class="conn-grid">
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#FFE4B5,#FFCC80);color:#E65100;">Hi</div>
+            <div><div class="conn-name">Apache Hive</div><div class="conn-version">v1.0+ · v2.x · v3.x</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">大数据</span><span class="conn-tag">JDBC</span><span class="conn-tag">支持分区</span></div>
+          <div class="conn-desc">采集 Hive 元数据，包括库、表、字段、分区、统计信息、HQL 血缘解析。</div>
+          <div class="conn-foot">
+            <span class="conn-installed"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 7 6 10 11 4"/></svg>已安装</span>
+            <button class="btn btn-sm" onclick="openSourceModal('Hive')">使用</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#E1F5FE,#4FC3F7);color:#00838F;">My</div>
+            <div><div class="conn-name">MySQL</div><div class="conn-version">v5.7 · v8.x</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">关系型</span><span class="conn-tag">JDBC</span><span class="conn-tag">CDC</span></div>
+          <div class="conn-desc">采集 MySQL 库表元数据，支持 Debezium CDC 实时同步 schema 变更。</div>
+          <div class="conn-foot">
+            <span class="conn-installed"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 7 6 10 11 4"/></svg>已安装</span>
+            <button class="btn btn-sm" onclick="openSourceModal('MySQL')">使用</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#FFE0E0,#EF5350);color:#B71C1C;">Or</div>
+            <div><div class="conn-name">Oracle</div><div class="conn-version">11g · 12c · 19c</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">关系型</span><span class="conn-tag">JDBC</span></div>
+          <div class="conn-desc">采集 Oracle 库表元数据，含直方图、索引、约束、存储过程信息。</div>
+          <div class="conn-foot">
+            <span class="conn-installed"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 7 6 10 11 4"/></svg>已安装</span>
+            <button class="btn btn-sm" onclick="openSourceModal('Oracle')">使用</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#E1F5E1,#66BB6A);color:#1B5E20;">DM</div>
+            <div><div class="conn-name">达梦 DM 数据库</div><div class="conn-version">DM7 · DM8</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">国产化</span><span class="conn-tag">关系型</span><span class="conn-tag">JDBC</span></div>
+          <div class="conn-desc">国产数据库 DM 元数据采集，符合信创合规要求。</div>
+          <div class="conn-foot">
+            <span class="conn-installed"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 7 6 10 11 4"/></svg>已安装</span>
+            <button class="btn btn-sm" onclick="openSourceModal('达梦DM')">使用</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#FFF3E0,#FFB74D);color:#E65100;">CK</div>
+            <div><div class="conn-name">ClickHouse</div><div class="conn-version">v22.x · v23.x · v24.x</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">OLAP</span><span class="conn-tag">列存</span><span class="conn-tag">JDBC</span></div>
+          <div class="conn-desc">采集 ClickHouse 集群元数据，支持物化视图与分区表深度解析。</div>
+          <div class="conn-foot">
+            <span class="conn-installed"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 7 6 10 11 4"/></svg>已安装</span>
+            <button class="btn btn-sm" onclick="openSourceModal('ClickHouse')">使用</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#F3E5F5,#BA68C8);color:#4A148C;">Kf</div>
+            <div><div class="conn-name">Apache Kafka</div><div class="conn-version">v2.x · v3.x</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">消息队列</span><span class="conn-tag">实时</span></div>
+          <div class="conn-desc">采集 Topic、Schema Registry 元数据，对接 Confluent Schema Registry。</div>
+          <div class="conn-foot">
+            <span class="conn-installed"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 7 6 10 11 4"/></svg>已安装</span>
+            <button class="btn btn-sm" onclick="openSourceModal('Kafka')">使用</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#FFFDE7,#FFD54F);color:#F57F17;">Es</div>
+            <div><div class="conn-name">Elasticsearch</div><div class="conn-version">v7.x · v8.x</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">搜索</span><span class="conn-tag">REST</span></div>
+          <div class="conn-desc">采集 ES Index、Mapping、Template 元数据。</div>
+          <div class="conn-foot">
+            <span class="conn-not-installed">⊘ 待安装</span>
+            <button class="btn btn-sm btn-primary" onclick="showToast('正在安装 Elasticsearch 连接器...','info')">安装</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#E8F5E9,#81C784);color:#1B5E20;">Mg</div>
+            <div><div class="conn-name">MongoDB</div><div class="conn-version">v4.x · v5.x · v6.x</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">NoSQL</span><span class="conn-tag">文档型</span></div>
+          <div class="conn-desc">采集 MongoDB Collection 元数据，含字段类型推断、索引信息。</div>
+          <div class="conn-foot">
+            <span class="conn-not-installed">⊘ 待安装</span>
+            <button class="btn btn-sm btn-primary" onclick="showToast('正在安装 MongoDB 连接器...','info')">安装</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#E3F2FD,#42A5F5);color:#0D47A1;">PG</div>
+            <div><div class="conn-name">PostgreSQL</div><div class="conn-version">v12+ · v15</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">关系型</span><span class="conn-tag">JDBC</span><span class="conn-tag">CDC</span></div>
+          <div class="conn-desc">采集 PostgreSQL 库表、Schema、Sequence 等元数据。</div>
+          <div class="conn-foot">
+            <span class="conn-not-installed">⊘ 待安装</span>
+            <button class="btn btn-sm btn-primary" onclick="showToast('正在安装 PostgreSQL 连接器...','info')">安装</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#FCE4EC,#F06292);color:#880E4F;">S3</div>
+            <div><div class="conn-name">AWS S3 / OSS</div><div class="conn-version">S3 / 阿里 OSS / 腾讯 COS</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">对象存储</span><span class="conn-tag">湖仓</span></div>
+          <div class="conn-desc">采集对象存储中的 Parquet / ORC / Avro 文件元数据。</div>
+          <div class="conn-foot">
+            <span class="conn-not-installed">⊘ 待安装</span>
+            <button class="btn btn-sm btn-primary" onclick="showToast('正在安装 S3 连接器...','info')">安装</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#E1F5FE,#29B6F6);color:#01579B;">Tb</div>
+            <div><div class="conn-name">Tableau</div><div class="conn-version">REST API</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">BI</span><span class="conn-tag">报表</span></div>
+          <div class="conn-desc">采集 Tableau Workbook、Dashboard、Datasource 元数据。</div>
+          <div class="conn-foot">
+            <span class="conn-not-installed">⊘ 待安装</span>
+            <button class="btn btn-sm btn-primary" onclick="showToast('正在安装 Tableau 连接器...','info')">安装</button>
+          </div>
+        </div>
+
+        <!-- ───────── 🤖 AI 连接器（Agent-only：Fileset + Vector，4 类 Catalog 之 2） ───────── -->
+        <div class="conn-card" style="grid-column:1/-1;border:none;background:linear-gradient(135deg,#F0EDFF,#FFF3E8);padding:10px 16px;display:flex;flex-direction:row;align-items:center;gap:8px;">
+          <span style="font-size:16px;">🤖</span>
+          <strong style="color:#7B61FF;">AI 连接器（Agent-only）</strong>
+          <span style="color:var(--sub);font-size:12px;">Gravitino Fileset (RAG 语料) + Vector (向量库) · LLM 接入与 Agent / Tool / Prompt 由自研注册中心管理</span>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#FCE4EC,#F06292);color:#880E4F;">FS</div>
+            <div><div class="conn-name">Fileset (S3/HDFS) <span class="src-tag-ai">AI</span></div><div class="conn-version">Gravitino 原生 · RAG 语料</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">对象存储</span><span class="conn-tag">RAG 文档</span><span class="conn-tag">含版本</span></div>
+          <div class="conn-desc">采集 S3/HDFS 中的 RAG 知识库语料 Fileset，含版本、文档源、切片策略、合规级别。</div>
+          <div class="conn-foot">
+            <span class="conn-installed"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 7 6 10 11 4"/></svg>已安装</span>
+            <button class="btn btn-sm" onclick="openSourceModal('Fileset')">使用</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#E6FFFB,#4DD0E1);color:#006064;">Mv</div>
+            <div><div class="conn-name">Milvus 向量库 <span class="src-tag-ai">AI · 向量</span></div><div class="conn-version">Catalog 扩展 · v2.3+</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">向量库</span><span class="conn-tag">embedding</span><span class="conn-tag">RAG</span></div>
+          <div class="conn-desc">采集 Collection / 维度 / 索引类型 / 距离度量 / 向量数 / 来源文档关联。</div>
+          <div class="conn-foot">
+            <span class="conn-installed"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 7 6 10 11 4"/></svg>已安装</span>
+            <button class="btn btn-sm" onclick="openSourceModal('Milvus')">使用</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#F9F0FF,#B388FF);color:#4527A0;">Qd</div>
+            <div><div class="conn-name">Qdrant 向量库 <span class="src-tag-ai">AI · 向量</span></div><div class="conn-version">Catalog 扩展 · v1.x</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">向量库</span><span class="conn-tag">REST/gRPC</span></div>
+          <div class="conn-desc">Qdrant 集合元数据采集，含 payload schema、HNSW 索引参数、向量数。</div>
+          <div class="conn-foot">
+            <span class="conn-not-installed">⊘ 待安装</span>
+            <button class="btn btn-sm btn-primary" onclick="showToast('正在安装 Qdrant 连接器...','info')">安装</button>
+          </div>
+        </div>
+
+        <div class="conn-card">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:linear-gradient(135deg,#FFF3E8,#FFCA28);color:#E65100;">HF</div>
+            <div><div class="conn-name">HuggingFace Hub <span class="src-tag-ai">AI</span></div><div class="conn-version">Catalog 扩展 · 公网/私有</div></div>
+          </div>
+          <div class="conn-tag-row"><span class="conn-tag">外部模型</span><span class="conn-tag">数据集</span></div>
+          <div class="conn-desc">从 HuggingFace Hub 拉取已使用的预训练模型与开源数据集元数据，支持镜像。</div>
+          <div class="conn-foot">
+            <span class="conn-installed"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 7 6 10 11 4"/></svg>已安装</span>
+            <button class="btn btn-sm" onclick="openSourceModal('HuggingFace')">使用</button>
+          </div>
+        </div>
+
+        <div class="conn-card" style="border-style:dashed;background:transparent;">
+          <div class="conn-head">
+            <div class="conn-icon-big" style="background:var(--gray-light);color:var(--sub);">+</div>
+            <div><div class="conn-name" style="color:var(--sub);">自定义连接器</div><div class="conn-version">Gravitino SDK / Python</div></div>
+          </div>
+          <div class="conn-desc">未在列表中的数据源可基于 Gravitino Catalog Provider SDK 开发自定义采集器。</div>
+          <div class="conn-foot">
+            <span></span>
+            <button class="btn btn-sm" onclick="showToast('查看 Gravitino Catalog Provider 开发文档（演示）','info')">开发文档</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════ 新建数据源 Modal (4 步向导) ═══════════ -->
+<div class="modal-mask" id="srcModal">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">新建数据源</span>
+      <button class="modal-close" onclick="closeSourceModal()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="stepper">
+        <div class="step active" data-step="1"><div class="step-circle">1</div><div class="step-name">选择类型</div></div>
+        <div class="step" data-step="2"><div class="step-circle">2</div><div class="step-name">连接信息</div></div>
+        <div class="step" data-step="3"><div class="step-circle">3</div><div class="step-name">采集策略</div></div>
+        <div class="step" data-step="4"><div class="step-circle">4</div><div class="step-name">测试连接</div></div>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="step-pane active" id="step-1">
+        <div style="font-size:13px;color:var(--sub);margin-bottom:8px;">选择数据源类型 · 对接 <strong style="color:var(--primary);">Apache Gravitino Catalog</strong></div>
+        <div style="font-size:12px;color:var(--sub);margin-bottom:12px;background:var(--gray-light);padding:6px 10px;border-radius:6px;">Gravitino Catalog 类型（Agent-only 模式 4 类）：<code>hive</code> / <code>mysql</code> / <code>oracle</code> / <code>iceberg</code> / <code>kafka</code> / <code>fileset</code> (RAG 语料) / <code>vector</code> (向量库) · 实体抽象：Table / Topic / Fileset / Collection</div>
+        <div style="font-size:12px;font-weight:500;color:var(--text);margin:10px 0 6px;">📊 传统数据源</div>
+        <div class="src-type-grid">
+          <div class="src-type-card selected" onclick="selectSrcType(this,'Hive')"><div class="conn-icon-big" style="width:32px;height:32px;background:linear-gradient(135deg,#FFE4B5,#FFCC80);color:#E65100;font-size:11px;">Hi</div><div><div class="name">Apache Hive</div><div class="ver">catalog: <code>hive</code></div></div></div>
+          <div class="src-type-card" onclick="selectSrcType(this,'MySQL')"><div class="conn-icon-big" style="width:32px;height:32px;background:linear-gradient(135deg,#E1F5FE,#4FC3F7);color:#00838F;font-size:11px;">My</div><div><div class="name">MySQL</div><div class="ver">catalog: <code>mysql</code></div></div></div>
+          <div class="src-type-card" onclick="selectSrcType(this,'Oracle')"><div class="conn-icon-big" style="width:32px;height:32px;background:linear-gradient(135deg,#FFE0E0,#EF5350);color:#B71C1C;font-size:11px;">Or</div><div><div class="name">Oracle</div><div class="ver">catalog: <code>jdbc-oracle</code></div></div></div>
+          <div class="src-type-card" onclick="selectSrcType(this,'Iceberg')"><div class="conn-icon-big" style="width:32px;height:32px;background:linear-gradient(135deg,#E0F7FA,#26C6DA);color:#006064;font-size:11px;">Ic</div><div><div class="name">Apache Iceberg</div><div class="ver">catalog: <code>iceberg</code></div></div></div>
+          <div class="src-type-card" onclick="selectSrcType(this,'ClickHouse')"><div class="conn-icon-big" style="width:32px;height:32px;background:linear-gradient(135deg,#FFF3E0,#FFB74D);color:#E65100;font-size:11px;">CK</div><div><div class="name">ClickHouse</div><div class="ver">catalog: <code>jdbc-clickhouse</code></div></div></div>
+          <div class="src-type-card" onclick="selectSrcType(this,'Kafka')"><div class="conn-icon-big" style="width:32px;height:32px;background:linear-gradient(135deg,#F3E5F5,#BA68C8);color:#4A148C;font-size:11px;">Kf</div><div><div class="name">Kafka</div><div class="ver">catalog: <code>kafka</code></div></div></div>
+        </div>
+        <div style="font-size:12px;font-weight:500;color:#7B61FF;margin:14px 0 6px;">🤖 AI 数据源（Agent-only：RAG 语料 + 向量库）</div>
+        <div class="src-type-grid">
+          <div class="src-type-card" onclick="selectSrcType(this,'Fileset')"><div class="conn-icon-big" style="width:32px;height:32px;background:linear-gradient(135deg,#FCE4EC,#F06292);color:#880E4F;font-size:11px;">FS</div><div><div class="name">Fileset (S3/HDFS)</div><div class="ver">catalog: <code>fileset</code></div></div></div>
+          <div class="src-type-card" onclick="selectSrcType(this,'Milvus')"><div class="conn-icon-big" style="width:32px;height:32px;background:linear-gradient(135deg,#E6FFFB,#4DD0E1);color:#006064;font-size:11px;">Mv</div><div><div class="name">Milvus 向量库</div><div class="ver">catalog: <code>vector</code> (扩展)</div></div></div>
+          <div class="src-type-card" onclick="selectSrcType(this,'Qdrant')"><div class="conn-icon-big" style="width:32px;height:32px;background:linear-gradient(135deg,#F9F0FF,#B388FF);color:#4527A0;font-size:11px;">Qd</div><div><div class="name">Qdrant 向量库</div><div class="ver">catalog: <code>vector</code> (扩展)</div></div></div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-pane" id="step-2">
+        <div class="form-grid">
+          <div class="form-item"><label class="form-label"><span class="req">*</span>数据源名称</label><input class="form-input" id="srcName" placeholder="如：Hive 主仓" /></div>
+          <div class="form-item"><label class="form-label"><span class="req">*</span>英文标识</label><input class="form-input" id="srcEn" placeholder="如：hive_prod_cluster" style="font-family:ui-monospace,monospace;" /></div>
+          <div class="form-item full"><label class="form-label"><span class="req">*</span>JDBC URL / 端点</label><input class="form-input" id="srcUrl" placeholder="jdbc:hive2://hive.prod.com:10000/default" style="font-family:ui-monospace,monospace;" /></div>
+          <div class="form-item"><label class="form-label"><span class="req">*</span>用户名</label><input class="form-input" id="srcUser" placeholder="数据库用户名" /></div>
+          <div class="form-item"><label class="form-label"><span class="req">*</span>密码</label><input class="form-input" id="srcPwd" type="password" placeholder="••••••••" /></div>
+          <div class="form-item"><label class="form-label">负责人</label><input class="form-input" value="张晓明" /></div>
+          <div class="form-item"><label class="form-label">所属业务线</label><select class="form-select"><option>平台共用</option><option>sport</option><option>skillbase</option><option>sc</option></select></div>
+          <div class="form-item full"><label class="form-label">连接备注</label><textarea class="form-textarea" placeholder="可选：连接说明 / 联系人 / 数据范围"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-pane" id="step-3">
+        <div class="form-grid">
+          <div class="form-item"><label class="form-label"><span class="req">*</span>采集模式</label><select class="form-select"><option value="full">全量采集</option><option value="incr">增量采集</option><option value="cdc">实时 CDC</option></select></div>
+          <div class="form-item"><label class="form-label"><span class="req">*</span>调度频率</label><select class="form-select"><option>每日 03:00</option><option>每小时</option><option>每 30 分钟</option><option>每周一 02:00</option><option>仅手动</option></select></div>
+          <div class="form-item full"><label class="form-label">库 / Schema 白名单</label><input class="form-input" placeholder="逗号分隔，留空表示采集全部，如：dwd, dws, ads" /></div>
+          <div class="form-item full"><label class="form-label">表名匹配（正则）</label><input class="form-input" placeholder="如：^dws_.*_d$ （采集所有 dws_ 开头的日表）" style="font-family:ui-monospace,monospace;" /></div>
+          <div class="form-item"><label class="form-label">最大表数限制</label><input class="form-input" type="number" value="1000" /></div>
+          <div class="form-item"><label class="form-label">超时（秒）</label><input class="form-input" type="number" value="300" /></div>
+          <div class="form-item full"><label class="form-label" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" checked />采集字段统计（NULL 率 / NDV / Min / Max）</label></div>
+          <div class="form-item full"><label class="form-label" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" checked />解析 SQL / 视图依赖（生成血缘）</label></div>
+          <div class="form-item full"><label class="form-label" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" />自动识别敏感字段（手机号 / 邮箱 / 身份证）</label></div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step-pane" id="step-4">
+        <div style="font-size:13px;color:var(--sub);margin-bottom:12px;">点击下方"开始测试"验证数据源连接是否可用</div>
+        <div class="test-result-card" id="testResultCard">
+          <div style="text-align:center;padding:30px 0;">
+            <button class="btn btn-primary" onclick="startTest()">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>
+              开始测试
+            </button>
+            <div style="font-size:12px;color:var(--sub);margin-top:8px;">将检查网络连通性、认证、采集权限</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="prevStep()" id="btnPrev" style="display:none;">上一步</button>
+      <button class="btn" onclick="closeSourceModal()">取消</button>
+      <button class="btn btn-primary" onclick="nextStep()" id="btnNext">下一步</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产..." oninput="renderCmdK()" />
+      <span class="cmdk-esc">ESC</span>
+    </div>
+    <div class="cmdk-filters">
+      <span class="cmdk-chip active" data-type="all" onclick="setCmdKFilter(this)">全部</span>
+      <span class="cmdk-chip" data-type="metric" onclick="setCmdKFilter(this)">指标</span>
+      <span class="cmdk-chip" data-type="table" onclick="setCmdKFilter(this)">库表</span>
+      <span class="cmdk-chip" data-type="report" onclick="setCmdKFilter(this)">报表</span>
+      <span class="cmdk-chip" data-type="agent" onclick="setCmdKFilter(this)">Agent</span>
+      <span class="cmdk-chip" data-type="tool" onclick="setCmdKFilter(this)">工具</span>
+      <span class="cmdk-chip" data-type="model" onclick="setCmdKFilter(this)">LLM</span>
+      <span class="cmdk-chip" data-type="kb" onclick="setCmdKFilter(this)">知识库</span>
+      <span class="cmdk-chip" data-type="prompt" onclick="setCmdKFilter(this)">Prompt</span>
+      <span class="cmdk-chip" data-type="vector" onclick="setCmdKFilter(this)">向量集合</span>
+      <span class="cmdk-chip" data-type="term" onclick="setCmdKFilter(this)">术语</span>
+      <span class="cmdk-chip" data-type="source" onclick="setCmdKFilter(this)">数据源</span>
+    </div>
+    <div class="cmdk-results" id="cmdkResults"></div>
+    <div class="cmdk-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> 选择</span><span><kbd>Enter</kbd> 打开</span><span><kbd>ESC</kbd> 关闭</span><span style="margin-left:auto;">Spark MDM</span></div>
+  </div>
+</div>
+
+<script>
+  /* 全局索引 */
+  window.__GLOBAL_INDEX = [
+    { type:'metric', code:'dau', name:'日活跃用户数', en:'dau', biz:'sport', owner:'张晓明', level:'核心', status:'已上架', desc:'去重后日 UV', url:'metadata-asset-detail.html?code=dau' },
+    { type:'metric', code:'pay_conv', name:'支付转化率', en:'pay_conversion_rate', biz:'skillbase', owner:'李明', level:'核心', status:'已上架', desc:'支付成功 / 下单数', url:'metadata-asset-detail.html?code=pay_conv' },
+    { type:'table', code:'hive_dwd_user_active_log', name:'HIVE.DWD.user_active_log', en:'用户活跃日志', biz:'sc', owner:'张晓明', level:'关键', status:'已上架', desc:'明细层用户端上行为日志', url:'metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志' },
+    { type:'report', code:'game_core_daily', name:'游戏核心指标日报', en:'game_core_daily', biz:'sport', owner:'李明', level:'核心', status:'已上架', desc:'每日核心指标日报', url:'metadata-report-detail.html?code=game_core_daily&name=游戏核心指标日报' },
+    { type:'source', code:'src_hive_main', name:'Hive 主仓', en:'hive_prod_cluster', biz:'-', owner:'平台组', level:'-', status:'已连接', desc:'主数据仓库 Hive 集群', url:'metadata-source-detail.html?code=src_hive_main' },
+    { type:'source', code:'src_mysql_ad', name:'MySQL 广告库', en:'mysql_ad_db', biz:'-', owner:'广告组', level:'-', status:'已连接', desc:'广告投放业务库', url:'metadata-source-detail.html?code=src_mysql_ad' },
+    { type:'source', code:'src_milvus_main', name:'Milvus 向量主库', en:'milvus_prod', biz:'-', owner:'AI 平台组', level:'-', status:'已连接', desc:'Vector Catalog · 含商品/用户 embedding', url:'metadata-source-detail.html?code=src_milvus_main' },
+    { type:'term', code:'term_dau', name:'DAU', en:'DAU', biz:'通用', owner:'数据治理委员会', level:'-', status:'已发布', desc:'每日活跃用户数', url:'glossary.html?term=DAU' },
+    { type:'model', code:'gpt4_turbo', name:'GPT-4 Turbo（OpenAI）', en:'gpt-4-turbo', biz:'-', owner:'平台管理员', level:'-', status:'在线', desc:'LLM 接入 · 商用 · 上下文 128K', url:'model-detail.html?code=gpt4_turbo' },
+    { type:'model', code:'qwen2_72b', name:'Qwen2-72B-Instruct（阿里云）', en:'qwen2-72b-instruct', biz:'-', owner:'平台管理员', level:'-', status:'在线', desc:'LLM 接入 · 商用 · 上下文 32K', url:'model-detail.html?code=qwen2_72b' },
+    { type:'agent', code:'biz_qa_agent', name:'智能问数 Agent', en:'biz_qa_agent', biz:'data', owner:'王晨', level:'核心', status:'生产', desc:'RAG+SQL · 基座 GPT-4 Turbo', url:'agent-detail.html?code=biz_qa_agent' },
+    { type:'agent', code:'cs_intent_agent', name:'客服意图 Agent', en:'cs_intent_agent', biz:'cservice', owner:'李雨', level:'关键', status:'生产', desc:'Function Agent · 基座 Qwen2-72B', url:'agent-detail.html?code=cs_intent_agent' },
+    { type:'tool', code:'call_metric_api', name:'call_metric_api 指标查询工具', en:'call_metric_api', biz:'data', owner:'王晨', level:'核心', status:'已发布', desc:'API · 被 6 个 Agent 引用', url:'tool.html?code=call_metric_api' },
+    { type:'tool', code:'sql_runner', name:'sql_runner SQL 执行工具', en:'sql_runner', biz:'data', owner:'王晨', level:'关键', status:'已发布', desc:'SQL · Trino 后端 · 已脱敏', url:'tool.html?code=sql_runner' },
+    { type:'kb', code:'kb_cs_main', name:'客服 FAQ KB', en:'kb_customer_service', biz:'cservice', owner:'李雨', level:'核心', status:'已发布', desc:'12.4 万 chunks · bge-m3', url:'dataset-detail.html?code=kb_cs_main' },
+    { type:'prompt', code:'pt_summary_v2', name:'文本摘要 Prompt v2', en:'pt_summary_v2', biz:'cservice', owner:'李雨', level:'关键', status:'已发布', desc:'适配 Claude/GPT-4 · 长文本摘要', url:'prompt-detail.html?code=pt_summary_v2' },
+    { type:'vector', code:'vec_item_emb', name:'item_embedding 商品向量集合', en:'vec_item_embedding', biz:'recsys', owner:'王晨', level:'核心', status:'已上架', desc:'Milvus · 128维 · cosine · 80万向量', url:'metadata-source-detail.html?code=src_milvus_main&collection=item_embedding' }
+  ];
+
+  /* Tab 切换 */
+  function switchPageTab(btn){
+    document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.page-pane').forEach(p=>p.classList.remove('active'));
+    document.getElementById('pane-'+btn.dataset.pane).classList.add('active');
+  }
+
+  /* 列表行操作 */
+  function goDetail(code){ location.href = 'metadata-source-detail.html?code='+encodeURIComponent(code); }
+  function onTest(e){ e.stopPropagation(); showToast('正在测试连接...','info'); setTimeout(()=>showToast('连接测试通过 ✓','success'), 800); }
+  function onSync(e){ e.stopPropagation(); showToast('已触发同步任务','success'); }
+  function onEdit(e){ e.stopPropagation(); openSourceModal(); }
+  function onDelete(e){ e.stopPropagation(); if(confirm('确认删除该数据源？相关采集任务将一并停止。')) showToast('已删除（演示）','info'); }
+
+  /* 新建数据源向导 */
+  let _step = 1;
+  function openSourceModal(prefillType){
+    _step = 1; updateStepper();
+    document.getElementById('srcModal').classList.add('show');
+    if (prefillType) {
+      document.querySelectorAll('.src-type-card').forEach(c=>c.classList.remove('selected'));
+      const target = Array.from(document.querySelectorAll('.src-type-card')).find(c => c.querySelector('.name')?.textContent.includes(prefillType));
+      if (target) target.classList.add('selected');
+    }
+  }
+  function closeSourceModal(){ document.getElementById('srcModal').classList.remove('show'); }
+  function selectSrcType(card, name){
+    document.querySelectorAll('.src-type-card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    showToast('已选择类型：'+name, 'info');
+  }
+  function nextStep(){
+    if (_step >= 4) {
+      closeSourceModal();
+      showToast('数据源已创建，采集任务已启动','success');
+      return;
+    }
+    _step++;
+    updateStepper();
+  }
+  function prevStep(){ if (_step > 1) { _step--; updateStepper(); } }
+  function updateStepper(){
+    document.querySelectorAll('.step').forEach((el, i) => {
+      el.classList.remove('active', 'done');
+      if (i + 1 < _step) el.classList.add('done');
+      else if (i + 1 === _step) el.classList.add('active');
+    });
+    document.querySelectorAll('.step-pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('step-' + _step).classList.add('active');
+    document.getElementById('btnPrev').style.display = _step > 1 ? '' : 'none';
+    document.getElementById('btnNext').textContent = _step >= 4 ? '完成' : '下一步';
+  }
+  function startTest(){
+    const card = document.getElementById('testResultCard');
+    card.innerHTML = '<div class="test-loading"><div class="spinner"></div><span>正在测试连接（约 3 秒）...</span></div><div class="test-detail" id="testDetail"></div>';
+    const detail = document.getElementById('testDetail');
+    const lines = [
+      { delay: 400, html: '<div class="line info">→ 正在解析 JDBC URL...</div>' },
+      { delay: 900, html: '<div class="line ok">✓ DNS 解析成功 (10.92.4.108)</div>' },
+      { delay: 1400, html: '<div class="line ok">✓ TCP 连接 (耗时 38ms)</div>' },
+      { delay: 1900, html: '<div class="line ok">✓ 认证通过</div>' },
+      { delay: 2400, html: '<div class="line ok">✓ 检测到 86 个库表，权限正常</div>' },
+      { delay: 2900, html: '<div class="line ok">✓ 测试完成（总耗时 2.9s）</div>' }
+    ];
+    lines.forEach(l => setTimeout(() => { detail.innerHTML += l.html; }, l.delay));
+    setTimeout(() => {
+      card.querySelector('.test-loading').outerHTML = '<div class="test-success"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><polyline points="5.5 9.5 8 12 13 6.5"/></svg>连接测试通过</div>';
+    }, 3100);
+  }
+
+  /* Cmd+K */
+  let _cmdkFilter='all', _cmdkFocus=0;
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');setTimeout(()=>document.getElementById('cmdkInput').focus(),30);renderCmdK();}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  function setCmdKFilter(el){document.querySelectorAll('.cmdk-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');_cmdkFilter=el.dataset.type;renderCmdK();}
+  function highlight(t,q){if(!q)return t;const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return t.replace(re,'<span class="hl">$1</span>');}
+  function typeName(t){return ({metric:'指标',table:'库表',report:'报表',term:'术语',source:'数据源',model:'LLM',agent:'Agent',tool:'工具',kb:'知识库',prompt:'Prompt',vector:'向量集合'})[t]||t;}
+  function typeIcon(t){return ({metric:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/><polyline points="10 5 14 5 14 9"/></svg>',table:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/><path d="M2 3v5c0 1.1 2.7 2 6 2s6-.9 6-2V3"/><path d="M2 8v5c0 1.1 2.7 2 6 2s6-.9 6-2V8"/></svg>',report:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>',term:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V3z"/><line x1="5" y1="6" x2="11" y2="6"/></svg>',source:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="4" rx="5" ry="2"/><path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4"/></svg>',model:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>',agent:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="12" height="9" rx="1.5"/><circle cx="6" cy="8.5" r="0.9"/><circle cx="10" cy="8.5" r="0.9"/><path d="M8 1v3"/></svg>',tool:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9.5 4.5l3 3M3 13l5-5M11 2l3 3-2 2-3-3z"/></svg>',kb:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4l6-2.5L14 4l-6 2.5z"/><path d="M2 8l6 2.5L14 8"/><path d="M2 12l6 2.5L14 12"/></svg>',prompt:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 10a1 1 0 01-1 1H5l-2 2V3a1 1 0 011-1h9a1 1 0 011 1z"/></svg>',vector:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="1.2"/><circle cx="12" cy="4" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>'})[t]||'';}
+  function renderCmdK(){const q=document.getElementById('cmdkInput').value.trim().toLowerCase();let items=window.__GLOBAL_INDEX.slice();if(_cmdkFilter!=='all')items=items.filter(i=>i.type===_cmdkFilter);if(q)items=items.filter(i=>(i.name+' '+i.en+' '+(i.desc||'')+' '+(i.code||'')).toLowerCase().includes(q));else items=items.slice(0,8);_cmdkFocus=0;const root=document.getElementById('cmdkResults');if(items.length===0){root.innerHTML='<div class="cmdk-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg><div>没有找到匹配的资产</div></div>';return;}const groups={};items.forEach(i=>{(groups[i.type]=groups[i.type]||[]).push(i);});let html='';['metric','table','report','agent','tool','model','prompt','kb','vector','term','source'].forEach(t=>{if(!groups[t])return;html+='<div class="cmdk-group-title">'+typeName(t)+' ('+groups[t].length+')</div>';groups[t].forEach(i=>{html+='<div class="cmdk-item" onclick="cmdkOpen(\''+i.url+'\')" data-url="'+i.url+'"><div class="cmdk-item-icon '+i.type+'">'+typeIcon(i.type)+'</div><div class="cmdk-item-meta"><div class="cmdk-item-title">'+highlight(i.name,q);if(i.en&&i.en!==i.name)html+=' <span style="color:var(--sub);font-size:11px;">'+highlight(i.en,q)+'</span>';html+='</div><div class="cmdk-item-sub">'+(i.desc||'')+' · '+(i.owner||'')+'</div></div><span class="cmdk-item-type">'+typeName(i.type)+'</span></div>';});});root.innerHTML=html;const all=root.querySelectorAll('.cmdk-item');if(all[0])all[0].classList.add('focused');}
+  function cmdkOpen(url){closeCmdK();location.href=url;}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();return;}if(!document.getElementById('cmdkMask').classList.contains('show'))return;if(e.key==='Escape'){closeCmdK();return;}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const items=document.querySelectorAll('#cmdkResults .cmdk-item');if(!items.length)return;items[_cmdkFocus]?.classList.remove('focused');_cmdkFocus=(_cmdkFocus+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[_cmdkFocus].classList.add('focused');items[_cmdkFocus].scrollIntoView({block:'nearest'});}else if(e.key==='Enter'){const f=document.querySelector('#cmdkResults .cmdk-item.focused');if(f)cmdkOpen(f.dataset.url);}});
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{if(e.target.id==='cmdkMask')closeCmdK();});
+  document.getElementById('srcModal').addEventListener('click',(e)=>{if(e.target.id==='srcModal')closeSourceModal();});
+
+  /* Toast */
+  function showToast(msg, type){
+    type = type || 'success';
+    let c = document.getElementById('toastContainer');
+    if (!c) { c = document.createElement('div'); c.id='toastContainer'; c.className='toast-container'; document.body.appendChild(c); }
+    const t = document.createElement('div'); t.className = 'toast ' + type;
+    const icons = { success:'<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><polyline points="5.5 9.5 8 12 13 6.5"/></svg>', info:'<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="9" y1="8" x2="9" y2="13"/><circle cx="9" cy="5.5" r=".8" fill="currentColor"/></svg>', error:'<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="9" y1="5" x2="9" y2="10"/><circle cx="9" cy="13" r=".8" fill="currentColor"/></svg>' };
+    t.innerHTML = '<span class="ti-i">' + (icons[type]||icons.info) + '</span><span>' + msg + '</span>';
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 2400);
+  }
+</script>
+</body>
+</html>
