@@ -337,7 +337,7 @@
     <span class="gs-kbd">⌘K</span>
   </div>
   <nav class="header-nav">
-    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab" href="index.html">资产首页</a>
     <a class="header-tab active" href="metadata-asset.html">数据资产</a>
     <a class="header-tab" href="ai-home.html">AI 资产</a>
     <a class="header-tab" href="glossary.html">数据治理</a>
@@ -361,7 +361,7 @@
 <div class="subbar">
   <div class="subbar-inner">
     <div class="breadcrumb">
-      <a href="home.html">数据资产</a>
+      <a href="index.html">数据资产</a>
       <span class="sep">›</span>
       <a href="metadata-asset.html">指标管理</a>
       <span class="sep">›</span>
@@ -387,7 +387,7 @@
         <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
       </div>
       <div class="nav-l1-children">
-        <a class="nav-l2" href="home.html">资产概览</a>
+        <a class="nav-l2" href="index.html">资产概览</a>
         <a class="nav-l2 active" href="metadata-asset.html">指标管理</a>
         <a class="nav-l2" href="metadata-table.html">库表管理</a>
         <a class="nav-l2" href="metadata-report.html">报表管理</a>
@@ -1166,7 +1166,7 @@
     location.href = 'metadata-asset-detail.html?code=' + encodeURIComponent(code);
   }
 
-  /* ━━ Cmd+K (复用 home.html 的实现) ━━ */
+  /* ━━ Cmd+K (复用 index.html 的实现) ━━ */
   let _cmdkFilter = 'all', _cmdkFocus = 0;
   function openCmdK() { document.getElementById('cmdkMask').classList.add('show'); setTimeout(()=>document.getElementById('cmdkInput').focus(),30); renderCmdK(); }
   function closeCmdK() { document.getElementById('cmdkMask').classList.remove('show'); }
