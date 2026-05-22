@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 报表详情</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #1677FF;
+      --primary-light:#E6F0FF;
+      --primary-hover:#0958D9;
+      --green:        #00B42A;
+      --green-light:  #E8FFEA;
+      --red:          #F53F3F;
+      --red-light:    #FFECE8;
+      --orange:       #FF7D00;
+      --orange-light: #FFF3E8;
+      --purple:       #7B61FF;
+      --purple-light: #F0EDFF;
+      --gray-light:   #F7F8FA;
+      --sidebar-w:    220px;
+      --header-h:     52px;
+      --subbar-h:     44px;
+      --bg:           #F5F7FA;
+      --card:         #FFFFFF;
+      --border:       #E8ECF0;
+      --text:         #1D2129;
+      --sub:          #86909C;
+    }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+      display: flex; flex-direction: column; min-height: 100vh; overflow-y: auto;
+    }
+
+    /* ══ HEADER ══ */
+    .header {
+      height: var(--header-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 20px; flex-shrink: 0;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .logo-wrap {
+      display: flex; align-items: center; gap: 8px;
+      min-width: var(--sidebar-w); padding-right: 16px;
+      border-right: 1px solid var(--border);
+    }
+    .logo-name { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+    .header-nav { display: flex; align-items: center; height: 100%; margin-left: 20px; gap: 4px; }
+    .header-tab {
+      height: 100%; display: flex; align-items: center; padding: 0 18px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s;
+    }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 4px 8px; border-radius: 4px; cursor: pointer;
+      color: var(--sub); background: none; border: none; transition: color .15s;
+    }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; cursor: pointer;
+      background: none; border: none; color: var(--text);
+    }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+
+    /* ══ SUB-HEADER ══ */
+    .subbar {
+      height: var(--subbar-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w);
+      flex-shrink: 0;
+      position: sticky; top: var(--header-h); z-index: 10;
+    }
+    .subbar-inner { display: flex; align-items: center; gap: 14px; padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .subbar-right { margin-left: auto; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; color: var(--sub);
+      border: none; background: none; cursor: pointer; transition: color .15s;
+    }
+    .back-btn:hover { color: var(--primary); }
+    .back-btn svg { width: 12px; height: 12px; }
+
+    /* ══ BODY ══ */
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: #fff; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      position: sticky; top: calc(var(--header-h) + var(--subbar-h));
+      height: calc(100vh - var(--header-h) - var(--subbar-h));
+    }
+    .nav-group { padding: 8px 0; }
+    .nav-l1 {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; user-select: none;
+    }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron { margin-left: auto; width: 14px; height: 14px; transition: transform .2s; flex-shrink: 0; }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+    .nav-l1-children { display: none; }
+    .nav-l1.open + .nav-l1-children { display: block; }
+    .nav-l2 {
+      display: flex; align-items: center;
+      padding: 9px 16px 9px 40px; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active { color: var(--primary); font-weight: 500; background: var(--primary-light); }
+    .nav-l2.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+
+    .content {
+      flex: 1; min-width: 0; padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    /* ══ INTRO CARD ══ */
+    .intro-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 22px;
+    }
+    .card-title-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 12px; border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 14px; font-weight: 600; color: var(--text);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .card-title::before {
+      content: ''; width: 3px; height: 14px; background: var(--primary); border-radius: 2px;
+    }
+    .card-actions { display: flex; align-items: center; gap: 8px; }
+
+    .intro-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px 24px;
+    }
+    .intro-row {
+      display: grid; grid-template-columns: 90px 1fr;
+      gap: 8px; font-size: 13px; align-items: start;
+    }
+    .intro-row.full { grid-column: 1 / -1; }
+    .intro-label { color: var(--sub); }
+    .intro-value { color: var(--text); line-height: 1.55; word-break: break-all; }
+    .intro-value.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+    .ir-tag {
+      display: inline-flex; align-items: center;
+      padding: 1px 8px; border-radius: 3px; font-size: 11px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .ir-tag.level-core    { background: var(--red-light); color: var(--red); }
+    .ir-tag.level-key     { background: var(--orange-light); color: var(--orange); }
+    .ir-tag.level-general { background: var(--gray-light); color: var(--sub); }
+    .ir-tag.online   { background: var(--green-light); color: var(--green); }
+    .ir-tag.pending  { background: var(--orange-light); color: var(--orange); }
+    .ir-tag.offline  { background: #F5F5F5; color: var(--sub); }
+    .ir-tag.type-dash    { background: var(--primary-light); color: var(--primary); }
+    .ir-tag.type-self    { background: var(--green-light); color: var(--green); }
+    .ir-tag.type-custom  { background: var(--orange-light); color: var(--orange); }
+    .ir-tag.type-screen  { background: var(--purple-light); color: var(--purple); }
+    .ir-tag.biz {
+      background: var(--gray-light); color: var(--sub);
+      font-family: ui-monospace, monospace;
+    }
+
+    /* ══ BUTTONS ══ */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 32px; padding: 0 14px; border-radius: 6px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: #fff; color: var(--text);
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+
+    /* ══ METRIC TABLE ══ */
+    .metric-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 22px;
+    }
+    .table-toolbar {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .table-search {
+      margin-left: auto;
+      display: flex; align-items: center; min-height: 30px;
+      border: 1px solid var(--border); border-radius: 6px; background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      width: 240px;
+    }
+    .table-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .table-search input {
+      flex: 1; height: 28px; border: none; outline: none; padding: 0 10px;
+      font-size: 12px; color: var(--text); background: transparent;
+    }
+    .table-search input::placeholder { color: #C2C7CF; }
+    .table-search-btn { padding: 0 8px; color: var(--sub); display: flex; align-items: center; }
+    .table-search-btn svg { width: 13px; height: 13px; }
+
+    .metric-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .metric-table-scroll { overflow-x: auto; }
+    .metric-table {
+      width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1100px;
+    }
+    .metric-table thead th {
+      background: #FAFBFC; border-bottom: 1px solid var(--border);
+      padding: 10px 14px; text-align: left;
+      font-size: 12px; font-weight: 600; color: var(--sub);
+      white-space: nowrap;
+    }
+    .metric-table tbody td {
+      padding: 12px 14px; border-bottom: 1px solid #F0F3F6;
+      vertical-align: middle;
+    }
+    .metric-table tbody tr:last-child td { border-bottom: none; }
+    .metric-table tbody tr:hover td { background: #FAFBFC; }
+    .mt-name { font-weight: 600; color: var(--text); }
+    .mt-field {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color: var(--text); font-size: 12px;
+    }
+    .mt-type {
+      display: inline-block; font-family: monospace;
+      background: var(--gray-light); color: var(--text);
+      padding: 1px 6px; border-radius: 3px; font-size: 12px;
+    }
+    .mt-source {
+      font-family: ui-monospace, monospace; color: var(--primary); font-size: 12px;
+      cursor: pointer;
+    }
+    .mt-source:hover { text-decoration: underline; }
+    .mt-tag {
+      display: inline-flex; align-items: center;
+      padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 500;
+    }
+    .mt-tag.core    { background: var(--red-light); color: var(--red); }
+    .mt-tag.derived { background: var(--primary-light); color: var(--primary); }
+    .mt-tag.atomic  { background: var(--green-light); color: var(--green); }
+    .mt-tag.compose { background: var(--purple-light); color: var(--purple); }
+    .mt-time { font-size: 12px; color: var(--sub); white-space: nowrap; }
+    .empty-cell { color: #C2C7CF; }
+
+    /* ══ 新增指标 (dashed button + 行内编辑) ══ */
+    .add-metric-row { margin-top: 12px; }
+    .btn-dashed {
+      width: 100%; justify-content: center;
+      border-style: dashed; color: var(--sub); background: var(--gray-light);
+    }
+    .btn-dashed:hover {
+      border-color: var(--primary); color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .metric-table tbody tr.row-edit td { background: #FAFBFE; }
+    .metric-table tbody tr.row-edit td:last-child {
+      position: relative; padding-right: 64px;
+    }
+    .cell-input,
+    .cell-select {
+      width: 100%; min-width: 80px;
+      height: 28px; border: 1px solid var(--border); border-radius: 4px;
+      background: #fff; color: var(--text); font-size: 12px;
+      padding: 0 8px; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      font-family: inherit;
+    }
+    .cell-input.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    .cell-select {
+      padding-right: 22px; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 5px center;
+    }
+    .cell-input:focus, .cell-select:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.08);
+    }
+    .metric-row-actions {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      display: flex; align-items: center; gap: 2px;
+    }
+    .metric-row-save,
+    .metric-row-del {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: transparent; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .12s, color .12s;
+    }
+    .metric-row-save { color: var(--green); }
+    .metric-row-save:hover { background: var(--green-light); }
+    .metric-row-del { color: var(--sub); }
+    .metric-row-del:hover { background: var(--red-light); color: var(--red); }
+    .metric-row-save svg, .metric-row-del svg { width: 12px; height: 12px; }
+
+    /* ══ TABS (指标详情 + 血缘服务) ══ */
+    .report-tabs-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .report-tabs {
+      display: flex; align-items: center;
+      border-bottom: 1px solid var(--border); padding: 0 22px;
+    }
+    .report-tab {
+      height: 46px; padding: 0 16px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; border: none; background: none;
+      position: relative; transition: color .15s; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .report-tab:hover { color: var(--text); }
+    .report-tab.active { color: var(--primary); font-weight: 600; }
+    .report-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 16px; right: 16px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .tab-count {
+      font-size: 12px; font-weight: 400; color: var(--sub);
+      padding: 1px 7px; border-radius: 10px; background: var(--gray-light);
+      line-height: 1.5;
+    }
+    .report-tab.active .tab-count { background: var(--primary-light); color: var(--primary); }
+    .report-pane { display: none; padding: 18px 22px; }
+    .report-pane.active { display: block; }
+
+    /* ══ 血缘服务：筛选条 ══ */
+    .lineage-filter-bar {
+      display: flex; align-items: center; gap: 14px;
+      padding: 4px 4px 14px; flex-wrap: wrap;
+    }
+    .lf-group {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text);
+    }
+    .lf-group .lf-label { color: var(--sub); }
+    .lf-group .lf-label .req { color: var(--red); margin-right: 2px; }
+    .lf-select {
+      min-width: 140px; height: 30px;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; color: var(--text); font-size: 12px;
+      padding: 0 26px 0 10px; outline: none; cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .lf-select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .lf-select:disabled {
+      background-color: var(--gray-light); color: #C2C7CF; cursor: not-allowed;
+    }
+    .lineage-hint {
+      margin-left: auto; font-size: 12px; color: var(--sub);
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .lineage-hint svg { width: 12px; height: 12px; }
+
+    /* ══ 血缘服务：地图 (fan-in) ══ */
+    .report-lineage-wrap {
+      background: var(--gray-light); border: 1px solid var(--border);
+      border-radius: 8px; min-height: 360px;
+      position: relative; padding: 28px 24px; overflow: auto;
+    }
+    .report-lineage-graph {
+      position: relative;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 80px; min-height: 300px;
+    }
+    .rl-upstream-col {
+      display: flex; flex-direction: column; gap: 16px;
+      position: relative; z-index: 2; flex-shrink: 0;
+    }
+    .rl-main-col {
+      position: relative; z-index: 2; flex-shrink: 0;
+      display: flex; align-items: center;
+    }
+    .rl-connectors {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none; z-index: 1;
+    }
+    .rl-node {
+      min-width: 200px; max-width: 240px;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 4px;
+      cursor: pointer; transition: all .15s;
+    }
+    .rl-node:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(22,119,255,.08);
+    }
+    .rl-node-title {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      word-break: break-all; line-height: 1.35;
+    }
+    .rl-node-title .ico {
+      color: var(--primary); flex-shrink: 0;
+      display: inline-flex;
+    }
+    .rl-node-title .ico svg { width: 14px; height: 14px; }
+    .rl-node-meta { font-size: 11px; color: var(--sub); }
+    .rl-node-meta .ir-tag {
+      display: inline-flex; align-items: center;
+      padding: 0 6px; border-radius: 3px; font-size: 10px;
+      background: var(--gray-light); color: var(--sub);
+      margin-left: 4px;
+    }
+    .rl-node-meta .ir-tag.core    { background: var(--red-light); color: var(--red); }
+    .rl-node-meta .ir-tag.derived { background: var(--primary-light); color: var(--primary); }
+    .rl-node-meta .ir-tag.atomic  { background: var(--green-light); color: var(--green); }
+    .rl-node-meta .ir-tag.compose { background: var(--purple-light); color: var(--purple); }
+
+    /* 主节点 - 报表 */
+    .rl-node.main-report {
+      min-width: 240px; max-width: 280px;
+      background: linear-gradient(135deg, #fff 0%, var(--primary-light) 100%);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(22,119,255,.12);
+    }
+    .rl-node.main-report .rl-node-title { color: var(--primary); }
+    .rl-node.main-report .rl-node-title .ico { color: var(--primary); }
+
+    /* 主节点 - 指标 */
+    .rl-node.main-metric {
+      min-width: 220px; max-width: 260px;
+      background: linear-gradient(135deg, #fff 0%, var(--purple-light) 100%);
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(123,97,255,.12);
+    }
+    .rl-node.main-metric .rl-node-title { color: var(--purple); font-family: -apple-system, "PingFang SC", sans-serif; }
+    .rl-node.main-metric .rl-node-title .ico { color: var(--purple); }
+
+    /* 上游表节点 icon 颜色 */
+    .rl-node.upstream .rl-node-title .ico { color: var(--orange); }
+
+    /* 血缘空态 */
+    .rl-empty {
+      width: 100%; min-height: 280px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; color: var(--sub); font-size: 13px;
+    }
+    .rl-empty svg { width: 56px; height: 56px; color: #C2C7CF; }
+
+    /* 血缘图例 */
+    .rl-legend {
+      position: absolute; bottom: 14px; right: 14px;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      display: flex; flex-direction: column; gap: 5px;
+      font-size: 11px; color: var(--text); z-index: 5;
+    }
+    .rl-legend-row { display: flex; align-items: center; gap: 6px; }
+    .rl-legend-swatch {
+      width: 14px; height: 10px; border-radius: 2px; border: 1px solid;
+    }
+    .rl-legend-swatch.report  { background: var(--primary-light); border-color: var(--primary); }
+    .rl-legend-swatch.metric  { background: var(--purple-light); border-color: var(--purple); }
+    .rl-legend-swatch.upstream{ background: #fff; border-color: var(--orange); }
+
+    .pagination-bar {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 12px 0 0; gap: 8px;
+    }
+    .page-info { font-size: 12px; color: var(--sub); margin-right: auto; }
+    .page-btn {
+      min-width: 28px; height: 28px; padding: 0 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 5px; background: #fff;
+      font-size: 12px; color: var(--sub); cursor: pointer;
+      transition: all .12s;
+    }
+    .page-btn:hover:not(.disabled) { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .page-btn.disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ══ TOAST ══ */
+    .toast-container {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+      z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .toast {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.12);
+      font-size: 13px; color: var(--text); white-space: nowrap;
+      animation: toast-in .25s ease-out; pointer-events: auto;
+    }
+    .toast.fade-out { animation: toast-out .25s ease-in forwards; }
+    .toast-icon { width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .toast-icon svg { width: 18px; height: 18px; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.success .toast-icon { color: var(--green); }
+    .toast.info { border-color: #ADC6FF; }
+    .toast.info .toast-icon { color: var(--primary); }
+    .toast.error { border-color: #FFC1B8; }
+    .toast.error .toast-icon { color: var(--red); }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-12px); }
+    }
+
+    /* ══════════════ COMMON: 全局搜索 / Cmd+K / Hero / 预览 / 新 Tab 样式 ══════════════ */
+    .header { gap: 16px; }
+    .global-search { display: flex; align-items: center; width: 280px; height: 32px; background: var(--gray-light); border: 1px solid transparent; border-radius: 8px; padding: 0 10px; cursor: pointer; transition: all .15s; flex-shrink: 0; }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd { font-size: 11px; color: var(--sub); padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: #fff; font-family: ui-monospace, monospace; }
+    .header-tab { text-decoration: none; }
+    .hdr-action { position: relative; }
+    .hdr-badge { position: absolute; top: 1px; right: 4px; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px; background: var(--red); color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .logo-wrap { min-width: auto !important; padding-right: 0 !important; border-right: none !important; }
+
+    /* 报表 Hero 预览缩略图 + 数据时效 */
+    .report-hero { display: flex; gap: 16px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .report-thumb {
+      width: 280px; height: 168px; flex-shrink: 0;
+      border-radius: 8px; border: 1px solid var(--border);
+      background: linear-gradient(135deg, #f4f7ff 0%, #fff 50%, #fff5e8 100%);
+      position: relative; overflow: hidden; cursor: pointer; transition: all .15s;
+    }
+    .report-thumb:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(22,119,255,.12); }
+    .report-thumb-icon {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: var(--primary); opacity: .4;
+    }
+    .report-thumb-icon svg { width: 56px; height: 56px; }
+    .thumb-overlay {
+      position: absolute; inset: auto 0 0 0; padding: 8px 12px;
+      background: linear-gradient(to top, rgba(0,0,0,.7), transparent);
+      color: #fff; font-size: 11px; display: flex; align-items: center; gap: 6px;
+    }
+    .thumb-overlay svg { width: 12px; height: 12px; }
+    .thumb-bars { position: absolute; inset: 22px 22px 36px 22px; display: flex; align-items: flex-end; gap: 6px; }
+    .thumb-bar { flex: 1; background: linear-gradient(to top, var(--primary), #4A91FF); border-radius: 2px 2px 0 0; opacity: .85; }
+    .thumb-bar:nth-child(2) { background: linear-gradient(to top, var(--green), #6CCC7E); }
+    .thumb-bar:nth-child(3) { background: linear-gradient(to top, var(--orange), #FFB661); }
+    .thumb-bar:nth-child(4) { background: linear-gradient(to top, var(--purple), #9F8AFF); }
+
+    .report-meta-block { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+    .report-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .report-title { font-size: 18px; font-weight: 600; color: var(--text); }
+    .report-tag-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .data-fresh-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 12px;
+      background: var(--green-light); color: var(--green);
+      font-size: 11px; font-weight: 500;
+    }
+    .data-fresh-chip.warn { background: var(--orange-light); color: var(--orange); }
+    .data-fresh-chip svg { width: 11px; height: 11px; }
+    .report-extras { display: flex; gap: 14px; font-size: 12px; color: var(--sub); flex-wrap: wrap; }
+    .report-extras .label { color: var(--sub); }
+    .report-extras .value { color: var(--text); }
+    .report-extras .sep { color: #C2C7CF; }
+    .report-actions-row { display: flex; gap: 8px; flex-shrink: 0; align-self: flex-start; }
+    .btn-icon { width: 32px; padding: 0; justify-content: center; }
+    .btn-icon.starred { color: var(--orange); border-color: var(--orange); background: var(--orange-light); }
+    .btn-icon.subscribed { color: var(--primary); border-color: var(--primary); background: var(--primary-light); }
+    .btn-success { color: var(--green); border-color: #A3E8B0; }
+    .btn-success:hover { background: var(--green-light); color: var(--green); border-color: var(--green); }
+
+    /* 通用统计卡 (使用统计/质量) */
+    .stat-grid-r { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+    .stat-card-r { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .stat-card-r .sl { font-size: 11px; color: var(--sub); }
+    .stat-card-r .sv { font-size: 22px; font-weight: 700; color: var(--text); margin: 4px 0 2px; line-height: 1.1; }
+    .stat-card-r .sx { font-size: 11px; color: var(--green); }
+    .stat-card-r .sx.down { color: var(--red); }
+
+    /* 使用统计 - 折线图 */
+    .pv-chart {
+      background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px; height: 220px; margin-bottom: 14px;
+    }
+    .pvc-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .pvc-svg { width: 100%; height: calc(100% - 30px); }
+
+    /* Top 用户列表（使用统计） */
+    .top-list { display: flex; flex-direction: column; gap: 6px; }
+    .top-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+    .top-item:hover { border-color: var(--primary); }
+    .top-rank { width: 24px; text-align: center; font-weight: 700; color: var(--sub); font-size: 12px; }
+    .top-rank.r1 { color: #FF6B00; }
+    .top-rank.r2 { color: #FF7D00; }
+    .top-rank.r3 { color: #FFA940; }
+    .top-avatar { width: 28px; height: 28px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .top-info { flex: 1; min-width: 0; }
+    .top-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .top-team { font-size: 11px; color: var(--sub); }
+    .top-cnt { font-size: 13px; font-weight: 600; color: var(--text); padding: 2px 8px; background: var(--gray-light); border-radius: 10px; }
+
+    /* 样例数据预览 */
+    .sample-hint {
+      padding: 8px 12px; background: var(--primary-light); border: 1px solid #ADC6FF;
+      border-radius: 6px; font-size: 12px; line-height: 1.6; color: var(--text); margin-bottom: 12px;
+    }
+    .sample-hint a { color: var(--primary); text-decoration: none; cursor: pointer; }
+    .sample-hint a:hover { text-decoration: underline; }
+    .sample-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .sample-table-scroll { overflow-x: auto; }
+    .sample-table { width: 100%; min-width: 1100px; border-collapse: collapse; font-size: 12px; }
+    .sample-table thead th { background: #FAFBFC; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 11px; color: var(--sub); }
+    .sample-table tbody td { padding: 7px 12px; border-bottom: 1px solid #F5F6F8; font-family: ui-monospace, monospace; font-size: 12px; white-space: nowrap; }
+    .sample-table tbody tr:hover td { background: #FAFBFE; }
+    .sample-table .num-pos { color: var(--green); }
+    .sample-table .num-neg { color: var(--red); }
+
+    /* 质量监控（卡片 + 规则） */
+    .quality-grid-r { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .qg-r { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .qg-r .ql { font-size: 11px; color: var(--sub); }
+    .qg-r .qv { font-size: 22px; font-weight: 700; margin: 4px 0; }
+    .qg-r.green .qv { color: var(--green); }
+    .qg-r.orange .qv { color: var(--orange); }
+    .qg-r.red .qv { color: var(--red); }
+    .qg-r .qb { height: 6px; background: #E8ECF0; border-radius: 3px; overflow: hidden; }
+    .qg-r .qb > span { display: block; height: 100%; }
+
+    /* 讨论 */
+    .comment-item-r { padding: 12px 0; border-bottom: 1px dashed var(--border); display: flex; gap: 10px; }
+    .comment-item-r:last-child { border-bottom: none; }
+    .ca-r { width: 32px; height: 32px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+    .cb-r { flex: 1; min-width: 0; }
+    .cm-r { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .cn-r { font-weight: 600; color: var(--text); }
+    .ct-r { color: var(--sub); }
+    .cx-r { font-size: 13px; color: var(--text); line-height: 1.6; margin-top: 4px; word-break: break-word; }
+    .cx-r code { background: var(--gray-light); padding: 1px 6px; border-radius: 3px; font-family: ui-monospace, monospace; font-size: 12px; color: var(--primary); }
+
+    /* 行内编辑下拉(指标库选择) */
+    .cell-mselect { position: relative; }
+    .cell-mselect .cell-input.mono.dropdown {
+      padding-right: 22px; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 5px center; background-color: #fff;
+    }
+    .auto-fill-tip {
+      font-size: 11px; color: var(--green); font-style: italic;
+    }
+
+    /* command palette */
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 96px); }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search svg { width: 16px; height: 16px; color: var(--sub); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; background: transparent; }
+    .cmdk-esc { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--sub); font-family: ui-monospace, monospace; }
+    .cmdk-filters { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .cmdk-chip { padding: 3px 10px; font-size: 12px; border-radius: 12px; cursor: pointer; background: var(--gray-light); color: var(--sub); white-space: nowrap; border: 1px solid transparent; transition: all .12s; }
+    .cmdk-chip:hover { color: var(--text); }
+    .cmdk-chip.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); font-weight: 500; }
+    .cmdk-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cmdk-group-title { font-size: 11px; color: var(--sub); padding: 6px 16px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+    .cmdk-item:hover, .cmdk-item.focused { background: var(--primary-light); }
+    .cmdk-item-icon { width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .cmdk-item-icon svg { width: 14px; height: 14px; }
+    .cmdk-item-icon.metric { background: var(--primary-light); color: var(--primary); }
+    .cmdk-item-icon.table  { background: var(--purple-light); color: var(--purple); }
+    .cmdk-item-icon.report { background: var(--orange-light); color: var(--orange); }
+    .cmdk-item-icon.term   { background: var(--green-light); color: var(--green); }
+    .cmdk-item-icon.source { background: #FFE7E7; color: var(--red); }
+    .cmdk-item-icon.model { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.agent { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.tool { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.kb { background: #FFF1F0; color: #CF1322; }
+    .cmdk-item-icon.prompt { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.vector { background: #F9F0FF; color: #722ED1; }
+    .cmdk-item-meta { flex: 1; min-width: 0; }
+    .cmdk-item-title { font-size: 13px; color: var(--text); }
+    .cmdk-item-title .hl { background: #FFF3CD; color: #663C00; padding: 0 1px; }
+    .cmdk-item-sub { font-size: 11px; color: var(--sub); }
+    .cmdk-item-type { font-size: 11px; color: var(--sub); padding: 1px 7px; border-radius: 3px; background: var(--gray-light); }
+    .cmdk-empty { padding: 40px 20px; text-align: center; color: var(--sub); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .cmdk-empty svg { width: 48px; height: 48px; color: #C2C7CF; }
+    .cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .cmdk-foot kbd { font-family: ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════ TOP HEADER (公共组件) ═══════════ -->
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab active" href="metadata-report.html">数据资产</a>
+    <a class="header-tab" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" onclick="location.href='metadata-request.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>工单</span><span class="hdr-badge">3</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-4-5.7V5a2 2 0 10-4 0v.3C7.7 6.2 6 8.4 6 11v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1"/></svg>
+      <span>通知</span><span class="hdr-badge">5</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 01-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 004.7 15a1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 009 4.7a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 012.8 2.8l-.1.1A1.7 1.7 0 0019.4 9a1.7 1.7 0 001.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+      <span>设置</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张晓明</span>
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════ SUB-HEADER ═══════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <div class="breadcrumb">
+      <a href="metadata-asset.html">数据资产</a>
+      <span class="sep">›</span>
+      <a href="metadata-report.html">报表管理</a>
+      <span class="sep">›</span>
+      <span class="current" id="bc-name">游戏核心指标日报</span>
+    </div>
+    <div class="subbar-right">
+      <button class="back-btn" onclick="history.back()">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg>
+        返回列表
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ BODY ═══════════ -->
+<div class="body-wrap">
+
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l1 open">
+        <svg class="l1-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        数据资产
+        <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
+      </div>
+      <div class="nav-l1-children">
+        <a class="nav-l2" href="home.html">资产概览</a>
+        <a class="nav-l2" href="metadata-asset.html">指标管理</a>
+        <a class="nav-l2" href="metadata-table.html">库表管理</a>
+        <a class="nav-l2 active" href="metadata-report.html">报表管理</a>
+        <a class="nav-l2" href="metadata-source.html">数据源管理</a>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- ─── 报表简介卡片 ─── -->
+    <div class="intro-card">
+
+      <!-- ─── 报表 Hero（缩略图 + 数据时效 + 5 个操作按钮）─── -->
+      <div class="report-hero">
+        <div class="report-thumb" onclick="showToast('全屏预览（演示）','info')" title="点击查看大图">
+          <div class="thumb-bars">
+            <div class="thumb-bar" style="height:55%"></div>
+            <div class="thumb-bar" style="height:78%"></div>
+            <div class="thumb-bar" style="height:42%"></div>
+            <div class="thumb-bar" style="height:88%"></div>
+            <div class="thumb-bar" style="height:65%"></div>
+            <div class="thumb-bar" style="height:72%"></div>
+            <div class="thumb-bar" style="height:50%"></div>
+          </div>
+          <div class="report-thumb-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="14" width="4" height="7"/><rect x="10" y="9" width="4" height="12"/><rect x="17" y="4" width="4" height="17"/></svg>
+          </div>
+          <div class="thumb-overlay">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 7s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg>
+            点击查看大图
+          </div>
+        </div>
+
+        <div class="report-meta-block">
+          <div class="report-title-row">
+            <span class="report-title" id="hero-rname">游戏核心指标日报</span>
+            <button class="copy-btn" onclick="copyName()" title="复制英文名" style="width:22px;height:22px;border-radius:4px;border:none;background:none;color:var(--sub);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="8" height="8" rx="1"/><path d="M2 9V3a1 1 0 011-1h6"/></svg>
+            </button>
+          </div>
+          <div class="report-tag-row">
+            <span class="ir-tag level-core" id="hero-rlevel">核心</span>
+            <span class="ir-tag type-dash" id="hero-rtype">Dashboard</span>
+            <span class="ir-tag online" id="hero-rstatus">已上架</span>
+            <span class="data-fresh-chip" id="hero-fresh">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="5"/><polyline points="6 3 6 6 8 7"/></svg>
+              数据更新至 2026-05-20 03:00 · 12 分钟前
+            </span>
+          </div>
+          <div class="report-extras">
+            <span><span class="label">负责人：</span><span class="value" id="hero-rowner">李明</span></span>
+            <span class="sep">·</span>
+            <span><span class="label">业务线：</span><span class="value" id="hero-rbiz">sport</span></span>
+            <span class="sep">·</span>
+            <span><span class="label">业务标签：</span><span class="value" id="hero-rbiztag">游戏经营</span></span>
+            <span class="sep">·</span>
+            <span><span class="label">7 日 PV：</span><span class="value">12,430</span></span>
+            <span class="sep">·</span>
+            <span><span class="label">订阅人数：</span><span class="value">42</span></span>
+          </div>
+        </div>
+
+        <div class="report-actions-row">
+          <button class="btn btn-sm btn-icon" id="favBtn" onclick="toggleFavorite()" title="收藏">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" id="favIcon"><polygon points="8 1 10.2 5.8 15.5 6.4 11.5 10 12.7 15.2 8 12.5 3.3 15.2 4.5 10 0.5 6.4 5.8 5.8"/></svg>
+          </button>
+          <button class="btn btn-sm btn-icon" id="subBtn" onclick="toggleSubscribe()" title="订阅变更">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 11h-2V7a4 4 0 00-8 0v4H2l1.5 2h9L14 11z"/><path d="M6 13a2 2 0 004 0"/></svg>
+          </button>
+          <button class="btn btn-sm" onclick="copyLink()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5.5 7H3a2 2 0 010-4h2.5"/><path d="M8.5 7H11a2 2 0 010 4H8.5"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+            复制链接
+          </button>
+          <button class="btn btn-sm btn-success" onclick="applyForUse()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 7 6 10 11 4"/></svg>
+            申请使用
+          </button>
+          <button class="btn btn-sm btn-primary" onclick="showToast('打开报表（示例）','info')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 1h4v4"/><path d="M13 1L7 7"/><path d="M11 7v5a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1h5"/></svg>
+            打开报表
+          </button>
+        </div>
+      </div>
+
+      <div class="card-title-bar">
+        <span class="card-title">报表简介</span>
+        <div class="card-actions"></div>
+      </div>
+
+      <div class="intro-grid">
+        <div class="intro-row">
+          <span class="intro-label">报表中文名</span>
+          <span class="intro-value" id="rname">游戏核心指标日报</span>
+        </div>
+        <div class="intro-row">
+          <span class="intro-label">报表英文名</span>
+          <span class="intro-value mono" id="rcode">game_core_daily</span>
+        </div>
+        <div class="intro-row">
+          <span class="intro-label">报表状态</span>
+          <span class="intro-value"><span class="ir-tag online" id="rstatus">已上架</span></span>
+        </div>
+        <div class="intro-row">
+          <span class="intro-label">报表负责人</span>
+          <span class="intro-value" id="rowner">李明</span>
+        </div>
+        <div class="intro-row">
+          <span class="intro-label">报表类型</span>
+          <span class="intro-value"><span class="ir-tag type-dash" id="rtype">Dashboard</span></span>
+        </div>
+        <div class="intro-row">
+          <span class="intro-label">业务标签</span>
+          <span class="intro-value"><span class="ir-tag biz" id="rbiztag">游戏经营</span></span>
+        </div>
+        <div class="intro-row">
+          <span class="intro-label">报表等级</span>
+          <span class="intro-value"><span class="ir-tag level-core" id="rlevel">核心</span></span>
+        </div>
+        <div class="intro-row full">
+          <span class="intro-label">报表描述</span>
+          <span class="intro-value" id="rdesc">监控游戏每日核心指标，含 DAU、新增、付费率、ARPU、次留等。报表数据每日 02:00 自动刷新，覆盖全部产品线。</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 报表详情 Tabs ─── -->
+    <div class="report-tabs-card">
+      <div class="report-tabs">
+        <button class="report-tab active" data-pane="metric" onclick="switchReportTab(this)">
+          指标详情<span class="tab-count" id="metricCount">8</span>
+        </button>
+        <button class="report-tab" data-pane="lineage" onclick="switchReportTab(this)">
+          血缘服务
+        </button>
+        <button class="report-tab" data-pane="usage-stat" onclick="switchReportTab(this)">
+          使用统计
+        </button>
+        <button class="report-tab" data-pane="sample" onclick="switchReportTab(this)">
+          样例数据
+        </button>
+        <button class="report-tab" data-pane="quality-r" onclick="switchReportTab(this)">
+          质量监控<span class="tab-count" style="background:var(--orange-light);color:var(--orange);">1</span>
+        </button>
+        <button class="report-tab" data-pane="discuss-r" onclick="switchReportTab(this)">
+          讨论<span class="tab-count">5</span>
+        </button>
+      </div>
+
+      <!-- ━━ 指标详情 pane ━━ -->
+      <div class="report-pane active" id="pane-metric">
+        <div class="table-toolbar">
+          <div class="table-search">
+            <input type="text" placeholder="请输入指标名 / 字段名搜索" />
+            <span class="table-search-btn">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+            </span>
+          </div>
+        </div>
+
+      <div class="metric-table-wrap">
+        <div class="metric-table-scroll">
+          <table class="metric-table">
+            <thead>
+              <tr>
+                <th style="width:50px;">序号</th>
+                <th style="min-width:140px;">指标名称</th>
+                <th style="width:90px;">指标类型</th>
+                <th style="min-width:140px;">字段名称</th>
+                <th style="width:130px;">字段类型</th>
+                <th style="min-width:200px;">备注</th>
+                <th style="min-width:200px;">来源数仓表</th>
+                <th style="width:90px;">操作人</th>
+                <th style="width:150px;">更新时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><span class="mt-name">DAU</span></td>
+                <td><span class="mt-tag core">核心指标</span></td>
+                <td><span class="mt-field">dau</span></td>
+                <td><span class="mt-type">BIGINT</span></td>
+                <td>日活跃用户数（去重，登录态 + 端上活跃 ≥ 5s）</td>
+                <td><span class="mt-source" onclick="showToast('查看 dwd_user_active_log（示例）','info')">dwd_user_active_log</span></td>
+                <td>李明</td>
+                <td class="mt-time">2026-05-10 09:23</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><span class="mt-name">新增用户数</span></td>
+                <td><span class="mt-tag core">核心指标</span></td>
+                <td><span class="mt-field">new_users</span></td>
+                <td><span class="mt-type">INT</span></td>
+                <td>当日新增注册用户数（去重设备 ID）</td>
+                <td><span class="mt-source" onclick="showToast('查看 dwd_user_register（示例）','info')">dwd_user_register</span></td>
+                <td>李明</td>
+                <td class="mt-time">2026-05-10 09:23</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td><span class="mt-name">付费率</span></td>
+                <td><span class="mt-tag derived">派生指标</span></td>
+                <td><span class="mt-field">paying_rate</span></td>
+                <td><span class="mt-type">DECIMAL(6,4)</span></td>
+                <td>付费用户数 / 活跃用户数</td>
+                <td><span class="mt-source" onclick="showToast('查看 dws_revenue_user_d（示例）','info')">dws_revenue_user_d</span></td>
+                <td>王芳</td>
+                <td class="mt-time">2026-05-10 10:15</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td><span class="mt-name">ARPU</span></td>
+                <td><span class="mt-tag derived">派生指标</span></td>
+                <td><span class="mt-field">arpu</span></td>
+                <td><span class="mt-type">DECIMAL(10,2)</span></td>
+                <td>平均每用户付费金额（总收入 / 活跃用户数）</td>
+                <td><span class="mt-source" onclick="showToast('查看 dws_revenue_user_d（示例）','info')">dws_revenue_user_d</span></td>
+                <td>王芳</td>
+                <td class="mt-time">2026-05-10 10:15</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td><span class="mt-name">总收入</span></td>
+                <td><span class="mt-tag core">核心指标</span></td>
+                <td><span class="mt-field">total_revenue</span></td>
+                <td><span class="mt-type">DECIMAL(18,2)</span></td>
+                <td>当日总充值金额（剔除退款）</td>
+                <td><span class="mt-source" onclick="showToast('查看 dws_revenue_d（示例）','info')">dws_revenue_d</span></td>
+                <td>王芳</td>
+                <td class="mt-time">2026-05-10 10:15</td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td><span class="mt-name">次日留存率</span></td>
+                <td><span class="mt-tag derived">派生指标</span></td>
+                <td><span class="mt-field">day1_retention</span></td>
+                <td><span class="mt-type">DECIMAL(6,4)</span></td>
+                <td>注册次日仍有登录行为的用户占比</td>
+                <td><span class="mt-source" onclick="showToast('查看 dws_user_retention_d（示例）','info')">dws_user_retention_d</span></td>
+                <td>张晓明</td>
+                <td class="mt-time">2026-05-09 18:42</td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td><span class="mt-name">7 日留存率</span></td>
+                <td><span class="mt-tag derived">派生指标</span></td>
+                <td><span class="mt-field">day7_retention</span></td>
+                <td><span class="mt-type">DECIMAL(6,4)</span></td>
+                <td>注册第 7 日仍有登录行为的用户占比</td>
+                <td><span class="mt-source" onclick="showToast('查看 dws_user_retention_d（示例）','info')">dws_user_retention_d</span></td>
+                <td>张晓明</td>
+                <td class="mt-time">2026-05-09 18:42</td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td><span class="mt-name">平均在线时长</span></td>
+                <td><span class="mt-tag derived">派生指标</span></td>
+                <td><span class="mt-field">avg_online_min</span></td>
+                <td><span class="mt-type">DECIMAL(8,2)</span></td>
+                <td>用户平均在线分钟数（活跃用户口径）</td>
+                <td><span class="mt-source" onclick="showToast('查看 dws_user_online_d（示例）','info')">dws_user_online_d</span></td>
+                <td>陈晓</td>
+                <td class="mt-time">2026-05-10 11:30</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="add-metric-row">
+        <button class="btn btn-sm btn-dashed" onclick="addMetricRow()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+          新增指标
+        </button>
+      </div>
+
+      <div class="pagination-bar">
+        <span class="page-info">共 8 条</span>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg></button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 2 9 6 5 10"/></svg></button>
+      </div>
+      </div>
+      <!-- /pane-metric -->
+
+      <!-- ━━ 血缘服务 pane ━━ -->
+      <div class="report-pane" id="pane-lineage">
+        <div class="lineage-filter-bar">
+          <div class="lf-group">
+            <span class="lf-label">粒度</span>
+            <select id="granularitySelect" class="lf-select" onchange="onGranularityChange()">
+              <option value="report" selected>报表</option>
+              <option value="metric">指标</option>
+            </select>
+          </div>
+          <div class="lf-group">
+            <span class="lf-label"><span class="req" id="metricReq" style="display:none;">*</span>指标</span>
+            <select id="metricSelect" class="lf-select" onchange="renderLineage()" disabled>
+              <!-- 由 JS 根据指标表填充 -->
+            </select>
+          </div>
+          <span class="lineage-hint">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="6"/><line x1="7" y1="6" x2="7" y2="10"/><circle cx="7" cy="4" r=".7" fill="currentColor"/></svg>
+            上游为本报表/指标的数据来源（数仓表）
+          </span>
+        </div>
+
+        <div class="report-lineage-wrap">
+          <div class="report-lineage-graph" id="reportLineageGraph">
+            <svg class="rl-connectors" id="rlConnectors" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div class="rl-upstream-col" id="rlUpstreamCol"></div>
+            <div class="rl-main-col" id="rlMainCol"></div>
+          </div>
+
+          <div class="rl-legend">
+            <div class="rl-legend-row"><span class="rl-legend-swatch report"></span>报表主节点</div>
+            <div class="rl-legend-row"><span class="rl-legend-swatch metric"></span>指标主节点</div>
+            <div class="rl-legend-row"><span class="rl-legend-swatch upstream"></span>上游数仓表</div>
+          </div>
+        </div>
+      </div>
+      <!-- /pane-lineage -->
+
+      <!-- ━━ 使用统计 pane ━━ -->
+      <div class="report-pane" id="pane-usage-stat">
+        <div class="stat-grid-r">
+          <div class="stat-card-r"><div class="sl">7 日 PV</div><div class="sv">12,430</div><div class="sx">↑ 18% 较上周</div></div>
+          <div class="stat-card-r"><div class="sl">7 日 UV</div><div class="sv">186</div><div class="sx">↑ 12% 较上周</div></div>
+          <div class="stat-card-r"><div class="sl">订阅人数</div><div class="sv">42</div><div class="sx">本周 +5</div></div>
+          <div class="stat-card-r"><div class="sl">平均停留时长</div><div class="sv" style="font-size:18px;line-height:1.4;">3 分 24 秒</div><div class="sx" style="color:var(--sub);">仅统计登录用户</div></div>
+        </div>
+
+        <div class="pv-chart">
+          <div class="pvc-title">最近 30 天访问趋势
+            <span style="font-size:11px;color:var(--sub);font-weight:400;margin-left:14px;">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--primary);vertical-align:middle;margin-right:4px;"></span>PV
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--orange);vertical-align:middle;margin:0 4px 0 12px;"></span>UV
+            </span>
+          </div>
+          <svg class="pvc-svg" viewBox="0 0 800 160" preserveAspectRatio="none">
+            <line x1="0" y1="40" x2="800" y2="40" stroke="#F0F3F6" stroke-width="1" stroke-dasharray="2 2"/>
+            <line x1="0" y1="80" x2="800" y2="80" stroke="#F0F3F6" stroke-width="1" stroke-dasharray="2 2"/>
+            <line x1="0" y1="120" x2="800" y2="120" stroke="#F0F3F6" stroke-width="1" stroke-dasharray="2 2"/>
+            <path d="M0,140 L27,138 L54,130 L80,125 L107,118 L134,110 L160,100 L187,98 L213,88 L240,80 L267,72 L293,68 L320,72 L347,60 L373,52 L400,48 L427,42 L453,38 L480,32 L507,28 L533,32 L560,28 L587,22 L613,18 L640,15 L667,12 L693,15 L720,10 L747,8 L773,6 L800,4" fill="none" stroke="#1677FF" stroke-width="2"/>
+            <path d="M0,148 L27,148 L54,144 L80,142 L107,138 L134,134 L160,130 L187,128 L213,124 L240,120 L267,116 L293,114 L320,116 L347,108 L373,104 L400,100 L427,96 L453,94 L480,90 L507,88 L533,90 L560,88 L587,84 L613,82 L640,80 L667,78 L693,80 L720,76 L747,74 L773,72 L800,70" fill="none" stroke="#FF7D00" stroke-width="2"/>
+            <text x="0" y="156" font-size="11" fill="#86909C">04-21</text>
+            <text x="380" y="156" font-size="11" fill="#86909C">05-06</text>
+            <text x="760" y="156" font-size="11" fill="#86909C">05-20</text>
+          </svg>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;">Top 10 访问用户（7 日）</h4>
+            <div class="top-list">
+              <div class="top-item"><span class="top-rank r1">1</span><span class="top-avatar" style="background:var(--primary);">王</span><div class="top-info"><div class="top-name">王芳</div><div class="top-team">数据组 · sc</div></div><span class="top-cnt">186 次</span></div>
+              <div class="top-item"><span class="top-rank r2">2</span><span class="top-avatar" style="background:#7B61FF;">陈</span><div class="top-info"><div class="top-name">陈晓</div><div class="top-team">买量分析组 · sport</div></div><span class="top-cnt">142 次</span></div>
+              <div class="top-item"><span class="top-rank r3">3</span><span class="top-avatar" style="background:var(--green);">李</span><div class="top-info"><div class="top-name">李明 (负责人)</div><div class="top-team">运营组 · skillbase</div></div><span class="top-cnt">98 次</span></div>
+              <div class="top-item"><span class="top-rank">4</span><span class="top-avatar" style="background:var(--orange);">张</span><div class="top-info"><div class="top-name">张晓明</div><div class="top-team">数据组 · sc</div></div><span class="top-cnt">76 次</span></div>
+              <div class="top-item"><span class="top-rank">5</span><span class="top-avatar" style="background:#1677FF;">刘</span><div class="top-info"><div class="top-name">刘洋</div><div class="top-team">产品组 · sport</div></div><span class="top-cnt">52 次</span></div>
+              <div class="top-item"><span class="top-rank">6</span><span class="top-avatar" style="background:#7B61FF;">赵</span><div class="top-info"><div class="top-name">赵璐</div><div class="top-team">运营组 · skillbase</div></div><span class="top-cnt">38 次</span></div>
+              <div class="top-item"><span class="top-rank">7</span><span class="top-avatar" style="background:var(--green);">钱</span><div class="top-info"><div class="top-name">钱伟</div><div class="top-team">技术组 · sport</div></div><span class="top-cnt">28 次</span></div>
+            </div>
+          </div>
+          <div>
+            <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;">访问来源分布</h4>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:80px;color:var(--sub);">PC 浏览器</span><div style="flex:1;height:8px;background:var(--gray-light);border-radius:4px;overflow:hidden;"><div style="width:62%;height:100%;background:var(--primary);"></div></div><span style="width:50px;text-align:right;font-weight:600;">62%</span></div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:80px;color:var(--sub);">移动端</span><div style="flex:1;height:8px;background:var(--gray-light);border-radius:4px;overflow:hidden;"><div style="width:24%;height:100%;background:var(--green);"></div></div><span style="width:50px;text-align:right;font-weight:600;">24%</span></div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:80px;color:var(--sub);">企微 / IM</span><div style="flex:1;height:8px;background:var(--gray-light);border-radius:4px;overflow:hidden;"><div style="width:9%;height:100%;background:var(--orange);"></div></div><span style="width:50px;text-align:right;font-weight:600;">9%</span></div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:80px;color:var(--sub);">API 调用</span><div style="flex:1;height:8px;background:var(--gray-light);border-radius:4px;overflow:hidden;"><div style="width:5%;height:100%;background:var(--purple);"></div></div><span style="width:50px;text-align:right;font-weight:600;">5%</span></div>
+            </div>
+            <h4 style="font-size:13px;font-weight:600;margin:18px 0 10px;">价值评估</h4>
+            <div style="background:var(--gray-light);border:1px solid var(--border);border-radius:8px;padding:14px;">
+              <div style="display:flex;align-items:center;gap:14px;">
+                <div style="font-size:32px;font-weight:800;color:var(--green);">A</div>
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:600;">价值分 88 分 · A 级核心资产</div>
+                  <div style="font-size:11px;color:var(--sub);line-height:1.6;margin-top:4px;">综合 PV / UV / 订阅 / 引用 / 业务影响力 5 个维度评估</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ━━ 样例数据 pane ━━ -->
+      <div class="report-pane" id="pane-sample">
+        <div class="sample-hint">
+          📊 报表数据每日 03:00 由 <a>调度作业 game_core_daily_etl</a> 自动产出，最新分区：<strong>2026-05-19</strong>。如果你需要历史日期的数据，请<a onclick="applyForUse()">申请使用</a>明细表权限。
+        </div>
+        <div class="table-toolbar">
+          <span style="font-size:12px;color:var(--sub);">日期</span>
+          <select onchange="showToast('已切换日期: '+this.value, 'info')" style="height:28px;padding:0 22px 0 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;outline:none;cursor:pointer;appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 5px center;background-color:#fff;">
+            <option>2026-05-19 (最新)</option><option>2026-05-18</option><option>2026-05-17</option><option>2026-05-16</option>
+          </select>
+          <span style="font-size:12px;color:var(--sub);">业务线</span>
+          <select style="height:28px;padding:0 22px 0 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;outline:none;cursor:pointer;appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 5px center;background-color:#fff;">
+            <option>全部业务线</option><option>sport</option><option>skillbase</option><option>sc</option>
+          </select>
+          <button class="btn btn-sm" onclick="showToast('已开始下载 报表数据.csv','success')" style="margin-left:auto;">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1v8m0 0l-3-3m3 3l3-3"/><path d="M2 11v1a1 1 0 001 1h8a1 1 0 001-1v-1"/></svg>
+            导出 CSV
+          </button>
+          <button class="btn btn-sm" onclick="showToast('已刷新（演示）','success')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="11 4 11 1 8 1"/><path d="M11 4A5 5 0 002 7"/><polyline points="3 10 3 13 6 13"/><path d="M3 10a5 5 0 009 -3"/></svg>
+            刷新
+          </button>
+        </div>
+        <div class="sample-table-wrap">
+          <div class="sample-table-scroll">
+            <table class="sample-table">
+              <thead><tr>
+                <th>日期</th><th>业务线</th><th>DAU</th><th>新增用户</th><th>付费用户数</th><th>付费率</th><th>ARPU</th><th>次日留存</th><th>7日留存</th><th>WoW</th>
+              </tr></thead>
+              <tbody>
+                <tr><td>2026-05-19</td><td>sport</td><td>1,284,562</td><td>42,810</td><td>52,420</td><td>4.08%</td><td>¥3.42</td><td>62.5%</td><td>38.2%</td><td class="num-pos">+5.2%</td></tr>
+                <tr><td>2026-05-19</td><td>skillbase</td><td>586,210</td><td>18,420</td><td>32,840</td><td>5.60%</td><td>¥4.18</td><td>58.3%</td><td>35.8%</td><td class="num-pos">+3.8%</td></tr>
+                <tr><td>2026-05-19</td><td>sc</td><td>248,652</td><td>8,920</td><td>12,508</td><td>5.03%</td><td>¥3.80</td><td>61.2%</td><td>37.5%</td><td class="num-neg">-1.2%</td></tr>
+                <tr><td>2026-05-18</td><td>sport</td><td>1,220,840</td><td>38,640</td><td>49,210</td><td>4.03%</td><td>¥3.38</td><td>61.8%</td><td>37.6%</td><td class="num-pos">+4.6%</td></tr>
+                <tr><td>2026-05-18</td><td>skillbase</td><td>564,820</td><td>17,210</td><td>31,520</td><td>5.58%</td><td>¥4.10</td><td>58.0%</td><td>35.4%</td><td class="num-pos">+3.2%</td></tr>
+                <tr><td>2026-05-18</td><td>sc</td><td>251,632</td><td>9,180</td><td>12,612</td><td>5.01%</td><td>¥3.78</td><td>60.8%</td><td>37.0%</td><td class="num-pos">+0.8%</td></tr>
+                <tr><td>2026-05-17</td><td>sport</td><td>1,166,920</td><td>36,820</td><td>46,508</td><td>3.99%</td><td>¥3.32</td><td>61.0%</td><td>37.0%</td><td class="num-neg">-2.1%</td></tr>
+                <tr><td>2026-05-17</td><td>skillbase</td><td>547,308</td><td>16,640</td><td>30,420</td><td>5.56%</td><td>¥4.05</td><td>57.5%</td><td>35.0%</td><td class="num-pos">+2.5%</td></tr>
+                <tr><td>2026-05-17</td><td>sc</td><td>249,580</td><td>8,820</td><td>12,488</td><td>5.00%</td><td>¥3.74</td><td>60.4%</td><td>36.6%</td><td class="num-pos">+0.4%</td></tr>
+                <tr><td>2026-05-16</td><td>sport</td><td>1,191,406</td><td>37,420</td><td>47,508</td><td>3.99%</td><td>¥3.34</td><td>61.2%</td><td>37.2%</td><td class="num-pos">+5.8%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--sub);text-align:right;">
+          已展示 10 / 156 行 · 完整数据请<a onclick="applyForUse()" style="color:var(--primary);cursor:pointer;">申请使用</a>
+        </div>
+      </div>
+
+      <!-- ━━ 质量监控 pane ━━ -->
+      <div class="report-pane" id="pane-quality-r">
+        <div class="quality-grid-r">
+          <div class="qg-r green">
+            <div class="ql">数据完整性</div>
+            <div class="qv">98.6%</div>
+            <div class="qb"><span style="width:98.6%;background:var(--green);"></span></div>
+            <div style="font-size:11px;color:var(--sub);margin-top:4px;">底层 8 个指标 NULL 率均 &lt; 1%</div>
+          </div>
+          <div class="qg-r green">
+            <div class="ql">数据及时性</div>
+            <div class="qv">100%</div>
+            <div class="qb"><span style="width:100%;background:var(--green);"></span></div>
+            <div style="font-size:11px;color:var(--sub);margin-top:4px;">每日 03:00 准时产出</div>
+          </div>
+          <div class="qg-r orange">
+            <div class="ql">数据一致性</div>
+            <div class="qv">88.2%</div>
+            <div class="qb"><span style="width:88.2%;background:var(--orange);"></span></div>
+            <div style="font-size:11px;color:var(--orange);margin-top:4px;">⚠ ARPU 与 DWS 层有 1.2% 差异</div>
+          </div>
+          <div class="qg-r green">
+            <div class="ql">数据准确性</div>
+            <div class="qv">96.4%</div>
+            <div class="qb"><span style="width:96.4%;background:var(--green);"></span></div>
+            <div style="font-size:11px;color:var(--sub);margin-top:4px;">同环比波动均在阈值内</div>
+          </div>
+        </div>
+
+        <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;">底层指标质量稽核</h4>
+        <div class="metric-table-wrap">
+          <div class="metric-table-scroll">
+            <table class="metric-table">
+              <thead><tr>
+                <th>指标</th><th>检查项</th><th>规则</th><th>最近运行</th><th style="text-align:right;">通过率</th><th>状态</th><th>操作</th>
+              </tr></thead>
+              <tbody>
+                <tr><td><a onclick="location.href='metadata-asset-detail.html?code=dau'" style="color:var(--primary);cursor:pointer;">DAU</a></td><td>完整性</td><td>NULL率 &lt; 1%</td><td>今天 03:32</td><td style="text-align:right;color:var(--green);font-weight:600;">99.8%</td><td><span style="color:var(--green);">● 通过</span></td><td><a style="color:var(--primary);font-size:12px;cursor:pointer;">详情</a></td></tr>
+                <tr><td><a onclick="location.href='metadata-asset-detail.html?code=arpu'" style="color:var(--primary);cursor:pointer;">ARPU</a></td><td>一致性</td><td>与 DWS 层差异 &lt; 0.5%</td><td>今天 03:32</td><td style="text-align:right;color:var(--orange);font-weight:600;">88.2%</td><td><span style="color:var(--orange);">⚠ 告警</span></td><td><a style="color:var(--primary);font-size:12px;cursor:pointer;">详情</a> · <a style="color:var(--orange);font-size:12px;cursor:pointer;">创建工单</a></td></tr>
+                <tr><td><a onclick="location.href='metadata-asset-detail.html?code=pay_conv'" style="color:var(--primary);cursor:pointer;">付费率</a></td><td>准确性</td><td>同环比 &lt; 30%</td><td>今天 03:32</td><td style="text-align:right;color:var(--green);font-weight:600;">96.4%</td><td><span style="color:var(--green);">● 通过</span></td><td><a style="color:var(--primary);font-size:12px;cursor:pointer;">详情</a></td></tr>
+                <tr><td><a onclick="location.href='metadata-asset-detail.html?code=retention_d7'" style="color:var(--primary);cursor:pointer;">7日留存</a></td><td>准确性</td><td>同环比 &lt; 30%</td><td>今天 03:32</td><td style="text-align:right;color:var(--green);font-weight:600;">98.0%</td><td><span style="color:var(--green);">● 通过</span></td><td><a style="color:var(--primary);font-size:12px;cursor:pointer;">详情</a></td></tr>
+                <tr><td><span style="color:var(--text);">新增用户</span></td><td>及时性</td><td>03:30 前完成</td><td>今天 03:18</td><td style="text-align:right;color:var(--green);font-weight:600;">100%</td><td><span style="color:var(--green);">● 通过</span></td><td><a style="color:var(--primary);font-size:12px;cursor:pointer;">详情</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <h4 style="font-size:13px;font-weight:600;margin:18px 0 10px;">问题工单 (1)</h4>
+        <div class="top-item" onclick="location.href='metadata-quality.html?ticket=Q-2026-0517'" style="cursor:pointer;">
+          <div style="width:32px;height:32px;border-radius:6px;background:var(--orange-light);color:var(--orange);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.5l6.5 11.5h-13z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="11.5" r=".7" fill="currentColor"/></svg>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:500;">Q-2026-0517 · ARPU 与 DWS 层差异 1.2% 超阈值</div>
+            <div style="font-size:11px;color:var(--sub);">告警时间 2026-05-17 03:32 · 责任人 李明 · 优先级 P2 · 处理中</div>
+          </div>
+          <span style="font-size:12px;font-weight:600;background:var(--orange-light);color:var(--orange);padding:2px 8px;border-radius:10px;">处理中</span>
+        </div>
+      </div>
+
+      <!-- ━━ 讨论 pane ━━ -->
+      <div class="report-pane" id="pane-discuss-r">
+        <div id="commentListR">
+          <div class="comment-item-r">
+            <div class="ca-r" style="background:#7B61FF;">陈</div>
+            <div class="cb-r">
+              <div class="cm-r"><span class="cn-r">陈晓</span><span class="ct-r">2026-05-19 16:42</span></div>
+              <div class="cx-r">@李明 ARPU 那个一致性告警查到了吗？我看连续 3 天都是这样。</div>
+            </div>
+          </div>
+          <div class="comment-item-r" style="margin-left:32px;border-left:2px solid var(--border);padding-left:14px;">
+            <div class="ca-r" style="background:var(--green);">李</div>
+            <div class="cb-r">
+              <div class="cm-r"><span class="cn-r">李明</span><span class="ct-r">2026-05-19 17:08</span></div>
+              <div class="cx-r">@陈晓 已经定位到原因了，DWS 层的 ARPU 在算分母时把游客也算进去了，这边只算登录用户。本周内会和数据组对齐口径，到时报表会重新刷一次。</div>
+            </div>
+          </div>
+          <div class="comment-item-r">
+            <div class="ca-r" style="background:#FF7D00;">王</div>
+            <div class="cb-r">
+              <div class="cm-r"><span class="cn-r">王芳</span><span class="ct-r">2026-05-15 11:30</span></div>
+              <div class="cx-r">建议加一个"同比去年"的字段，做长期趋势分析时很有用。</div>
+            </div>
+          </div>
+          <div class="comment-item-r" style="margin-left:32px;border-left:2px solid var(--border);padding-left:14px;">
+            <div class="ca-r" style="background:var(--green);">李</div>
+            <div class="cb-r">
+              <div class="cm-r"><span class="cn-r">李明</span><span class="ct-r">2026-05-15 14:20</span></div>
+              <div class="cx-r">@王芳 收到，已加到下周需求池。预计 5-26 上线。</div>
+            </div>
+          </div>
+          <div class="comment-item-r">
+            <div class="ca-r" style="background:var(--primary);">张</div>
+            <div class="cb-r">
+              <div class="cm-r"><span class="cn-r">张晓明</span><span class="ct-r">2026-05-10 09:50</span></div>
+              <div class="cx-r">这个报表的"次日留存"口径是次日活跃用户/当日新增对吧？想用这个做实验分析，需要确认下口径。</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <div class="ca-r" style="margin-top:4px;background:var(--primary);">张</div>
+          <div style="flex:1;">
+            <textarea id="rCommentInput" placeholder="发表评论：提问、报告问题、提建议..." style="width:100%;min-height:60px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;outline:none;font-family:inherit;font-size:13px;resize:vertical;"></textarea>
+            <div style="margin-top:6px;text-align:right;">
+              <button class="btn btn-sm" onclick="document.getElementById('rCommentInput').value=''">取消</button>
+              <button class="btn btn-sm btn-primary" onclick="postComment()" style="margin-left:6px;">发表</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /report-tabs-card -->
+
+  </main>
+</div>
+
+<!-- ═══════════ COMMAND PALETTE (Cmd+K, 公共组件) ═══════════ -->
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产..." oninput="renderCmdK()" />
+      <span class="cmdk-esc">ESC</span>
+    </div>
+    <div class="cmdk-filters">
+      <span class="cmdk-chip active" data-type="all" onclick="setCmdKFilter(this)">全部</span>
+      <span class="cmdk-chip" data-type="metric" onclick="setCmdKFilter(this)">指标</span>
+      <span class="cmdk-chip" data-type="table" onclick="setCmdKFilter(this)">库表</span>
+      <span class="cmdk-chip" data-type="report" onclick="setCmdKFilter(this)">报表</span>
+      <span class="cmdk-chip" data-type="agent" onclick="setCmdKFilter(this)">Agent</span>
+      <span class="cmdk-chip" data-type="tool" onclick="setCmdKFilter(this)">工具</span>
+      <span class="cmdk-chip" data-type="model" onclick="setCmdKFilter(this)">LLM</span>
+      <span class="cmdk-chip" data-type="kb" onclick="setCmdKFilter(this)">知识库</span>
+      <span class="cmdk-chip" data-type="prompt" onclick="setCmdKFilter(this)">Prompt</span>
+      <span class="cmdk-chip" data-type="vector" onclick="setCmdKFilter(this)">向量集合</span>
+      <span class="cmdk-chip" data-type="term" onclick="setCmdKFilter(this)">术语</span>
+      <span class="cmdk-chip" data-type="source" onclick="setCmdKFilter(this)">数据源</span>
+    </div>
+    <div class="cmdk-results" id="cmdkResults"></div>
+    <div class="cmdk-foot">
+      <span><kbd>↑</kbd> <kbd>↓</kbd> 选择</span>
+      <span><kbd>Enter</kbd> 打开</span>
+      <span><kbd>ESC</kbd> 关闭</span>
+      <span style="margin-left:auto;">Spark MDM</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── 侧边栏 ───
+  document.querySelectorAll('.nav-l1').forEach(el => {
+    el.addEventListener('click', () => el.classList.toggle('open'));
+  });
+  document.querySelectorAll('.nav-l2').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const href = el.dataset.href;
+      if (href) location.href = href;
+    });
+  });
+
+  // ─── URL 参数：从列表页携带的报表信息回填 ───
+  // 支持 ?name=xxx&code=xxx&type=xxx&level=xxx&status=xxx&owner=xxx&biztag=xxx&desc=xxx
+  function applyURLParams() {
+    const params = new URLSearchParams(location.search);
+    const set = (id, val, opts = {}) => {
+      if (!val) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = val;
+      if (opts.classByMap) {
+        const cls = opts.classByMap[val] || opts.classByMap['_default'] || '';
+        if (cls) {
+          // 只替换 ir-tag 中的状态/分级类
+          const baseCls = (el.className.match(/^[^\s]+/) || [''])[0];
+          el.className = baseCls + ' ' + cls;
+        }
+      }
+    };
+    const name = params.get('name');
+    if (name) {
+      set('rname', name);
+      const bcName = document.getElementById('bc-name');
+      if (bcName) bcName.textContent = name;
+      document.title = 'Spark · ' + name;
+    }
+    set('rcode', params.get('code'));
+    set('rstatus', params.get('status'), {
+      classByMap: { '已上架': 'ir-tag online', '待上架': 'ir-tag pending', '已下线': 'ir-tag offline' }
+    });
+    set('rowner', params.get('owner'));
+    set('rtype', params.get('type'), {
+      classByMap: {
+        'Dashboard': 'ir-tag type-dash',
+        '自助分析': 'ir-tag type-self',
+        '定制报表': 'ir-tag type-custom',
+        '数据大屏': 'ir-tag type-screen'
+      }
+    });
+    set('rbiztag', params.get('biztag'));
+    set('rlevel', params.get('level'), {
+      classByMap: { '核心': 'ir-tag level-core', '重要': 'ir-tag level-key', '一般': 'ir-tag level-general' }
+    });
+    set('rdesc', params.get('desc'));
+  }
+  applyURLParams();
+
+  // ─── 复制链接 ───
+  function copyLink() {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(location.href).then(() => showToast('链接已复制', 'success'));
+    } else {
+      showToast('链接已复制（示例）', 'success');
+    }
+  }
+
+  // ─── 新增指标（行内编辑 / 保存 / 删除） ───
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function formatNow() {
+    const d = new Date();
+    const pad = n => (n < 10 ? '0' : '') + n;
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+      + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function refreshMetricRowNumbers() {
+    const rows = document.querySelectorAll('.metric-table tbody tr');
+    rows.forEach((row, i) => {
+      const firstTd = row.querySelector('td:first-child');
+      if (firstTd) firstTd.textContent = i + 1;
+    });
+    const titleCount = document.getElementById('metricCount');
+    if (titleCount) titleCount.textContent = rows.length;
+    const info = document.querySelector('.pagination-bar .page-info');
+    if (info) info.textContent = '共 ' + rows.length + ' 条';
+    // 指标变化后同步更新血缘 tab 的指标下拉
+    if (typeof populateMetricSelect === 'function') populateMetricSelect();
+  }
+  // 指标库（与 home.html 共享）：选定后自动填充其它字段
+  const METRIC_LIB = [
+    { code:'dau',          cn:'日活跃用户数',  type:'derived', field:'dau',                fieldType:'BIGINT',     source:'dwd.user_active_log',     remark:'COUNT(DISTINCT user_id) WHERE 有效行为' },
+    { code:'mau',          cn:'月活跃用户数',  type:'compose', field:'mau',                fieldType:'BIGINT',     source:'dws.user_active_m',       remark:'30 日去重活跃用户' },
+    { code:'pay_conv',     cn:'支付转化率',    type:'derived', field:'pay_conversion_rate',fieldType:'DECIMAL(5,4)',source:'dwd.pay_event',          remark:'pay_success / order_init' },
+    { code:'arpu',         cn:'用户平均收入',  type:'compose', field:'arpu',               fieldType:'DECIMAL(18,2)',source:'dws.revenue_user_d',     remark:'total_revenue / dau' },
+    { code:'retention_d7', cn:'7日留存率',     type:'derived', field:'retention_d7',       fieldType:'DECIMAL(5,4)',source:'dws.user_retention_d',   remark:'第7日活跃 / 当日新增' },
+    { code:'new_user',     cn:'新增用户数',    type:'atomic',  field:'new_user_cnt',       fieldType:'BIGINT',     source:'dwd.user_register_log',   remark:'当日首次激活用户数' },
+    { code:'ua_roi',       cn:'买量ROI',       type:'compose', field:'ua_roi',             fieldType:'DECIMAL(8,4)',source:'dws.ua_channel_d',       remark:'广告带来的收入 / 投放成本' },
+    { code:'ltv_30',       cn:'30日LTV',       type:'compose', field:'ltv_30',             fieldType:'DECIMAL(18,2)',source:'dws.user_ltv_d',         remark:'30日用户生命周期价值' },
+    { code:'crash_rate',   cn:'崩溃率',        type:'derived', field:'crash_rate',         fieldType:'DECIMAL(5,4)',source:'dwd.app_crash_log',      remark:'崩溃次数 / 启动次数' }
+  ];
+
+  function addMetricRow() {
+    const tbody = document.querySelector('.metric-table tbody');
+    const num = tbody.querySelectorAll('tr').length + 1;
+    const tr = document.createElement('tr');
+    tr.className = 'row-edit';
+    const dlId = 'metricLib_' + Date.now();
+    const optionsHtml = METRIC_LIB.map(m => '<option value="' + m.cn + '">' + m.field + ' · ' + m.remark + '</option>').join('');
+    tr.innerHTML =
+      '<td>' + num + '</td>' +
+      '<td>' +
+        '<input type="text" class="cell-input" placeholder="搜索指标库（中文或英文名）..." list="' + dlId + '" oninput="onMetricSelected(this)" autocomplete="off" />' +
+        '<datalist id="' + dlId + '">' + optionsHtml + '</datalist>' +
+        '<div class="auto-fill-tip" style="display:none;">✓ 已从指标库联动填充其他字段</div>' +
+      '</td>' +
+      '<td>' +
+        '<select class="cell-select">' +
+          '<option value="core">核心指标</option>' +
+          '<option value="derived">派生指标</option>' +
+          '<option value="atomic">原子指标</option>' +
+          '<option value="compose">复合指标</option>' +
+        '</select>' +
+      '</td>' +
+      '<td><input type="text" class="cell-input mono" placeholder="自动填充" readonly style="background:#FAFBFC;" /></td>' +
+      '<td><input type="text" class="cell-input mono" placeholder="自动填充" readonly style="background:#FAFBFC;" /></td>' +
+      '<td><input type="text" class="cell-input" placeholder="备注 / 口径说明（可编辑）" /></td>' +
+      '<td><input type="text" class="cell-input mono" placeholder="自动填充" readonly style="background:#FAFBFC;" /></td>' +
+      '<td><input type="text" class="cell-input" placeholder="操作人" value="张晓明" /></td>' +
+      '<td>' +
+        '<span class="mt-time">' + formatNow() + '</span>' +
+        '<div class="metric-row-actions">' +
+          '<button class="metric-row-save" onclick="saveMetricRow(this)" title="保存该指标">' +
+            '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="2 6 5 9 10 3"/></svg>' +
+          '</button>' +
+          '<button class="metric-row-del" onclick="removeMetricRow(this)" title="删除该指标">' +
+            '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="9" y2="9"/><line x1="9" y1="3" x2="3" y2="9"/></svg>' +
+          '</button>' +
+        '</div>' +
+      '</td>';
+    tbody.appendChild(tr);
+    refreshMetricRowNumbers();
+    tr.querySelector('input')?.focus();
+  }
+
+  // 选中某指标后自动填充字段名 / 字段类型 / 来源表 / 备注 / 类型下拉
+  function onMetricSelected(input) {
+    const v = input.value.trim();
+    const m = METRIC_LIB.find(x => x.cn === v || x.field === v);
+    if (!m) return;
+    const tr = input.closest('tr');
+    const inputs = tr.querySelectorAll('input.cell-input');
+    const selects = tr.querySelectorAll('select.cell-select');
+    if (inputs[1]) { inputs[1].value = m.field; inputs[1].readOnly = false; inputs[1].style.background = '#fff'; }
+    if (inputs[2]) { inputs[2].value = m.fieldType; inputs[2].readOnly = false; inputs[2].style.background = '#fff'; }
+    if (inputs[3]) inputs[3].value = m.remark || '';
+    if (inputs[4]) { inputs[4].value = m.source; inputs[4].readOnly = false; inputs[4].style.background = '#fff'; }
+    if (selects[0]) selects[0].value = m.type;
+    const tip = tr.querySelector('.auto-fill-tip');
+    if (tip) tip.style.display = 'block';
+    showToast('已从指标库联动填充：' + m.field, 'success');
+  }
+  function saveMetricRow(btn) {
+    const tr = btn.closest('tr');
+    const inputs = tr.querySelectorAll('input.cell-input');
+    const selects = tr.querySelectorAll('select.cell-select');
+
+    const name      = (inputs[0]?.value || '').trim();
+    const typeSel   = selects[0];
+    const typeVal   = typeSel?.value || 'core';
+    const typeLabel = typeSel?.options[typeSel.selectedIndex]?.text || '核心指标';
+    const fieldName = (inputs[1]?.value || '').trim();
+    const fieldType = (inputs[2]?.value || '').trim();
+    const remark    = (inputs[3]?.value || '').trim();
+    const source    = (inputs[4]?.value || '').trim();
+    const operator  = (inputs[5]?.value || '').trim();
+    const time      = tr.querySelector('.mt-time')?.textContent || formatNow();
+
+    if (!name) {
+      showToast('请填写指标名称', 'error');
+      inputs[0]?.focus();
+      return;
+    }
+    if (!fieldName) {
+      showToast('请填写字段名称', 'error');
+      inputs[1]?.focus();
+      return;
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(fieldName)) {
+      showToast('字段名仅支持字母/数字/下划线，且首字符不能是数字', 'error');
+      inputs[1]?.focus();
+      return;
+    }
+    if (!fieldType) {
+      showToast('请填写字段类型', 'error');
+      inputs[2]?.focus();
+      return;
+    }
+
+    const num = tr.querySelector('td:first-child').textContent;
+    const sourceHtml = source
+      ? '<span class="mt-source" onclick="showToast(\'查看 ' + escapeHtml(source) + '（示例）\',\'info\')">' + escapeHtml(source) + '</span>'
+      : '<span class="empty-cell">-</span>';
+    tr.className = '';
+    tr.innerHTML =
+      '<td>' + num + '</td>' +
+      '<td><span class="mt-name">' + escapeHtml(name) + '</span></td>' +
+      '<td><span class="mt-tag ' + typeVal + '">' + escapeHtml(typeLabel) + '</span></td>' +
+      '<td><span class="mt-field">' + escapeHtml(fieldName) + '</span></td>' +
+      '<td><span class="mt-type">' + escapeHtml(fieldType) + '</span></td>' +
+      '<td>' + (remark ? escapeHtml(remark) : '<span class="empty-cell">-</span>') + '</td>' +
+      '<td>' + sourceHtml + '</td>' +
+      '<td>' + (operator ? escapeHtml(operator) : '<span class="empty-cell">-</span>') + '</td>' +
+      '<td class="mt-time">' + escapeHtml(time) + '</td>';
+
+    showToast('新增指标成功', 'success');
+  }
+  function removeMetricRow(btn) {
+    const tr = btn.closest('tr');
+    tr.remove();
+    refreshMetricRowNumbers();
+    showToast('指标已删除', 'success');
+  }
+
+  // ─── 血缘服务：tab 切换 & 血缘地图 ───
+  function switchReportTab(btn) {
+    document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.report-pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + btn.dataset.pane).classList.add('active');
+    if (btn.dataset.pane === 'lineage') {
+      populateMetricSelect();
+      onGranularityChange();
+    }
+  }
+
+  // 派生指标的多上游补充（贴近业务口径）
+  const metricExtraUpstreams = {
+    '付费率':        ['dws_revenue_user_d', 'dwd_user_active_log'],
+    'ARPU':          ['dws_revenue_user_d', 'dws_revenue_d'],
+    '次日留存率':    ['dws_user_retention_d', 'dwd_user_register'],
+    '7 日留存率':    ['dws_user_retention_d', 'dwd_user_register'],
+    '平均在线时长':  ['dws_user_online_d', 'dwd_user_active_log'],
+  };
+
+  function readMetricsFromTable() {
+    const rows = document.querySelectorAll('.metric-table tbody tr:not(.row-edit)');
+    const metrics = [];
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      if (cells.length < 7) return;
+      const name = (cells[1].querySelector('.mt-name')?.textContent || '').trim();
+      const typeEl = cells[2].querySelector('.mt-tag');
+      const typeCls = typeEl ? (typeEl.className.match(/mt-tag\s+(\w+)/) || ['','core'])[1] : 'core';
+      const typeLabel = (typeEl?.textContent || '核心指标').trim();
+      const field = (cells[3].querySelector('.mt-field')?.textContent || '').trim();
+      const fieldType = (cells[4].querySelector('.mt-type')?.textContent || '').trim();
+      const source = (cells[6].querySelector('.mt-source')?.textContent || '').trim();
+      if (name) metrics.push({ name, field, fieldType, typeCls, typeLabel, source });
+    });
+    return metrics;
+  }
+
+  function populateMetricSelect() {
+    const sel = document.getElementById('metricSelect');
+    if (!sel) return;
+    const metrics = readMetricsFromTable();
+    const cur = sel.value;
+    sel.innerHTML = '';
+    metrics.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.name;
+      opt.textContent = m.name + (m.field ? ' (' + m.field + ')' : '');
+      sel.appendChild(opt);
+    });
+    if (metrics.some(m => m.name === cur)) sel.value = cur;
+    else if (metrics.length) sel.selectedIndex = 0;
+  }
+
+  function onGranularityChange() {
+    const gran = document.getElementById('granularitySelect').value;
+    const metricSel = document.getElementById('metricSelect');
+    const req = document.getElementById('metricReq');
+    if (gran === 'metric') {
+      metricSel.disabled = false;
+      if (req) req.style.display = '';
+      if (!metricSel.value && metricSel.options.length) metricSel.selectedIndex = 0;
+    } else {
+      metricSel.disabled = true;
+      if (req) req.style.display = 'none';
+    }
+    renderLineage();
+  }
+
+  function getReportName() {
+    return (document.getElementById('rname')?.textContent || '游戏核心指标日报').trim();
+  }
+  function getReportCode() {
+    return (document.getElementById('rcode')?.textContent || 'game_core_daily').trim();
+  }
+
+  function renderLineage() {
+    const gran = document.getElementById('granularitySelect').value;
+    const upCol = document.getElementById('rlUpstreamCol');
+    const mainCol = document.getElementById('rlMainCol');
+    if (!upCol || !mainCol) return;
+    upCol.innerHTML = '';
+    mainCol.innerHTML = '';
+    const metrics = readMetricsFromTable();
+
+    if (gran === 'report') {
+      const sources = Array.from(new Set(metrics.map(m => m.source).filter(Boolean)));
+      if (sources.length === 0) {
+        mainCol.innerHTML = renderEmpty('暂无血缘数据');
+        clearConnectors(); return;
+      }
+      sources.forEach(src => upCol.appendChild(makeUpstreamNode(src)));
+      mainCol.appendChild(makeMainReportNode(getReportName(), getReportCode(), metrics.length));
+    } else {
+      const metricSel = document.getElementById('metricSelect');
+      const name = metricSel.value;
+      const m = metrics.find(x => x.name === name);
+      if (!m) {
+        mainCol.innerHTML = renderEmpty('请先选择一个指标');
+        clearConnectors(); return;
+      }
+      const enriched = metricExtraUpstreams[m.name] || (m.source ? [m.source] : []);
+      const sources = Array.from(new Set(enriched));
+      if (sources.length === 0) {
+        mainCol.innerHTML = renderEmpty('该指标暂无上游');
+        clearConnectors(); return;
+      }
+      sources.forEach(src => upCol.appendChild(makeUpstreamNode(src)));
+      mainCol.appendChild(makeMainMetricNode(m));
+    }
+    requestAnimationFrame(drawConnectors);
+  }
+
+  function makeUpstreamNode(tableName) {
+    const div = document.createElement('div');
+    div.className = 'rl-node upstream';
+    div.onclick = () => showToast('查看 ' + tableName + '（示例）', 'info');
+    div.innerHTML =
+      '<div class="rl-node-title">' +
+        '<span class="ico"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="3.2" rx="4.5" ry="1.6"/><path d="M2.5 3.2v3.6c0 .9 2 1.6 4.5 1.6s4.5-.7 4.5-1.6V3.2"/><path d="M2.5 6.8v3.6c0 .9 2 1.6 4.5 1.6s4.5-.7 4.5-1.6V6.8"/></svg></span>' +
+        escapeHtml(tableName) +
+      '</div>' +
+      '<div class="rl-node-meta">数据来源（数仓表）</div>';
+    return div;
+  }
+  function makeMainReportNode(name, code, metricCount) {
+    const div = document.createElement('div');
+    div.className = 'rl-node main-report';
+    div.innerHTML =
+      '<div class="rl-node-title">' +
+        '<span class="ico"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="10" height="10" rx="1"/><line x1="4" y1="5" x2="10" y2="5"/><line x1="4" y1="7.5" x2="10" y2="7.5"/><line x1="4" y1="10" x2="8" y2="10"/></svg></span>' +
+        escapeHtml(name) +
+      '</div>' +
+      '<div class="rl-node-meta">报表 · ' + escapeHtml(code) + ' · 含 ' + metricCount + ' 个指标</div>';
+    return div;
+  }
+  function makeMainMetricNode(m) {
+    const div = document.createElement('div');
+    div.className = 'rl-node main-metric';
+    div.innerHTML =
+      '<div class="rl-node-title">' +
+        '<span class="ico"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><line x1="7" y1="4" x2="7" y2="7"/><line x1="7" y1="7" x2="9.5" y2="9"/></svg></span>' +
+        escapeHtml(m.name) +
+      '</div>' +
+      '<div class="rl-node-meta">' +
+        escapeHtml(m.field || '-') + (m.fieldType ? ' · ' + escapeHtml(m.fieldType) : '') +
+        '<span class="ir-tag ' + (m.typeCls || 'core') + '">' + escapeHtml(m.typeLabel) + '</span>' +
+      '</div>';
+    return div;
+  }
+  function renderEmpty(msg) {
+    return '<div class="rl-empty">' +
+      '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="32" cy="32" r="22"/><line x1="22" y1="32" x2="42" y2="32"/></svg>' +
+      '<span>' + msg + '</span></div>';
+  }
+  function clearConnectors() {
+    const svg = document.getElementById('rlConnectors');
+    if (svg) svg.innerHTML = '';
+  }
+  function drawConnectors() {
+    const graph = document.getElementById('reportLineageGraph');
+    const svg = document.getElementById('rlConnectors');
+    if (!graph || !svg) return;
+    const upstreams = graph.querySelectorAll('.rl-upstream-col .rl-node');
+    const main = graph.querySelector('.rl-main-col .rl-node');
+    svg.innerHTML = '';
+    if (!main || upstreams.length === 0) return;
+
+    const gRect = graph.getBoundingClientRect();
+    svg.setAttribute('width', gRect.width);
+    svg.setAttribute('height', gRect.height);
+    svg.setAttribute('viewBox', '0 0 ' + gRect.width + ' ' + gRect.height);
+
+    const mainRect = main.getBoundingClientRect();
+    const mx = mainRect.left - gRect.left;
+    const my = mainRect.top - gRect.top + mainRect.height / 2;
+
+    const defs = '<defs><marker id="rl-arrow" viewBox="0 0 10 10" refX="8" refY="5" '
+      + 'markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
+      + '<path d="M0,0 L10,5 L0,10 Z" fill="#86909C"/></marker></defs>';
+    let paths = '';
+    upstreams.forEach(n => {
+      const r = n.getBoundingClientRect();
+      const sx = r.right - gRect.left;
+      const sy = r.top - gRect.top + r.height / 2;
+      const cx = (sx + mx) / 2;
+      const d = 'M ' + sx + ' ' + sy
+        + ' C ' + cx + ' ' + sy + ', ' + cx + ' ' + my + ', ' + (mx - 2) + ' ' + my;
+      paths += '<path d="' + d + '" stroke="#86909C" stroke-width="1.4" fill="none" '
+        + 'marker-end="url(#rl-arrow)" opacity="0.78"/>';
+    });
+    svg.innerHTML = defs + paths;
+  }
+  window.addEventListener('resize', () => {
+    const pane = document.getElementById('pane-lineage');
+    if (pane && pane.classList.contains('active')) drawConnectors();
+  });
+
+  // ─── Toast ───
+  /* ━━ 公共片段：URL 解析 + 收藏 + 订阅 + 最近浏览 + Cmd+K ━━ */
+  window.__GLOBAL_INDEX = [
+    { type:'metric', code:'dau', name:'日活跃用户数', en:'dau', biz:'sport', owner:'张晓明', level:'核心', status:'已上架', desc:'去重后日 UV', url:'metadata-asset-detail.html?code=dau' },
+    { type:'metric', code:'pay_conv', name:'支付转化率', en:'pay_conversion_rate', biz:'skillbase', owner:'李明', level:'核心', status:'已上架', desc:'支付成功 / 下单数', url:'metadata-asset-detail.html?code=pay_conv' },
+    { type:'metric', code:'arpu', name:'用户平均收入', en:'arpu', biz:'skillbase', owner:'李明', level:'关键', status:'已上架', desc:'总收入 / 活跃用户', url:'metadata-asset-detail.html?code=arpu' },
+    { type:'table', code:'hive_dwd_user_active_log', name:'HIVE.DWD.user_active_log', en:'用户活跃日志', biz:'sc', owner:'张晓明', level:'关键', status:'已上架', desc:'明细层用户端上行为日志', url:'metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志' },
+    { type:'table', code:'orcl_order_wide', name:'ORCL.WEDATADB.ABjkajksAB', en:'订单宽表', biz:'skillbase', owner:'王芳', level:'核心', status:'已上架', desc:'订单事实宽表', url:'metadata-table-detail.html?code=orcl_order_wide&name=订单宽表' },
+    { type:'report', code:'game_core_daily', name:'游戏核心指标日报', en:'game_core_daily', biz:'sport', owner:'李明', level:'核心', status:'已上架', desc:'每日核心指标日报', url:'metadata-report-detail.html?code=game_core_daily&name=游戏核心指标日报' },
+    { type:'report', code:'self_player_retention', name:'玩家留存漏斗分析', en:'self_player_retention', biz:'sc', owner:'王芳', level:'关键', status:'已上架', desc:'玩家全链路留存漏斗', url:'metadata-report-detail.html?code=self_player_retention&name=玩家留存漏斗分析' },
+    { type:'term', code:'term_dau', name:'DAU (Daily Active User)', en:'DAU', biz:'通用', owner:'数据治理委员会', level:'-', status:'已发布', desc:'每日活跃用户数', url:'glossary.html?term=DAU' },
+    { type:'source', code:'src_hive_main', name:'Hive 主仓', en:'hive_prod_cluster', biz:'-', owner:'平台组', level:'-', status:'已连接', desc:'主数据仓库 Hive 集群', url:'metadata-source-detail.html?code=src_hive_main' },
+    { type:'model', code:'gpt4_turbo', name:'GPT-4 Turbo（OpenAI）', en:'gpt-4-turbo', biz:'-', owner:'平台管理员', level:'-', status:'在线', desc:'LLM 接入 · 商用 · 上下文 128K', url:'model-detail.html?code=gpt4_turbo' },
+    { type:'model', code:'qwen2_72b', name:'Qwen2-72B-Instruct（阿里云）', en:'qwen2-72b-instruct', biz:'-', owner:'平台管理员', level:'-', status:'在线', desc:'LLM 接入 · 商用 · 上下文 32K', url:'model-detail.html?code=qwen2_72b' },
+    { type:'agent', code:'biz_qa_agent', name:'智能问数 Agent', en:'biz_qa_agent', biz:'data', owner:'王晨', level:'核心', status:'生产', desc:'RAG+SQL · 基座 GPT-4 Turbo', url:'agent-detail.html?code=biz_qa_agent' },
+    { type:'agent', code:'cs_intent_agent', name:'客服意图 Agent', en:'cs_intent_agent', biz:'cservice', owner:'李雨', level:'关键', status:'生产', desc:'Function Agent · 基座 Qwen2-72B', url:'agent-detail.html?code=cs_intent_agent' },
+    { type:'tool', code:'call_metric_api', name:'call_metric_api 指标查询工具', en:'call_metric_api', biz:'data', owner:'王晨', level:'核心', status:'已发布', desc:'API · 被 6 个 Agent 引用', url:'tool.html?code=call_metric_api' },
+    { type:'tool', code:'sql_runner', name:'sql_runner SQL 执行工具', en:'sql_runner', biz:'data', owner:'王晨', level:'关键', status:'已发布', desc:'SQL · Trino 后端', url:'tool.html?code=sql_runner' },
+    { type:'kb', code:'kb_cs_main', name:'客服 FAQ KB', en:'kb_customer_service', biz:'cservice', owner:'李雨', level:'核心', status:'已发布', desc:'12.4 万 chunks · bge-m3', url:'dataset-detail.html?code=kb_cs_main' },
+    { type:'prompt', code:'pt_summary_v2', name:'文本摘要 Prompt v2', en:'pt_summary_v2', biz:'cservice', owner:'李雨', level:'关键', status:'已发布', desc:'Claude/GPT-4 摘要', url:'prompt-detail.html?code=pt_summary_v2' },
+    { type:'vector', code:'vec_item_emb', name:'item_embedding 商品向量集合', en:'vec_item_embedding', biz:'recsys', owner:'王晨', level:'核心', status:'已上架', desc:'Milvus · 128维', url:'metadata-source-detail.html?code=src_milvus_main&collection=item_embedding' }
+  ];
+
+  /* URL 解析：从列表页拼接的 ?code= 解析当前报表 */
+  const _params = new URLSearchParams(location.search);
+  const _currentCode = _params.get('code') || 'game_core_daily';
+  const _currentName = _params.get('name') || '游戏核心指标日报';
+
+  /* 同步 Hero 区显示 */
+  (function syncHeroBlock() {
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.textContent = val; };
+    set('hero-rname', _currentName);
+    if (_currentName) {
+      const bcCurrent = document.querySelector('.breadcrumb .current');
+      if (bcCurrent) bcCurrent.textContent = _currentName;
+      document.title = 'Spark · ' + _currentName;
+    }
+  })();
+
+  /* 最近浏览写入 */
+  (function recordRecent() {
+    try {
+      const list = JSON.parse(localStorage.getItem('mdm_recent') || '[]');
+      const filtered = list.filter(r => r.code !== _currentCode);
+      filtered.unshift({ code: _currentCode, type: 'report', name: _currentName, time: new Date().toLocaleString('zh-CN') });
+      localStorage.setItem('mdm_recent', JSON.stringify(filtered.slice(0, 20)));
+    } catch (e) {}
+  })();
+
+  /* 收藏 / 订阅 */
+  function getFavorites(){try{return JSON.parse(localStorage.getItem('mdm_favorites'))||[]}catch(e){return[]}}
+  function setFavorites(a){localStorage.setItem('mdm_favorites',JSON.stringify(a));}
+  function getSubs(){try{return JSON.parse(localStorage.getItem('mdm_subs'))||[]}catch(e){return[]}}
+  function setSubs(a){localStorage.setItem('mdm_subs',JSON.stringify(a));}
+  function refreshFavBtn() {
+    const btn = document.getElementById('favBtn');
+    const ico = document.getElementById('favIcon');
+    if (!btn || !ico) return;
+    const isFav = getFavorites().includes(_currentCode);
+    btn.classList.toggle('starred', isFav);
+    btn.title = isFav ? '取消收藏' : '收藏';
+    ico.setAttribute('fill', isFav ? 'currentColor' : 'none');
+  }
+  function toggleFavorite() {
+    const favs = getFavorites();
+    const i = favs.indexOf(_currentCode);
+    if (i >= 0) { favs.splice(i, 1); showToast('已取消收藏', 'info'); }
+    else { favs.unshift(_currentCode); showToast('已收藏，可在首页"我收藏的"查看', 'success'); }
+    setFavorites(favs);
+    refreshFavBtn();
+  }
+  function refreshSubBtn() {
+    const btn = document.getElementById('subBtn');
+    if (!btn) return;
+    const sub = getSubs().includes(_currentCode);
+    btn.classList.toggle('subscribed', sub);
+    btn.title = sub ? '取消订阅' : '订阅变更';
+  }
+  function toggleSubscribe() {
+    const subs = getSubs();
+    const i = subs.indexOf(_currentCode);
+    if (i >= 0) { subs.splice(i, 1); showToast('已取消订阅', 'info'); }
+    else { subs.unshift(_currentCode); showToast('已订阅，本报表更新与变更将在通知中提醒你', 'success'); }
+    setSubs(subs);
+    refreshSubBtn();
+  }
+  refreshFavBtn();
+  refreshSubBtn();
+
+  function copyName() {
+    const v = document.getElementById('rcode')?.textContent || _currentCode;
+    navigator.clipboard?.writeText(v);
+    showToast('英文名已复制', 'success');
+  }
+  function applyForUse() {
+    location.href = 'metadata-request.html?action=new&type=report&code=' + encodeURIComponent(_currentCode);
+  }
+  function postComment() {
+    const t = document.getElementById('rCommentInput').value.trim();
+    if (!t) { showToast('请输入评论内容', 'info'); return; }
+    showToast('评论已发表（演示）', 'success');
+    document.getElementById('rCommentInput').value = '';
+  }
+
+  /* Cmd+K 命令面板 */
+  let _cmdkFilter='all', _cmdkFocus=0;
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');setTimeout(()=>document.getElementById('cmdkInput').focus(),30);renderCmdK();}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  function setCmdKFilter(el){document.querySelectorAll('.cmdk-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');_cmdkFilter=el.dataset.type;renderCmdK();}
+  function highlight(t,q){if(!q)return t;const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return t.replace(re,'<span class="hl">$1</span>');}
+  function typeName(t){return ({metric:'指标',table:'库表',report:'报表',term:'术语',source:'数据源',model:'LLM',agent:'Agent',tool:'工具',kb:'知识库',prompt:'Prompt',vector:'向量集合'})[t]||t;}
+  function typeIcon(t){return ({metric:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/></svg>',table:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/></svg>',report:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>',term:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V3z"/></svg>',source:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="4" rx="5" ry="2"/></svg>',model:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>',agent:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="12" height="9" rx="1.5"/><circle cx="6" cy="8.5" r="0.9"/><circle cx="10" cy="8.5" r="0.9"/><path d="M8 1v3"/></svg>',tool:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9.5 4.5l3 3M3 13l5-5M11 2l3 3-2 2-3-3z"/></svg>',kb:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4l6-2.5L14 4l-6 2.5z"/></svg>',prompt:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 10a1 1 0 01-1 1H5l-2 2V3a1 1 0 011-1h9a1 1 0 011 1z"/></svg>',vector:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="1.2"/><circle cx="12" cy="4" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>'})[t]||'';}
+  function renderCmdK(){const q=document.getElementById('cmdkInput').value.trim().toLowerCase();let items=window.__GLOBAL_INDEX.slice();if(_cmdkFilter!=='all')items=items.filter(i=>i.type===_cmdkFilter);if(q)items=items.filter(i=>(i.name+' '+i.en+' '+(i.desc||'')+' '+(i.code||'')).toLowerCase().includes(q));else items=items.slice(0,8);_cmdkFocus=0;const root=document.getElementById('cmdkResults');if(items.length===0){root.innerHTML='<div class="cmdk-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg><div>没有找到匹配的资产</div></div>';return;}const groups={};items.forEach(i=>{(groups[i.type]=groups[i.type]||[]).push(i);});let html='';['metric','table','report','agent','tool','model','prompt','kb','vector','term','source'].forEach(t=>{if(!groups[t])return;html+='<div class="cmdk-group-title">'+typeName(t)+' ('+groups[t].length+')</div>';groups[t].forEach(i=>{html+='<div class="cmdk-item" onclick="cmdkOpen(\''+i.url+'\')" data-url="'+i.url+'"><div class="cmdk-item-icon '+i.type+'">'+typeIcon(i.type)+'</div><div class="cmdk-item-meta"><div class="cmdk-item-title">'+highlight(i.name,q);if(i.en&&i.en!==i.name)html+=' <span style="color:var(--sub);font-size:11px;">'+highlight(i.en,q)+'</span>';html+='</div><div class="cmdk-item-sub">'+(i.desc||'')+' · '+(i.owner||'')+'</div></div><span class="cmdk-item-type">'+typeName(i.type)+'</span></div>';});});root.innerHTML=html;const all=root.querySelectorAll('.cmdk-item');if(all[0])all[0].classList.add('focused');}
+  function cmdkOpen(url){closeCmdK();location.href=url;}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();return;}if(!document.getElementById('cmdkMask').classList.contains('show'))return;if(e.key==='Escape'){closeCmdK();return;}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const items=document.querySelectorAll('#cmdkResults .cmdk-item');if(!items.length)return;items[_cmdkFocus]?.classList.remove('focused');_cmdkFocus=(_cmdkFocus+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[_cmdkFocus].classList.add('focused');items[_cmdkFocus].scrollIntoView({block:'nearest'});}else if(e.key==='Enter'){const f=document.querySelector('#cmdkResults .cmdk-item.focused');if(f)cmdkOpen(f.dataset.url);}});
+  document.addEventListener('click',(e)=>{const m=document.getElementById('cmdkMask');if(m && e.target.id==='cmdkMask')closeCmdK();});
+
+  function showToast(msg, type) {
+    type = type || 'success';
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    const icons = {
+      success: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><polyline points="5.5 9.5 8 12 13 6.5"/></svg>',
+      info:    '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="9" y1="8" x2="9" y2="13"/><circle cx="9" cy="5.5" r=".8" fill="currentColor"/></svg>',
+      error:   '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="6" y1="6" x2="12" y2="12"/><line x1="12" y1="6" x2="6" y2="12"/></svg>',
+    };
+    toast.innerHTML = '<span class="toast-icon">' + (icons[type] || icons.info) + '</span><span>' + msg + '</span>';
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => toast.remove(), 250);
+    }, 2200);
+  }
+</script>
+</body>
+</html>
