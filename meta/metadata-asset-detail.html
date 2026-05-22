@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 指标详情</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1677FF; --primary-light: #E6F0FF; --primary-hover: #0958D9;
+      --green: #00B42A; --green-light: #E8FFEA;
+      --red: #F53F3F; --red-light: #FFECE8;
+      --orange: #FF7D00; --orange-light: #FFF3E8;
+      --purple: #7B61FF; --purple-light: #F0EDFF;
+      --gray-light: #F7F8FA;
+      --sidebar-w: 220px; --header-h: 52px; --subbar-h: 44px;
+      --bg: #F5F7FA; --card: #FFFFFF; --border: #E8ECF0;
+      --text: #1D2129; --sub: #86909C;
+    }
+    body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ══ HEADER ══ */
+    .header { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: sticky; top: 0; z-index: 30; gap: 16px; }
+    .logo-wrap { display: flex; align-items: center; gap: 8px; }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: .3px; }
+    .global-search { display: flex; align-items: center; width: 280px; height: 32px; background: var(--gray-light); border: 1px solid transparent; border-radius: 8px; padding: 0 10px; cursor: pointer; transition: all .15s; flex-shrink: 0; }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd { font-size: 11px; color: var(--sub); padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: #fff; font-family: ui-monospace, monospace; }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; }
+    .header-tab { height: 100%; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: var(--sub); cursor: pointer; position: relative; border: none; background: none; transition: color .15s; text-decoration: none; }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 8px; border-radius: 4px; cursor: pointer; color: var(--sub); background: none; border: none; transition: color .15s; position: relative; }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-badge { position: absolute; top: 1px; right: 4px; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px; background: var(--red); color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; cursor: pointer; background: none; border: none; }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; }
+
+    /* ══ SUB-HEADER ══ */
+    .subbar { height: var(--subbar-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w); flex-shrink: 0; position: sticky; top: var(--header-h); z-index: 10; }
+    .subbar-inner { display: flex; align-items: center; gap: 14px; padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .subbar-right { margin-left: auto; }
+    .back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--sub); border: none; background: none; cursor: pointer; transition: color .15s; }
+    .back-btn:hover { color: var(--primary); }
+    .back-btn svg { width: 12px; height: 12px; }
+
+    /* ══ BODY ══ */
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar { width: var(--sidebar-w); flex-shrink: 0; background: #fff; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; position: sticky; top: calc(var(--header-h) + var(--subbar-h)); height: calc(100vh - var(--header-h) - var(--subbar-h)); }
+    .nav-group { padding: 8px 0; }
+    .nav-l1 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; user-select: none; }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron { margin-left: auto; width: 14px; height: 14px; transition: transform .2s; flex-shrink: 0; }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+    .nav-l1-children { display: none; }
+    .nav-l1.open + .nav-l1-children { display: block; }
+    .nav-l2 { display: flex; align-items: center; padding: 9px 16px 9px 40px; font-size: 13px; color: var(--sub); cursor: pointer; position: relative; transition: background .12s, color .12s; text-decoration: none; }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active { color: var(--primary); font-weight: 500; background: var(--primary-light); }
+    .nav-l2.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--primary); border-radius: 0 3px 3px 0; }
+
+    .content { flex: 1; min-width: 0; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ══ HERO ══ */
+    .detail-hero { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; display: flex; gap: 16px; align-items: flex-start; }
+    .hero-icon { width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0; background: linear-gradient(135deg, var(--primary-light) 0%, #C2DAFF 100%); color: var(--primary); display: flex; align-items: center; justify-content: center; }
+    .hero-icon svg { width: 26px; height: 26px; }
+    .hero-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .hero-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .hero-name { font-size: 18px; font-weight: 600; color: var(--text); }
+    .hero-en { font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--sub); background: var(--gray-light); padding: 2px 8px; border-radius: 4px; }
+    .copy-btn { width: 22px; height: 22px; border-radius: 4px; border: none; background: none; color: var(--sub); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .12s, color .12s; }
+    .copy-btn:hover { background: var(--bg); color: var(--primary); }
+    .copy-btn svg { width: 13px; height: 13px; }
+    .hero-tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .hero-tag.level-core { background: var(--red-light); color: var(--red); }
+    .hero-tag.level-key { background: var(--orange-light); color: var(--orange); }
+    .hero-tag.level-general { background: var(--gray-light); color: var(--sub); }
+    .hero-tag.type-atomic { background: var(--green-light); color: var(--green); }
+    .hero-tag.type-derived { background: var(--primary-light); color: var(--primary); }
+    .hero-tag.type-compose { background: var(--purple-light); color: var(--purple); }
+    .hero-status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; border: 1px solid; }
+    .hero-status .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .hero-status.online { background: var(--green-light); color: var(--green); border-color: #A3E8B0; }
+    .hero-status.pending { background: var(--orange-light); color: var(--orange); border-color: #FFD7B0; }
+    .hero-status.offline { background: #F5F5F5; color: var(--sub); border-color: #E0E0E0; }
+
+    .hero-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--sub); }
+    .hero-meta .label { color: var(--sub); margin-right: 2px; }
+    .hero-meta .value { color: var(--text); }
+    .hero-meta .sep { color: #C2C7CF; }
+
+    .hero-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); transition: all .15s; white-space: nowrap; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    .btn-icon { width: 32px; padding: 0; justify-content: center; }
+    .btn-icon.starred { color: var(--orange); border-color: var(--orange); background: var(--orange-light); }
+    .btn-icon.subscribed { color: var(--primary); border-color: var(--primary); background: var(--primary-light); }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+
+    /* ══ DETAIL SPLIT ══ */
+    .detail-split { display: flex; gap: 14px; align-items: flex-start; }
+    .detail-left { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; }
+    .detail-right { flex: 1; min-width: 0; }
+    @media (max-width: 1100px) { .detail-split { flex-direction: column; } .detail-left { width: 100%; } }
+
+    /* ══ INFO CARDS ══ */
+    .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+    .info-card-title { font-size: 14px; font-weight: 600; color: var(--text); padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+    .info-card-title::before { content: ''; width: 3px; height: 14px; background: var(--primary); border-radius: 2px; }
+    .info-rows { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .info-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: start; font-size: 12px; }
+    .info-row .ir-label { color: var(--sub); }
+    .info-row .ir-value { color: var(--text); word-break: break-all; }
+    .info-row .ir-value.muted { color: var(--sub); }
+    .info-row .ir-value a { color: var(--primary); text-decoration: none; cursor: pointer; }
+    .info-row .ir-value a:hover { text-decoration: underline; }
+    .ir-tag { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 3px; font-size: 11px; background: var(--gray-light); color: var(--sub); }
+    .ir-tag.level-core { background: var(--red-light); color: var(--red); }
+    .ir-tag.level-key { background: var(--orange-light); color: var(--orange); }
+    .ir-tag.online { background: var(--green-light); color: var(--green); }
+    .ir-tag.pending { background: var(--orange-light); color: var(--orange); }
+    .ir-tag.offline { background: #F5F5F5; color: var(--sub); }
+    .ir-tag.type-atomic { background: var(--green-light); color: var(--green); }
+    .ir-tag.type-derived { background: var(--primary-light); color: var(--primary); }
+    .ir-tag.type-compose { background: var(--purple-light); color: var(--purple); }
+
+    /* SQL block */
+    .sql-block { background: #1F2329; color: #F2F3F5; border-radius: 6px; padding: 12px; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.7; overflow-x: auto; position: relative; }
+    .sql-block .kw { color: #79C0FF; }
+    .sql-block .fn { color: #FFA657; }
+    .sql-block .str { color: #A5D6FF; }
+    .sql-block .num { color: #FFA657; }
+    .sql-block .cmt { color: #8B949E; font-style: italic; }
+    .sql-copy { position: absolute; top: 8px; right: 8px; height: 24px; padding: 0 8px; border-radius: 4px; background: rgba(255,255,255,.08); color: #fff; border: none; font-size: 11px; cursor: pointer; }
+    .sql-copy:hover { background: rgba(255,255,255,.18); }
+
+    /* dim chips */
+    .dim-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .dim-chip { background: var(--primary-light); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+
+    /* ══ DETAIL TABS ══ */
+    .detail-tabs-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .detail-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--border); padding: 0 20px; overflow-x: auto; }
+    .detail-tab { height: 44px; padding: 0 14px; font-size: 13px; font-weight: 500; color: var(--sub); cursor: pointer; border: none; background: none; position: relative; transition: color .15s; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+    .detail-tab:hover { color: var(--text); }
+    .detail-tab.active { color: var(--primary); font-weight: 600; }
+    .detail-tab.active::after { content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .detail-tab .tab-count { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--gray-light); color: var(--sub); font-weight: 400; }
+    .detail-tab.active .tab-count { background: var(--primary-light); color: var(--primary); }
+    .detail-pane { display: none; padding: 16px 20px; }
+    .detail-pane.active { display: block; }
+
+    /* 概览卡片 */
+    .ov-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+    .ov-card { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .ov-card-label { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
+    .ov-card-value { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.2; }
+    .ov-card-trend { font-size: 11px; color: var(--green); margin-top: 4px; }
+    .ov-card-trend.down { color: var(--red); }
+
+    /* trend chart placeholder */
+    .trend-chart { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 16px; height: 240px; position: relative; }
+    .trend-chart-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .trend-chart svg { width: 100%; height: calc(100% - 30px); }
+    .axis-line { stroke: var(--border); stroke-width: 1; }
+    .grid-line { stroke: #F0F3F6; stroke-width: 1; stroke-dasharray: 2 2; }
+    .data-line { fill: none; stroke: var(--primary); stroke-width: 2; }
+    .data-area { fill: var(--primary-light); opacity: .4; }
+    .data-dot { fill: var(--primary); }
+    .axis-label { fill: var(--sub); font-size: 11px; }
+
+    /* 表格 */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table thead th { background: #FAFBFC; border-bottom: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+    .data-table tbody td { padding: 12px 14px; border-bottom: 1px solid #F0F3F6; vertical-align: middle; }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover td { background: #FAFBFC; }
+    .data-table .mono { font-family: ui-monospace, monospace; }
+    .table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+
+    /* 血缘 */
+    .lineage-wrap { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 24px; min-height: 320px; overflow-x: auto; }
+    .lineage-graph { display: grid; grid-template-columns: minmax(200px, 1fr) auto minmax(200px, 1fr); gap: 60px; align-items: center; min-height: 220px; position: relative; }
+    .lineage-side { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 2; }
+    .lineage-node-card { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; cursor: pointer; transition: all .15s; }
+    .lineage-node-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(22,119,255,.08); }
+    .lineage-node-card .ln-name { font-size: 12px; font-family: ui-monospace, monospace; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .lineage-node-card .ln-name svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .lineage-node-card.upstream .ln-name svg { color: var(--purple); }
+    .lineage-node-card.downstream .ln-name svg { color: var(--orange); }
+    .lineage-node-card .ln-meta { font-size: 11px; color: var(--sub); margin-top: 4px; }
+    .lineage-center { display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; }
+    .lineage-main {
+      background: linear-gradient(135deg, #fff 0%, var(--primary-light) 100%);
+      border: 1.5px solid var(--primary); border-radius: 8px; padding: 14px 18px;
+      box-shadow: 0 0 0 4px rgba(22,119,255,.12); min-width: 200px;
+    }
+    .lineage-main .lm-name { font-size: 14px; font-weight: 700; color: var(--primary); }
+    .lineage-main .lm-en { font-size: 11px; color: var(--sub); font-family: ui-monospace, monospace; margin-top: 4px; }
+    .lineage-arrows { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+    .lineage-side-title { font-size: 11px; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+
+    /* 引用列表 */
+    .ref-list { display: flex; flex-direction: column; gap: 8px; }
+    .ref-row { padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all .15s; background: #fff; }
+    .ref-row:hover { border-color: var(--primary); }
+    .ref-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ref-icon svg { width: 16px; height: 16px; }
+    .ref-icon.report { background: var(--orange-light); color: var(--orange); }
+    .ref-icon.experiment { background: var(--purple-light); color: var(--purple); }
+    .ref-icon.workflow { background: var(--green-light); color: var(--green); }
+    .ref-icon.dashboard { background: var(--primary-light); color: var(--primary); }
+    .ref-meta { flex: 1; min-width: 0; }
+    .ref-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .ref-info { font-size: 11px; color: var(--sub); }
+    .ref-pv { font-size: 12px; color: var(--text); font-weight: 600; background: var(--gray-light); padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+
+    /* 变更记录 timeline */
+    .timeline { position: relative; padding-left: 24px; }
+    .timeline::before { content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 2px; background: var(--border); }
+    .timeline-item { position: relative; padding-bottom: 18px; }
+    .timeline-item::before { content: ''; position: absolute; left: -22px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid var(--primary); }
+    .timeline-item.merged::before { border-color: var(--green); background: var(--green-light); }
+    .timeline-time { font-size: 11px; color: var(--sub); }
+    .timeline-title { font-size: 13px; font-weight: 500; color: var(--text); margin: 4px 0; }
+    .timeline-desc { font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .timeline-diff { font-family: ui-monospace, monospace; font-size: 11px; background: var(--gray-light); border-radius: 4px; padding: 6px 10px; margin-top: 6px; }
+    .diff-add { background: rgba(0,180,42,.1); color: var(--green); padding: 0 4px; }
+    .diff-del { background: rgba(245,63,63,.1); color: var(--red); padding: 0 4px; text-decoration: line-through; }
+
+    /* 质量监控 */
+    .quality-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .qg-card { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .qg-label { font-size: 11px; color: var(--sub); }
+    .qg-value { font-size: 22px; font-weight: 700; margin: 4px 0; }
+    .qg-card.green .qg-value { color: var(--green); }
+    .qg-card.orange .qg-value { color: var(--orange); }
+    .qg-card.red .qg-value { color: var(--red); }
+    .qg-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .qg-bar-inner { height: 100%; }
+    .qg-card.green .qg-bar-inner { background: var(--green); }
+    .qg-card.orange .qg-bar-inner { background: var(--orange); }
+    .qg-card.red .qg-bar-inner { background: var(--red); }
+
+    /* 讨论 */
+    .comment-item { padding: 12px 0; border-bottom: 1px dashed var(--border); display: flex; gap: 10px; }
+    .comment-item:last-child { border-bottom: none; }
+    .comment-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .comment-name { font-weight: 600; color: var(--text); }
+    .comment-time { color: var(--sub); }
+    .comment-text { font-size: 13px; color: var(--text); line-height: 1.6; margin-top: 4px; word-break: break-word; }
+    .comment-actions { margin-top: 6px; display: flex; gap: 12px; }
+    .comment-actions button { border: none; background: none; color: var(--sub); font-size: 12px; cursor: pointer; padding: 0; }
+    .comment-actions button:hover { color: var(--primary); }
+    .comment-input-box { margin-top: 12px; display: flex; gap: 8px; }
+    .comment-input-box textarea { flex: 1; min-height: 60px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-family: inherit; font-size: 13px; resize: vertical; }
+    .comment-input-box textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+
+    /* command palette */
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 96px); }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search svg { width: 16px; height: 16px; color: var(--sub); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; background: transparent; }
+    .cmdk-esc { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--sub); font-family: ui-monospace, monospace; }
+    .cmdk-filters { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .cmdk-chip { padding: 3px 10px; font-size: 12px; border-radius: 12px; cursor: pointer; background: var(--gray-light); color: var(--sub); white-space: nowrap; border: 1px solid transparent; transition: all .12s; }
+    .cmdk-chip:hover { color: var(--text); }
+    .cmdk-chip.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); font-weight: 500; }
+    .cmdk-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cmdk-group-title { font-size: 11px; color: var(--sub); padding: 6px 16px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+    .cmdk-item:hover, .cmdk-item.focused { background: var(--primary-light); }
+    .cmdk-item-icon { width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .cmdk-item-icon svg { width: 14px; height: 14px; }
+    .cmdk-item-icon.metric { background: var(--primary-light); color: var(--primary); }
+    .cmdk-item-icon.table { background: var(--purple-light); color: var(--purple); }
+    .cmdk-item-icon.report { background: var(--orange-light); color: var(--orange); }
+    .cmdk-item-icon.term { background: var(--green-light); color: var(--green); }
+    .cmdk-item-icon.source { background: #FFE7E7; color: var(--red); }
+    .cmdk-item-icon.model { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.agent { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.tool { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.kb { background: #FFF1F0; color: #CF1322; }
+    .cmdk-item-icon.prompt { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.vector { background: #F9F0FF; color: #722ED1; }
+    .cmdk-item-meta { flex: 1; min-width: 0; }
+    .cmdk-item-title { font-size: 13px; color: var(--text); }
+    .cmdk-item-title .hl { background: #FFF3CD; color: #663C00; padding: 0 1px; }
+    .cmdk-item-sub { font-size: 11px; color: var(--sub); }
+    .cmdk-item-type { font-size: 11px; color: var(--sub); padding: 1px 7px; border-radius: 3px; background: var(--gray-light); }
+    .cmdk-empty { padding: 40px 20px; text-align: center; color: var(--sub); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .cmdk-empty svg { width: 48px; height: 48px; color: #C2C7CF; }
+    .cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .cmdk-foot kbd { font-family: ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+
+    /* toast */
+    .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 13px; pointer-events: auto; animation: ti .25s ease-out; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.success .ti-i { color: var(--green); }
+    .toast.info { border-color: #ADC6FF; }
+    .toast.info .ti-i { color: var(--primary); }
+    .ti-i svg { width: 16px; height: 16px; }
+    @keyframes ti { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab active" href="metadata-asset.html">数据资产</a>
+    <a class="header-tab" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" onclick="location.href='metadata-request.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>工单</span><span class="hdr-badge">3</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-4-5.7V5a2 2 0 10-4 0v.3C7.7 6.2 6 8.4 6 11v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1"/></svg>
+      <span>通知</span><span class="hdr-badge">5</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn"><div class="user-avatar">张</div><span style="font-size:13px;font-weight:500;">张晓明</span></button>
+  </div>
+</header>
+
+<!-- SUB-HEADER -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <div class="breadcrumb">
+      <a href="home.html">数据资产</a>
+      <span class="sep">›</span>
+      <a href="metadata-asset.html">指标管理</a>
+      <span class="sep">›</span>
+      <span class="current" id="bcName">指标详情</span>
+    </div>
+    <div class="subbar-right">
+      <button class="back-btn" onclick="history.back()">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 2 3 6 7 10"/></svg>
+        返回
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="body-wrap">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l1 open">
+        <svg class="l1-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        数据资产
+        <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
+      </div>
+      <div class="nav-l1-children">
+        <a class="nav-l2" href="home.html">资产概览</a>
+        <a class="nav-l2 active" href="metadata-asset.html">指标管理</a>
+        <a class="nav-l2" href="metadata-table.html">库表管理</a>
+        <a class="nav-l2" href="metadata-report.html">报表管理</a>
+        <a class="nav-l2" href="metadata-source.html">数据源管理</a>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- ─── HERO ─── -->
+    <div class="detail-hero">
+      <div class="hero-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+      </div>
+      <div class="hero-info">
+        <div class="hero-title-row">
+          <span class="hero-name" id="metricNameCn">日活跃用户数</span>
+          <span class="hero-en" id="metricNameEn">dau</span>
+          <button class="copy-btn" onclick="copyName()" title="复制英文名">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="8" height="8" rx="1"/><path d="M2 9V3a1 1 0 011-1h6"/></svg>
+          </button>
+          <span class="hero-tag level-core" id="metricLevel">核心指标</span>
+          <span class="hero-tag type-derived" id="metricType">衍生指标</span>
+          <span class="hero-status online" id="metricStatus"><span class="dot"></span><span id="metricStatusText">已上架</span></span>
+        </div>
+        <div class="hero-meta">
+          <span><span class="label">业务线：</span><span class="value" id="metricBiz">sport</span></span>
+          <span class="sep">·</span>
+          <span><span class="label">负责人：</span><span class="value" id="metricOwner">张晓明</span></span>
+          <span class="sep">·</span>
+          <span><span class="label">数据类型：</span><span class="value" id="metricDtype">整型 (人)</span></span>
+          <span class="sep">·</span>
+          <span><span class="label">统计周期：</span><span class="value" id="metricPeriod">天</span></span>
+          <span class="sep">·</span>
+          <span><span class="label">最近更新：</span><span class="value">2026-05-20 09:21</span></span>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-icon" id="favBtn" onclick="toggleFavorite()" title="收藏">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" id="favIcon"><polygon points="8 1 10.2 5.8 15.5 6.4 11.5 10 12.7 15.2 8 12.5 3.3 15.2 4.5 10 0.5 6.4 5.8 5.8"/></svg>
+        </button>
+        <button class="btn btn-icon" id="subBtn" onclick="toggleSubscribe()" title="订阅变更">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 11h-2V7a4 4 0 00-8 0v4H2l1.5 2h9L14 11z"/><path d="M6 13a2 2 0 004 0"/></svg>
+        </button>
+        <button class="btn" onclick="copyShareLink()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5.5 7H3a2 2 0 010-4h2.5"/><path d="M8.5 7H11a2 2 0 010 4H8.5"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
+          复制链接
+        </button>
+        <button class="btn" onclick="applyForUse()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 7 6 10 11 4"/></svg>
+          申请使用
+        </button>
+        <button class="btn btn-primary" onclick="editMetric()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2.5L11.5 2A1.5 1.5 0 0114 4l-.5.5"/><path d="M11 2.5L3 10.5V13h2.5L13.5 5"/></svg>
+          编辑
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── SPLIT ─── -->
+    <div class="detail-split">
+
+      <!-- LEFT INFO CARDS -->
+      <div class="detail-left">
+        <div class="info-card">
+          <div class="info-card-title">基本信息</div>
+          <div class="info-rows">
+            <div class="info-row"><span class="ir-label">中文名</span><span class="ir-value">日活跃用户数</span></div>
+            <div class="info-row"><span class="ir-label">英文名</span><span class="ir-value mono" style="font-family:ui-monospace,monospace;">dau</span></div>
+            <div class="info-row"><span class="ir-label">指标分级</span><span class="ir-value"><span class="ir-tag level-core">核心指标</span></span></div>
+            <div class="info-row"><span class="ir-label">指标类型</span><span class="ir-value"><span class="ir-tag type-derived">衍生指标</span></span></div>
+            <div class="info-row"><span class="ir-label">数据类型</span><span class="ir-value">整型</span></div>
+            <div class="info-row"><span class="ir-label">单位</span><span class="ir-value">人</span></div>
+            <div class="info-row"><span class="ir-label">业务线</span><span class="ir-value">sport</span></div>
+            <div class="info-row"><span class="ir-label">负责人</span><span class="ir-value">张晓明 <span class="ir-label">· 数据组</span></span></div>
+            <div class="info-row"><span class="ir-label">上架状态</span><span class="ir-value"><span class="ir-tag online">已上架</span></span></div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title">业务定义</div>
+          <div class="info-rows">
+            <div class="info-row" style="grid-template-columns:1fr;">
+              <span class="ir-label">含义 / 共识</span>
+              <span class="ir-value" style="margin-top:4px;line-height:1.7;">每日访问产品并发生过有效行为的去重用户数。"有效行为"定义：登录后产生过页面浏览、搜索、播放、下单等任一行为。不含游客、爬虫、内部测试账号。</span>
+            </div>
+            <div class="info-row"><span class="ir-label">统计周期</span><span class="ir-value">天（以自然日为单位，T+0 实时聚合，T+1 日清算）</span></div>
+            <div class="info-row" style="grid-template-columns:1fr;">
+              <span class="ir-label">维度组合</span>
+              <span class="ir-value" style="margin-top:4px;">
+                <span class="dim-chips">
+                  <span class="dim-chip">时间</span>
+                  <span class="dim-chip">渠道</span>
+                  <span class="dim-chip">设备</span>
+                  <span class="dim-chip">地区</span>
+                  <span class="dim-chip">版本</span>
+                </span>
+              </span>
+            </div>
+            <div class="info-row" style="grid-template-columns:1fr;">
+              <span class="ir-label">关联术语</span>
+              <span class="ir-value" style="margin-top:4px;">
+                <a href="glossary.html?term=DAU">DAU</a> ·
+                <a href="glossary.html?term=活跃用户">活跃用户</a> ·
+                <a href="glossary.html?term=Active User">Active User</a>
+              </span>
+            </div>
+            <div class="info-row" style="grid-template-columns:1fr;">
+              <span class="ir-label">近义指标</span>
+              <span class="ir-value" style="margin-top:4px;">
+                <a onclick="goByCode('mau')">MAU · 月活跃用户数</a> ·
+                <a onclick="goByCode('wau')">WAU · 周活跃用户数</a>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title">使用统计</div>
+          <div class="info-rows">
+            <div class="info-row"><span class="ir-label">引用报表</span><span class="ir-value">12 个</span></div>
+            <div class="info-row"><span class="ir-label">引用模型</span><span class="ir-value">3 个</span></div>
+            <div class="info-row"><span class="ir-label">订阅人数</span><span class="ir-value">28 人</span></div>
+            <div class="info-row"><span class="ir-label">7 日 PV</span><span class="ir-value">9,820 次</span></div>
+            <div class="info-row"><span class="ir-label">价值分</span><span class="ir-value"><strong style="color:var(--green);font-size:16px;">92</strong> / 100</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT TABS -->
+      <div class="detail-right">
+        <div class="detail-tabs-card">
+          <div class="detail-tabs">
+            <button class="detail-tab active" data-pane="overview" onclick="switchTab(this)">概览</button>
+            <button class="detail-tab" data-pane="formula" onclick="switchTab(this)">计算口径</button>
+            <button class="detail-tab" data-pane="lineage" onclick="switchTab(this)">血缘</button>
+            <button class="detail-tab" data-pane="referenced" onclick="switchTab(this)">被引用 <span class="tab-count">18</span></button>
+            <button class="detail-tab" data-pane="quality" onclick="switchTab(this)">质量监控 <span class="tab-count">4</span></button>
+            <button class="detail-tab" data-pane="changes" onclick="switchTab(this)">变更记录</button>
+            <button class="detail-tab" data-pane="discuss" onclick="switchTab(this)">讨论 <span class="tab-count">8</span></button>
+          </div>
+
+          <!-- ─── 概览 ─── -->
+          <div class="detail-pane active" id="pane-overview">
+            <div class="ov-grid">
+              <div class="ov-card">
+                <div class="ov-card-label">今日 DAU</div>
+                <div class="ov-card-value">1,284,562</div>
+                <div class="ov-card-trend">↑ 5.2% 较昨日</div>
+              </div>
+              <div class="ov-card">
+                <div class="ov-card-label">7 日均值</div>
+                <div class="ov-card-value">1,196,420</div>
+                <div class="ov-card-trend">↑ 3.8% 较上周</div>
+              </div>
+              <div class="ov-card">
+                <div class="ov-card-label">本月峰值</div>
+                <div class="ov-card-value">1,452,108</div>
+                <div class="ov-card-trend">2026-05-12</div>
+              </div>
+              <div class="ov-card">
+                <div class="ov-card-label">同比去年</div>
+                <div class="ov-card-value" style="color:var(--green);">+18.6%</div>
+                <div class="ov-card-trend">健康增长</div>
+              </div>
+            </div>
+
+            <div class="trend-chart">
+              <div class="trend-chart-title">最近 30 天 DAU 趋势</div>
+              <svg viewBox="0 0 800 200" preserveAspectRatio="none">
+                <line class="grid-line" x1="0" y1="40" x2="800" y2="40"/>
+                <line class="grid-line" x1="0" y1="80" x2="800" y2="80"/>
+                <line class="grid-line" x1="0" y1="120" x2="800" y2="120"/>
+                <line class="grid-line" x1="0" y1="160" x2="800" y2="160"/>
+                <path class="data-area" d="M0,150 L27,140 L54,135 L80,128 L107,122 L134,116 L160,110 L187,108 L213,105 L240,98 L267,95 L293,90 L320,82 L347,78 L373,75 L400,72 L427,68 L453,62 L480,58 L507,52 L533,48 L560,45 L587,42 L613,38 L640,35 L667,32 L693,28 L720,25 L747,30 L773,28 L800,22 L800,200 L0,200 Z"/>
+                <path class="data-line" d="M0,150 L27,140 L54,135 L80,128 L107,122 L134,116 L160,110 L187,108 L213,105 L240,98 L267,95 L293,90 L320,82 L347,78 L373,75 L400,72 L427,68 L453,62 L480,58 L507,52 L533,48 L560,45 L587,42 L613,38 L640,35 L667,32 L693,28 L720,25 L747,30 L773,28 L800,22"/>
+                <circle class="data-dot" cx="800" cy="22" r="4"/>
+                <text class="axis-label" x="0" y="195">04-21</text>
+                <text class="axis-label" x="380" y="195">05-06</text>
+                <text class="axis-label" x="760" y="195">05-20</text>
+              </svg>
+            </div>
+
+            <h4 style="font-size:13px;font-weight:600;margin:18px 0 10px;">维度下钻</h4>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>维度</th><th>分组</th><th style="text-align:right;">数值</th><th style="text-align:right;">占比</th><th>趋势</th></tr></thead>
+                <tbody>
+                  <tr><td rowspan="3">设备</td><td>iOS</td><td style="text-align:right;">582,103</td><td style="text-align:right;">45.3%</td><td style="color:var(--green);">↑ 4.2%</td></tr>
+                  <tr><td>Android</td><td style="text-align:right;">655,820</td><td style="text-align:right;">51.1%</td><td style="color:var(--green);">↑ 6.1%</td></tr>
+                  <tr><td>Web</td><td style="text-align:right;">46,639</td><td style="text-align:right;">3.6%</td><td style="color:var(--red);">↓ 2.3%</td></tr>
+                  <tr><td rowspan="3">渠道</td><td>自然量</td><td style="text-align:right;">512,820</td><td style="text-align:right;">39.9%</td><td style="color:var(--green);">↑ 3.1%</td></tr>
+                  <tr><td>买量</td><td style="text-align:right;">487,212</td><td style="text-align:right;">37.9%</td><td style="color:var(--green);">↑ 8.5%</td></tr>
+                  <tr><td>分销</td><td style="text-align:right;">284,530</td><td style="text-align:right;">22.1%</td><td style="color:var(--green);">↑ 1.2%</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ─── 计算口径 ─── -->
+          <div class="detail-pane" id="pane-formula">
+            <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;">业务口径</h4>
+            <div style="background:var(--gray-light);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:13px;line-height:1.8;color:var(--text);">
+              每日访问产品并发生过有效行为的<strong>去重</strong>用户数。
+              <ul style="margin:8px 0 0 20px;color:var(--sub);">
+                <li>有效行为：登录后产生过页面浏览、搜索、播放、下单等任一行为</li>
+                <li>去重：按 user_id 去重，同一用户同一天计 1 次</li>
+                <li>排除：游客、爬虫、内部测试账号（is_internal = 1 的用户）</li>
+                <li>统计窗口：自然日（00:00:00 - 23:59:59，UTC+8）</li>
+              </ul>
+            </div>
+
+            <h4 style="font-size:13px;font-weight:600;margin:18px 0 10px;display:flex;align-items:center;gap:8px;">
+              SQL 实现
+              <button class="btn btn-sm" style="margin-left:auto;background:linear-gradient(135deg,#FFF3E8,#FCE4EC);border-color:#FFD699;color:#FA8C16;font-weight:500;" onclick="exportToTool()" title="一键将本指标包装为 Agent 可调用的 Tool / Function">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" style="width:12px;height:12px;"><circle cx="5" cy="9" r="2"/><circle cx="11" cy="5" r="2"/><line x1="6.4" y1="7.6" x2="9.6" y2="6.4"/></svg>
+                注册为 Agent Tool
+              </button>
+              <button class="btn btn-sm" style="background:#F0EDFF;border-color:#D9C9FF;color:#7B61FF;" onclick="showToast('已生成 Function Schema，可在 Tool 注册中心审阅（演示）','success')" title="生成 OpenAPI / JSON Schema">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" style="width:12px;height:12px;"><polyline points="2 6 6 10 12 3"/></svg>
+                查看 Function Schema
+              </button>
+            </h4>
+            <div class="sql-block">
+              <button class="sql-copy" onclick="copyCode('formulaSql')">复制</button>
+              <code id="formulaSql"><span class="cmt">-- 计算 DAU（日活跃用户数）</span>
+<span class="kw">SELECT</span>
+  dt,
+  <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> user_id) <span class="kw">AS</span> dau
+<span class="kw">FROM</span> dwd.user_active_log
+<span class="kw">WHERE</span>
+  dt = <span class="str">'${date}'</span>
+  <span class="kw">AND</span> is_internal = <span class="num">0</span>
+  <span class="kw">AND</span> action_type <span class="kw">IN</span> (<span class="str">'login'</span>, <span class="str">'view'</span>, <span class="str">'search'</span>, <span class="str">'play'</span>, <span class="str">'order'</span>)
+<span class="kw">GROUP BY</span> dt;</code>
+            </div>
+
+            <h4 style="font-size:13px;font-weight:600;margin:18px 0 10px;">算子表达式（衍生指标）</h4>
+            <div style="background:#FAFBFC;border:1px solid var(--border);border-radius:6px;padding:14px;font-family:ui-monospace,monospace;font-size:12px;color:var(--text);">
+              dau = COUNT_DISTINCT(<span style="color:var(--primary);">user_id</span>)
+              WHERE <span style="color:var(--purple);">user_active_log.action_type</span> IN [login, view, search, play, order]
+              AND <span style="color:var(--purple);">user_active_log.is_internal</span> = 0
+              GROUP BY <span style="color:var(--primary);">dt</span>
+            </div>
+
+            <h4 style="font-size:13px;font-weight:600;margin:18px 0 10px;">维度组合</h4>
+            <div class="dim-chips" style="margin-bottom:12px;">
+              <span class="dim-chip">时间（必选）</span>
+              <span class="dim-chip">渠道</span>
+              <span class="dim-chip">设备</span>
+              <span class="dim-chip">地区</span>
+              <span class="dim-chip">版本</span>
+            </div>
+          </div>
+
+          <!-- ─── 血缘 ─── -->
+          <div class="detail-pane" id="pane-lineage">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:500;">血缘视图</span>
+              <span style="font-size:12px;color:var(--sub);">展示本指标的上游来源表 → 本指标 → 下游引用资产</span>
+            </div>
+            <div class="lineage-wrap">
+              <div class="lineage-graph">
+                <svg class="lineage-arrows" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <defs>
+                    <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><polygon points="0 0, 6 3, 0 6" fill="#86909C"/></marker>
+                  </defs>
+                  <line x1="20" y1="30" x2="48" y2="50" stroke="#C2C7CF" stroke-width=".4" marker-end="url(#arrow)"/>
+                  <line x1="20" y1="60" x2="48" y2="50" stroke="#C2C7CF" stroke-width=".4" marker-end="url(#arrow)"/>
+                  <line x1="52" y1="50" x2="80" y2="30" stroke="#C2C7CF" stroke-width=".4" marker-end="url(#arrow)"/>
+                  <line x1="52" y1="50" x2="80" y2="60" stroke="#C2C7CF" stroke-width=".4" marker-end="url(#arrow)"/>
+                  <line x1="52" y1="50" x2="80" y2="80" stroke="#C2C7CF" stroke-width=".4" marker-end="url(#arrow)"/>
+                </svg>
+                <div class="lineage-side">
+                  <div class="lineage-side-title">上游来源表 (2)</div>
+                  <div class="lineage-node-card upstream" onclick="location.href='metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志'">
+                    <div class="ln-name">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/><path d="M2 3v5c0 1.1 2.7 2 6 2s6-.9 6-2V3"/><path d="M2 8v5c0 1.1 2.7 2 6 2s6-.9 6-2V8"/></svg>
+                      HIVE.DWD.user_active_log
+                    </div>
+                    <div class="ln-meta">用户活跃日志 · 42 字段 · 张晓明</div>
+                  </div>
+                  <div class="lineage-node-card upstream" onclick="location.href='metadata-table-detail.html?code=hive_dim_user&name=用户维度表'">
+                    <div class="ln-name">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/><path d="M2 3v5c0 1.1 2.7 2 6 2s6-.9 6-2V3"/><path d="M2 8v5c0 1.1 2.7 2 6 2s6-.9 6-2V8"/></svg>
+                      HIVE.DIM.dim_user
+                    </div>
+                    <div class="ln-meta">用户维度表 · 28 字段 · 王芳</div>
+                  </div>
+                </div>
+                <div class="lineage-center">
+                  <div class="lineage-main">
+                    <div class="lm-name">📊 日活跃用户数</div>
+                    <div class="lm-en">dau · 衍生指标 · 核心</div>
+                  </div>
+                </div>
+                <div class="lineage-side">
+                  <div class="lineage-side-title">下游引用 (15)</div>
+                  <div class="lineage-node-card downstream" onclick="location.href='metadata-report-detail.html?code=game_core_daily&name=游戏核心指标日报'">
+                    <div class="ln-name">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>
+                      游戏核心指标日报
+                    </div>
+                    <div class="ln-meta">Dashboard · 李明 · 12,430 PV/周</div>
+                  </div>
+                  <div class="lineage-node-card downstream" onclick="location.href='metadata-report-detail.html?code=self_player_retention&name=玩家留存漏斗分析'">
+                    <div class="ln-name">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>
+                      玩家留存漏斗分析
+                    </div>
+                    <div class="ln-meta">自助分析 · 王芳 · 3,890 PV/周</div>
+                  </div>
+                  <div class="lineage-node-card downstream">
+                    <div class="ln-name">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/><polyline points="10 5 14 5 14 9"/></svg>
+                      MAU（月活跃用户数）
+                    </div>
+                    <div class="ln-meta">复合指标 · 张晓明</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:10px;text-align:center;">
+              <button class="btn btn-sm">查看完整血缘图（含跨层）</button>
+            </div>
+          </div>
+
+          <!-- ─── 被引用 ─── -->
+          <div class="detail-pane" id="pane-referenced">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+              <span style="font-size:13px;color:var(--sub);">本指标被以下 18 个资产引用：</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <span class="cmdk-chip active">全部 18</span>
+                <span class="cmdk-chip">📊 报表 6</span>
+                <span class="cmdk-chip">📈 复合指标 4</span>
+                <span class="cmdk-chip">⚙ 调度 1</span>
+                <span class="cmdk-chip" style="color:#FA8C16;">🛠️ 被 Agent Tool 引用 1</span>
+                <span class="cmdk-chip" style="color:#7B61FF;">🤖 被 Agent 引用 1</span>
+                <span class="cmdk-chip" style="color:#0958D9;">📚 被 RAG 知识库引用 1</span>
+              </div>
+              <span style="margin-left:auto;font-size:12px;color:var(--sub);">按访问量排序</span>
+            </div>
+            <div class="ref-list">
+              <!-- 🤖 AI 引用区块（Agent-only：被 Tool / Agent / KB 引用） -->
+              <div class="ref-row" onclick="location.href='tool.html?code=call_metric_api'" style="border-left:3px solid #FA8C16;">
+                <div class="ref-icon" style="background:#FFF3E8;color:#FA8C16;"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="10" r="2"/><circle cx="12" cy="6" r="2"/><line x1="7.4" y1="8.6" x2="10.6" y2="7.4"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">call_metric_api 指标查询工具</div><div class="ref-info"><strong style="color:#FA8C16;">被 Agent Tool 引用</strong> · Function · 王晨 · 已脱敏 · 被 6 个 Agent 调用</div></div>
+                <span class="ref-pv">12,840 调用/日</span>
+              </div>
+              <div class="ref-row" onclick="location.href='agent-detail.html?code=biz_qa_agent'" style="border-left:3px solid #7B61FF;">
+                <div class="ref-icon" style="background:#F0EDFF;color:#7B61FF;"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><circle cx="3" cy="3" r="1"/><circle cx="13" cy="3" r="1"/><circle cx="3" cy="13" r="1"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">智能问数 Agent biz_qa_agent</div><div class="ref-info"><strong style="color:#7B61FF;">被 Agent 引用</strong> · 基座 GPT-4 Turbo · 王晨 · 通过 call_metric_api 工具调用本指标</div></div>
+                <span class="ref-pv">生产 v1.4</span>
+              </div>
+              <div class="ref-row" onclick="location.href='dataset-detail.html?code=kb_metric_def'" style="border-left:3px solid #0958D9;">
+                <div class="ref-icon" style="background:#E8F4FF;color:#0958D9;"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h12v10H2z"/><path d="M2 6h12M5 3v10"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">指标定义知识库 kb_metric_def</div><div class="ref-info"><strong style="color:#0958D9;">被 RAG 知识库引用</strong> · bge-m3 · 数据治理 · 用于 Agent 解释指标口径</div></div>
+                <span class="ref-pv">2.3 万 chunks</span>
+              </div>
+              <div class="ref-row" onclick="location.href='metadata-report-detail.html?code=game_core_daily'">
+                <div class="ref-icon report"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">游戏核心指标日报</div><div class="ref-info">Dashboard · 李明 · sport · 已上架</div></div>
+                <span class="ref-pv">12,430 PV</span>
+              </div>
+              <div class="ref-row" onclick="location.href='metadata-report-detail.html?code=screen_release'">
+                <div class="ref-icon dashboard"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="14" height="10" rx="1"/><line x1="1" y1="6" x2="15" y2="6"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">实时大屏 - 新版本上线</div><div class="ref-info">数据大屏 · 张晓明 · skillbase</div></div>
+                <span class="ref-pv">8,950 PV</span>
+              </div>
+              <div class="ref-row" onclick="location.href='metadata-report-detail.html?code=self_player_retention'">
+                <div class="ref-icon report"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">玩家留存漏斗分析</div><div class="ref-info">自助分析 · 王芳 · sc</div></div>
+                <span class="ref-pv">3,890 PV</span>
+              </div>
+              <div class="ref-row">
+                <div class="ref-icon experiment"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 1v5L2 13a1 1 0 001 1h10a1 1 0 001-1l-3-7V1"/><line x1="3" y1="1" x2="13" y2="1"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">A/B 测试 - 新引导流程</div><div class="ref-info">实验 · 陈晓 · 进行中（D7）</div></div>
+                <span class="ref-pv">2,103 次</span>
+              </div>
+              <div class="ref-row">
+                <div class="ref-icon workflow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="6" y1="4" x2="10" y2="12"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">调度任务 - dws_user_d</div><div class="ref-info">DolphinScheduler · 每日 03:00 · 平均 12min</div></div>
+                <span class="ref-pv">每日</span>
+              </div>
+              <div class="ref-row">
+                <div class="ref-icon experiment"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/><polyline points="10 5 14 5 14 9"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">MAU 月活跃用户数（复合指标）</div><div class="ref-info">复合指标 · 张晓明 · 引用 dau 计算</div></div>
+                <span class="ref-pv">衍生</span>
+              </div>
+              <div class="ref-row">
+                <div class="ref-icon experiment"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/><polyline points="10 5 14 5 14 9"/></svg></div>
+                <div class="ref-meta"><div class="ref-name">DAU/MAU 黏性指标</div><div class="ref-info">复合指标 · 王芳</div></div>
+                <span class="ref-pv">衍生</span>
+              </div>
+            </div>
+            <div style="margin-top:12px;text-align:center;color:var(--sub);font-size:12px;">还有 11 项资产引用本指标，<a style="color:var(--primary);cursor:pointer;">查看全部 →</a></div>
+          </div>
+
+          <!-- ─── 质量监控 ─── -->
+          <div class="detail-pane" id="pane-quality">
+            <div class="quality-grid">
+              <div class="qg-card green">
+                <div class="qg-label">完整性</div>
+                <div class="qg-value">99.8%</div>
+                <div class="qg-bar"><div class="qg-bar-inner" style="width:99.8%;"></div></div>
+              </div>
+              <div class="qg-card green">
+                <div class="qg-label">及时性</div>
+                <div class="qg-value">100%</div>
+                <div class="qg-bar"><div class="qg-bar-inner" style="width:100%;"></div></div>
+              </div>
+              <div class="qg-card orange">
+                <div class="qg-label">一致性</div>
+                <div class="qg-value">94.5%</div>
+                <div class="qg-bar"><div class="qg-bar-inner" style="width:94.5%;"></div></div>
+              </div>
+              <div class="qg-card green">
+                <div class="qg-label">准确性</div>
+                <div class="qg-value">99.2%</div>
+                <div class="qg-bar"><div class="qg-bar-inner" style="width:99.2%;"></div></div>
+              </div>
+            </div>
+
+            <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;">质量规则 (4)</h4>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>规则名</th><th>维度</th><th>阈值</th><th>最近运行</th><th>通过率</th><th>状态</th><th>操作</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td>DAU 不为 NULL</td>
+                    <td>完整性</td>
+                    <td>NULL 率 &lt; 1%</td>
+                    <td>今天 03:15</td>
+                    <td><span style="color:var(--green);font-weight:600;">99.8%</span></td>
+                    <td><span class="ir-tag online">通过</span></td>
+                    <td><a style="color:var(--primary);font-size:12px;cursor:pointer;">查看</a></td>
+                  </tr>
+                  <tr>
+                    <td>每日数据按时产出</td>
+                    <td>及时性</td>
+                    <td>03:30 前完成</td>
+                    <td>今天 03:18</td>
+                    <td><span style="color:var(--green);font-weight:600;">100%</span></td>
+                    <td><span class="ir-tag online">通过</span></td>
+                    <td><a style="color:var(--primary);font-size:12px;cursor:pointer;">查看</a></td>
+                  </tr>
+                  <tr>
+                    <td>与 DWS 层 dau 字段一致</td>
+                    <td>一致性</td>
+                    <td>差异率 &lt; 0.5%</td>
+                    <td>今天 03:25</td>
+                    <td><span style="color:var(--orange);font-weight:600;">94.5%</span></td>
+                    <td><span class="ir-tag pending">告警</span></td>
+                    <td><a style="color:var(--primary);font-size:12px;cursor:pointer;">查看 / 创建工单</a></td>
+                  </tr>
+                  <tr>
+                    <td>同环比波动 &lt; 30%</td>
+                    <td>准确性</td>
+                    <td>WoW &lt; 30%</td>
+                    <td>今天 03:30</td>
+                    <td><span style="color:var(--green);font-weight:600;">99.2%</span></td>
+                    <td><span class="ir-tag online">通过</span></td>
+                    <td><a style="color:var(--primary);font-size:12px;cursor:pointer;">查看</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="margin-top:14px;">
+              <button class="btn btn-sm">+ 新增质量规则</button>
+              <button class="btn btn-sm" style="margin-left:6px;">查看历史告警</button>
+            </div>
+          </div>
+
+          <!-- ─── 变更记录 ─── -->
+          <div class="detail-pane" id="pane-changes">
+            <div class="timeline">
+              <div class="timeline-item merged">
+                <div class="timeline-time">2026-05-18 14:32 · 张晓明</div>
+                <div class="timeline-title">更新业务口径，明确"有效行为"定义</div>
+                <div class="timeline-desc">在含义/共识字段补充：有效行为指登录后产生过页面浏览、搜索、播放、下单等任一行为。讨论原因：避免下游报表对"活跃"理解口径不一致。</div>
+                <div class="timeline-diff">
+                  <div><span class="diff-del">活跃用户数 = 当日访问产品的去重用户数</span></div>
+                  <div><span class="diff-add">活跃用户数 = 每日访问产品并发生过有效行为的去重用户数</span></div>
+                </div>
+              </div>
+              <div class="timeline-item merged">
+                <div class="timeline-time">2026-05-12 09:50 · 王芳</div>
+                <div class="timeline-title">关联近义指标 MAU、WAU</div>
+                <div class="timeline-desc">将本指标与 MAU、WAU 建立"近义指标"关联，方便用户在搜索时一并展示。</div>
+              </div>
+              <div class="timeline-item merged">
+                <div class="timeline-time">2026-04-28 16:20 · 张晓明</div>
+                <div class="timeline-title">SQL 实现优化（性能）</div>
+                <div class="timeline-desc">将 COUNT(DISTINCT user_id) 改为 HyperLogLog 估算，运行时间从 25min 降到 4min。误差率 &lt; 0.5%，可接受。</div>
+              </div>
+              <div class="timeline-item merged">
+                <div class="timeline-time">2026-04-15 11:00 · 张晓明</div>
+                <div class="timeline-title">指标分级提升至"核心指标"</div>
+                <div class="timeline-desc">由"关键指标"提升至"核心指标"，原因：本指标已被 12 个核心报表引用，下游影响面大。</div>
+                <div class="timeline-diff">
+                  <div><span class="diff-del">指标分级：关键指标</span></div>
+                  <div><span class="diff-add">指标分级：核心指标</span></div>
+                </div>
+              </div>
+              <div class="timeline-item merged">
+                <div class="timeline-time">2026-03-20 10:15 · 张晓明</div>
+                <div class="timeline-title">指标创建</div>
+                <div class="timeline-desc">从《数据需求 - DR-2026-088》衍生而来，初始责任人：张晓明。</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── 讨论 ─── -->
+          <div class="detail-pane" id="pane-discuss">
+            <div id="commentList">
+              <div class="comment-item">
+                <div class="comment-avatar" style="background:#7B61FF;">陈</div>
+                <div class="comment-body">
+                  <div class="comment-meta">
+                    <span class="comment-name">陈晓</span>
+                    <span class="comment-time">2026-05-19 16:42</span>
+                  </div>
+                  <div class="comment-text">@张晓明 一致性规则告警了，看起来是因为 DWS 层的 dau 还在用旧的 COUNT(DISTINCT)，这边已经改成了 HLL，差异 0.3% 算正常吧？</div>
+                  <div class="comment-actions">
+                    <button>👍 3</button>
+                    <button>回复</button>
+                  </div>
+                </div>
+              </div>
+              <div class="comment-item" style="margin-left:32px;border-left:2px solid var(--border);padding-left:14px;">
+                <div class="comment-avatar">张</div>
+                <div class="comment-body">
+                  <div class="comment-meta">
+                    <span class="comment-name">张晓明</span>
+                    <span class="comment-time">2026-05-19 17:08</span>
+                  </div>
+                  <div class="comment-text">@陈晓 是的，已经在质量规则里把阈值从 0.1% 调到 0.5% 了，本周 DWS 层也会同步切到 HLL，到时一致性会回到 99%+。</div>
+                  <div class="comment-actions">
+                    <button>👍 1</button>
+                    <button>回复</button>
+                  </div>
+                </div>
+              </div>
+              <div class="comment-item">
+                <div class="comment-avatar" style="background:#FF7D00;">王</div>
+                <div class="comment-body">
+                  <div class="comment-meta">
+                    <span class="comment-name">王芳</span>
+                    <span class="comment-time">2026-05-15 11:30</span>
+                  </div>
+                  <div class="comment-text">想确认一下：游客（未登录用户）确实不计入 DAU 吗？我们在做 H5 引流分析时希望能看到这部分。</div>
+                  <div class="comment-actions">
+                    <button>👍 0</button>
+                    <button>回复</button>
+                  </div>
+                </div>
+              </div>
+              <div class="comment-item" style="margin-left:32px;border-left:2px solid var(--border);padding-left:14px;">
+                <div class="comment-avatar">张</div>
+                <div class="comment-body">
+                  <div class="comment-meta">
+                    <span class="comment-name">张晓明</span>
+                    <span class="comment-time">2026-05-15 14:20</span>
+                  </div>
+                  <div class="comment-text">@王芳 不计入。游客建议看"<a style="color:var(--primary);cursor:pointer;">UV (unique_visitor)</a>"，那个含游客。如果你需要可以提个增量需求，把 DAU 拆成"DAU_login + DAU_visitor"。</div>
+                  <div class="comment-actions">
+                    <button>👍 2</button>
+                    <button>回复</button>
+                  </div>
+                </div>
+              </div>
+              <div class="comment-item">
+                <div class="comment-avatar" style="background:#00B42A;">李</div>
+                <div class="comment-body">
+                  <div class="comment-meta">
+                    <span class="comment-name">李明</span>
+                    <span class="comment-time">2026-04-30 09:50</span>
+                  </div>
+                  <div class="comment-text">建议把 SQL 改成 HLL 估算，我们买量分析每天要算 30+ 个分组的 dau，目前要跑 40 多分钟。</div>
+                  <div class="comment-actions">
+                    <button>👍 5</button>
+                    <button>回复</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="comment-input-box">
+              <div class="comment-avatar" style="margin-top:4px;">张</div>
+              <div style="flex:1;">
+                <textarea id="commentInput" placeholder="发表评论：提问、补充口径说明、报告问题... 输入 @ 可提及他人"></textarea>
+                <div style="margin-top:6px;text-align:right;">
+                  <button class="btn btn-sm">取消</button>
+                  <button class="btn btn-sm btn-primary" onclick="postComment()" style="margin-left:6px;">发表</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产..." oninput="renderCmdK()" />
+      <span class="cmdk-esc">ESC</span>
+    </div>
+    <div class="cmdk-filters">
+      <span class="cmdk-chip active" data-type="all" onclick="setCmdKFilter(this)">全部</span>
+      <span class="cmdk-chip" data-type="metric" onclick="setCmdKFilter(this)">指标</span>
+      <span class="cmdk-chip" data-type="table" onclick="setCmdKFilter(this)">库表</span>
+      <span class="cmdk-chip" data-type="report" onclick="setCmdKFilter(this)">报表</span>
+      <span class="cmdk-chip" data-type="agent" onclick="setCmdKFilter(this)">Agent</span>
+      <span class="cmdk-chip" data-type="tool" onclick="setCmdKFilter(this)">工具</span>
+      <span class="cmdk-chip" data-type="model" onclick="setCmdKFilter(this)">LLM</span>
+      <span class="cmdk-chip" data-type="kb" onclick="setCmdKFilter(this)">知识库</span>
+      <span class="cmdk-chip" data-type="prompt" onclick="setCmdKFilter(this)">Prompt</span>
+      <span class="cmdk-chip" data-type="vector" onclick="setCmdKFilter(this)">向量集合</span>
+      <span class="cmdk-chip" data-type="term" onclick="setCmdKFilter(this)">术语</span>
+      <span class="cmdk-chip" data-type="source" onclick="setCmdKFilter(this)">数据源</span>
+    </div>
+    <div class="cmdk-results" id="cmdkResults"></div>
+    <div class="cmdk-foot">
+      <span><kbd>↑</kbd> <kbd>↓</kbd> 选择</span>
+      <span><kbd>Enter</kbd> 打开</span>
+      <span><kbd>ESC</kbd> 关闭</span>
+      <span style="margin-left:auto;">Spark MDM</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ━━ 全局索引 ━━ */
+  window.__GLOBAL_INDEX = [
+    { type:'metric', code:'dau', name:'日活跃用户数', en:'dau', biz:'sport', owner:'张晓明', level:'核心', status:'已上架', desc:'去重后日 UV', url:'metadata-asset-detail.html?code=dau' },
+    { type:'metric', code:'mau', name:'月活跃用户数', en:'mau', biz:'sport', owner:'张晓明', level:'核心', status:'已上架', desc:'去重后月 UV', url:'metadata-asset-detail.html?code=mau' },
+    { type:'metric', code:'pay_conv', name:'支付转化率', en:'pay_conversion_rate', biz:'skillbase', owner:'李明', level:'核心', status:'已上架', desc:'支付成功 / 下单数', url:'metadata-asset-detail.html?code=pay_conv' },
+    { type:'metric', code:'arpu', name:'用户平均收入', en:'arpu', biz:'skillbase', owner:'李明', level:'关键', status:'已上架', desc:'总收入 / 活跃用户', url:'metadata-asset-detail.html?code=arpu' },
+    { type:'metric', code:'retention_d7', name:'7日留存率', en:'retention_d7', biz:'sc', owner:'王芳', level:'核心', status:'已上架', desc:'第7日活跃 / 当日新增', url:'metadata-asset-detail.html?code=retention_d7' },
+    { type:'table', code:'hive_dwd_user_active_log', name:'HIVE.DWD.user_active_log', en:'用户活跃日志', biz:'sc', owner:'张晓明', level:'关键', status:'已上架', desc:'明细层用户端上行为日志', url:'metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志' },
+    { type:'report', code:'game_core_daily', name:'游戏核心指标日报', en:'game_core_daily', biz:'sport', owner:'李明', level:'核心', status:'已上架', desc:'每日核心指标日报', url:'metadata-report-detail.html?code=game_core_daily&name=游戏核心指标日报' },
+    { type:'term', code:'term_dau', name:'DAU (Daily Active User)', en:'DAU', biz:'通用', owner:'数据治理委员会', level:'-', status:'已发布', desc:'每日活跃用户数', url:'glossary.html?term=DAU' },
+    { type:'model', code:'gpt4_turbo', name:'GPT-4 Turbo（OpenAI）', en:'gpt-4-turbo', biz:'-', owner:'平台管理员', level:'-', status:'在线', desc:'LLM 接入 · 商用 · 上下文 128K', url:'model-detail.html?code=gpt4_turbo' },
+    { type:'model', code:'qwen2_72b', name:'Qwen2-72B-Instruct（阿里云）', en:'qwen2-72b-instruct', biz:'-', owner:'平台管理员', level:'-', status:'在线', desc:'LLM 接入 · 商用 · 上下文 32K', url:'model-detail.html?code=qwen2_72b' },
+    { type:'agent', code:'biz_qa_agent', name:'智能问数 Agent', en:'biz_qa_agent', biz:'data', owner:'王晨', level:'核心', status:'生产', desc:'RAG+SQL · 基座 GPT-4 Turbo', url:'agent-detail.html?code=biz_qa_agent' },
+    { type:'agent', code:'cs_intent_agent', name:'客服意图 Agent', en:'cs_intent_agent', biz:'cservice', owner:'李雨', level:'关键', status:'生产', desc:'Function Agent · 基座 Qwen2-72B', url:'agent-detail.html?code=cs_intent_agent' },
+    { type:'tool', code:'call_metric_api', name:'call_metric_api 指标查询工具', en:'call_metric_api', biz:'data', owner:'王晨', level:'核心', status:'已发布', desc:'API · 被 6 个 Agent 引用', url:'tool.html?code=call_metric_api' },
+    { type:'tool', code:'sql_runner', name:'sql_runner SQL 执行工具', en:'sql_runner', biz:'data', owner:'王晨', level:'关键', status:'已发布', desc:'SQL · Trino 后端', url:'tool.html?code=sql_runner' },
+    { type:'kb', code:'kb_cs_main', name:'客服 FAQ KB', en:'kb_customer_service', biz:'cservice', owner:'李雨', level:'核心', status:'已发布', desc:'12.4 万 chunks · bge-m3', url:'dataset-detail.html?code=kb_cs_main' },
+    { type:'prompt', code:'pt_summary_v2', name:'文本摘要 Prompt v2', en:'pt_summary_v2', biz:'cservice', owner:'李雨', level:'关键', status:'已发布', desc:'Claude/GPT-4 长文本摘要', url:'prompt-detail.html?code=pt_summary_v2' },
+    { type:'vector', code:'vec_item_emb', name:'item_embedding 商品向量集合', en:'vec_item_embedding', biz:'recsys', owner:'王晨', level:'核心', status:'已上架', desc:'Milvus · 128维', url:'metadata-source-detail.html?code=src_milvus_main&collection=item_embedding' }
+  ];
+
+  /* ━━ 指标数据集（按 code 索引）━━ */
+  const METRICS = {
+    dau: { cn:'日活跃用户数', en:'dau', level:'核心指标', type:'衍生指标', biz:'sport', owner:'张晓明', dtype:'整型 (人)', period:'天', status:'已上架' },
+    mau: { cn:'月活跃用户数', en:'mau', level:'核心指标', type:'复合指标', biz:'sport', owner:'张晓明', dtype:'整型 (人)', period:'月', status:'已上架' },
+    pay_conv: { cn:'支付转化率', en:'pay_conversion_rate', level:'核心指标', type:'衍生指标', biz:'skillbase', owner:'李明', dtype:'百分比', period:'天', status:'已上架' },
+    arpu: { cn:'用户平均收入', en:'arpu', level:'关键指标', type:'复合指标', biz:'skillbase', owner:'李明', dtype:'金额 (元)', period:'天', status:'已上架' },
+    retention_d7: { cn:'7日留存率', en:'retention_d7', level:'核心指标', type:'衍生指标', biz:'sc', owner:'王芳', dtype:'百分比', period:'天', status:'已上架' },
+    ltv_30: { cn:'30日LTV', en:'ltv_30', level:'关键指标', type:'复合指标', biz:'sport', owner:'陈晓', dtype:'金额 (元)', period:'天', status:'已上架' }
+  };
+
+  /* ━━ URL 直链：从 ?code= 加载指标 ━━ */
+  function loadMetricFromURL() {
+    const code = new URLSearchParams(location.search).get('code') || 'dau';
+    const m = METRICS[code] || METRICS.dau;
+    document.getElementById('metricNameCn').textContent = m.cn;
+    document.getElementById('metricNameEn').textContent = m.en;
+    document.getElementById('bcName').textContent = m.cn;
+    document.getElementById('metricLevel').textContent = m.level;
+    document.getElementById('metricType').textContent = m.type;
+    document.getElementById('metricBiz').textContent = m.biz;
+    document.getElementById('metricOwner').textContent = m.owner;
+    document.getElementById('metricDtype').textContent = m.dtype;
+    document.getElementById('metricPeriod').textContent = m.period;
+    document.getElementById('metricStatusText').textContent = m.status;
+    document.title = 'Spark · ' + m.cn;
+    return code;
+  }
+  const _currentCode = loadMetricFromURL();
+
+  /* ━━ 最近浏览写入 ━━ */
+  (function recordRecent() {
+    try {
+      const list = JSON.parse(localStorage.getItem('mdm_recent') || '[]');
+      const filtered = list.filter(r => r.code !== _currentCode);
+      filtered.unshift({ code: _currentCode, type: 'metric', name: METRICS[_currentCode]?.cn || _currentCode, time: new Date().toLocaleString('zh-CN') });
+      localStorage.setItem('mdm_recent', JSON.stringify(filtered.slice(0, 20)));
+    } catch (e) {}
+  })();
+
+  /* ━━ Tab 切换 ━━ */
+  function switchTab(btn) {
+    document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    const pane = btn.dataset.pane;
+    document.querySelectorAll('.detail-pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + pane).classList.add('active');
+  }
+
+  /* ━━ 收藏 / 订阅 ━━ */
+  function getFavorites() { try { return JSON.parse(localStorage.getItem('mdm_favorites')) || []; } catch(e) { return []; } }
+  function setFavorites(a) { localStorage.setItem('mdm_favorites', JSON.stringify(a)); }
+  function getSubs() { try { return JSON.parse(localStorage.getItem('mdm_subs')) || []; } catch(e) { return []; } }
+  function setSubs(a) { localStorage.setItem('mdm_subs', JSON.stringify(a)); }
+  function refreshFavBtn() {
+    const btn = document.getElementById('favBtn');
+    const ico = document.getElementById('favIcon');
+    const isFav = getFavorites().includes(_currentCode);
+    btn.classList.toggle('starred', isFav);
+    btn.title = isFav ? '取消收藏' : '收藏';
+    ico.setAttribute('fill', isFav ? 'currentColor' : 'none');
+  }
+  function toggleFavorite() {
+    const favs = getFavorites();
+    const i = favs.indexOf(_currentCode);
+    if (i >= 0) { favs.splice(i, 1); showToast('已取消收藏', 'info'); }
+    else { favs.unshift(_currentCode); showToast('已收藏，可在首页"我收藏的"查看', 'success'); }
+    setFavorites(favs);
+    refreshFavBtn();
+  }
+  function refreshSubBtn() {
+    const btn = document.getElementById('subBtn');
+    const sub = getSubs().includes(_currentCode);
+    btn.classList.toggle('subscribed', sub);
+    btn.title = sub ? '取消订阅' : '订阅变更';
+  }
+  function toggleSubscribe() {
+    const subs = getSubs();
+    const i = subs.indexOf(_currentCode);
+    if (i >= 0) { subs.splice(i, 1); showToast('已取消订阅', 'info'); }
+    else { subs.unshift(_currentCode); showToast('已订阅，本指标变更将在通知中提醒你', 'success'); }
+    setSubs(subs);
+    refreshSubBtn();
+  }
+  refreshFavBtn();
+  refreshSubBtn();
+
+  /* ━━ 操作 ━━ */
+  function copyName() {
+    navigator.clipboard?.writeText(document.getElementById('metricNameEn').textContent);
+    showToast('英文名已复制到剪贴板', 'success');
+  }
+  function copyShareLink() {
+    navigator.clipboard?.writeText(location.href);
+    showToast('链接已复制，可分享给同事', 'success');
+  }
+  function copyCode(id) {
+    const el = document.getElementById(id);
+    navigator.clipboard?.writeText(el.innerText);
+    showToast('SQL 已复制', 'success');
+  }
+  function applyForUse() {
+    location.href = 'metadata-request.html?action=new&type=metric&code=' + encodeURIComponent(_currentCode);
+  }
+  function editMetric() {
+    location.href = 'metadata-asset.html?edit=' + encodeURIComponent(_currentCode);
+  }
+  function postComment() {
+    const t = document.getElementById('commentInput').value.trim();
+    if (!t) { showToast('请输入评论内容', 'info'); return; }
+    showToast('评论已发表（演示）', 'success');
+    document.getElementById('commentInput').value = '';
+  }
+  function goByCode(code) {
+    location.href = 'metadata-asset-detail.html?code=' + encodeURIComponent(code);
+  }
+
+  /* ━━ Cmd+K (复用 home.html 的实现) ━━ */
+  let _cmdkFilter = 'all', _cmdkFocus = 0;
+  function openCmdK() { document.getElementById('cmdkMask').classList.add('show'); setTimeout(()=>document.getElementById('cmdkInput').focus(),30); renderCmdK(); }
+  function closeCmdK() { document.getElementById('cmdkMask').classList.remove('show'); }
+  function setCmdKFilter(el) { document.querySelectorAll('.cmdk-chip').forEach(c=>c.classList.remove('active')); el.classList.add('active'); _cmdkFilter=el.dataset.type; renderCmdK(); }
+  function highlight(t,q){ if(!q) return t; const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'); return t.replace(re,'<span class="hl">$1</span>'); }
+  function typeName(t){ return ({metric:'指标',table:'库表',report:'报表',term:'术语',source:'数据源',model:'LLM',agent:'Agent',tool:'工具',kb:'知识库',prompt:'Prompt',vector:'向量集合'})[t]||t; }
+  function typeIcon(t){ return ({metric:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/><polyline points="10 5 14 5 14 9"/></svg>',table:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/><path d="M2 3v5c0 1.1 2.7 2 6 2s6-.9 6-2V3"/></svg>',report:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>',term:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V3z"/></svg>',source:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="4" rx="5" ry="2"/></svg>',model:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>',agent:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="12" height="9" rx="1.5"/><circle cx="6" cy="8.5" r="0.9"/><circle cx="10" cy="8.5" r="0.9"/><path d="M8 1v3"/></svg>',tool:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9.5 4.5l3 3M3 13l5-5M11 2l3 3-2 2-3-3z"/></svg>',kb:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4l6-2.5L14 4l-6 2.5z"/></svg>',prompt:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 10a1 1 0 01-1 1H5l-2 2V3a1 1 0 011-1h9a1 1 0 011 1z"/></svg>',vector:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="1.2"/><circle cx="12" cy="4" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>'})[t]||''; }
+  function renderCmdK(){ const q=document.getElementById('cmdkInput').value.trim().toLowerCase(); let items=window.__GLOBAL_INDEX.slice(); if(_cmdkFilter!=='all') items=items.filter(i=>i.type===_cmdkFilter); if(q) items=items.filter(i=>(i.name+' '+i.en+' '+(i.desc||'')+' '+(i.code||'')).toLowerCase().includes(q)); else items=items.slice(0,8); _cmdkFocus=0; const root=document.getElementById('cmdkResults'); if(items.length===0){ root.innerHTML='<div class="cmdk-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg><div>没有找到匹配的资产</div></div>'; return; } const groups={}; items.forEach(i=>{(groups[i.type]=groups[i.type]||[]).push(i);}); let html=''; ['metric','table','report','agent','tool','model','prompt','kb','vector','term','source'].forEach(t=>{ if(!groups[t]) return; html+='<div class="cmdk-group-title">'+typeName(t)+' ('+groups[t].length+')</div>'; groups[t].forEach(i=>{ html+='<div class="cmdk-item" onclick="cmdkOpen(\''+i.url+'\')" data-url="'+i.url+'"><div class="cmdk-item-icon '+i.type+'">'+typeIcon(i.type)+'</div><div class="cmdk-item-meta"><div class="cmdk-item-title">'+highlight(i.name,q); if(i.en && i.en!==i.name) html+=' <span style="color:var(--sub);font-size:11px;">'+highlight(i.en,q)+'</span>'; html+='</div><div class="cmdk-item-sub">'+(i.desc||'')+' · '+(i.owner||'')+'</div></div><span class="cmdk-item-type">'+typeName(i.type)+'</span></div>'; });}); root.innerHTML=html; const all=root.querySelectorAll('.cmdk-item'); if(all[0]) all[0].classList.add('focused'); }
+  function exportToTool(){
+    showToast('已生成 Agent Tool 定义：call_metric_dau · OpenAPI Schema · 关联 dwd.user_active_log（演示）', 'success');
+    setTimeout(()=>showToast('请在 AI 资产 → Tool / Function 注册中心 中查看新建的工具', 'info'), 1500);
+  }
+  function cmdkOpen(url){ closeCmdK(); location.href=url; }
+  document.addEventListener('keydown',(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); openCmdK(); return; } if(!document.getElementById('cmdkMask').classList.contains('show')) return; if(e.key==='Escape'){ closeCmdK(); return; } if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); const items=document.querySelectorAll('#cmdkResults .cmdk-item'); if(!items.length) return; items[_cmdkFocus]?.classList.remove('focused'); _cmdkFocus=(_cmdkFocus+(e.key==='ArrowDown'?1:-1)+items.length)%items.length; items[_cmdkFocus].classList.add('focused'); items[_cmdkFocus].scrollIntoView({block:'nearest'}); } else if(e.key==='Enter'){ const f=document.querySelector('#cmdkResults .cmdk-item.focused'); if(f) cmdkOpen(f.dataset.url); } });
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{ if(e.target.id==='cmdkMask') closeCmdK(); });
+
+  /* ━━ Toast ━━ */
+  function showToast(msg, type) {
+    type = type || 'success';
+    let c = document.getElementById('toastContainer');
+    if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+    const t = document.createElement('div');
+    t.className = 'toast ' + type;
+    const icons = { success: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><polyline points="5.5 9.5 8 12 13 6.5"/></svg>', info: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="9" y1="8" x2="9" y2="13"/><circle cx="9" cy="5.5" r=".8" fill="currentColor"/></svg>' };
+    t.innerHTML = '<span class="ti-i">' + (icons[type] || icons.info) + '</span><span>' + msg + '</span>';
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 2400);
+  }
+</script>
+</body>
+</html>
