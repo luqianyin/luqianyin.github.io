@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · LLM 接入清单</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1677FF; --primary-light: #E6F0FF; --primary-hover: #0958D9;
+      --green: #00B42A; --green-light: #E8FFEA;
+      --red: #F53F3F; --red-light: #FFECE8;
+      --orange: #FF7D00; --orange-light: #FFF3E8;
+      --purple: #7B61FF; --purple-light: #F0EDFF;
+      --gray-light: #F7F8FA;
+      --header-h: 52px; --subbar-h: 44px; --sidebar-w: 220px;
+      --bg: #F5F7FA; --card: #FFFFFF; --border: #E8ECF0;
+      --text: #1D2129; --sub: #86909C;
+      --ai-purple: #7B61FF; --ai-purple-2: #5346B6;
+      --teal: #08979C; --teal-light: #E6FFFB;
+    }
+    body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; display: flex; flex-direction: column; min-height: 100vh; }
+    /* Sidebar 左侧导航 */
+    .subbar { height: var(--subbar-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w); position: sticky; top: var(--header-h); z-index: 10; }
+    .subbar-inner { padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar { width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); position: sticky; top: calc(var(--header-h) + var(--subbar-h)); height: calc(100vh - var(--header-h) - var(--subbar-h)); flex-shrink: 0; }
+    .nav-l1 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--purple); }
+    .nav-l1 svg { width: 16px; height: 16px; }
+    .nav-l2 { display: flex; align-items: center; padding: 9px 16px 9px 40px; font-size: 13px; color: var(--sub); position: relative; text-decoration: none; }
+    .nav-l2:hover { color: var(--text); background: var(--gray-light); }
+    .nav-l2.active { color: var(--teal); font-weight: 500; background: var(--teal-light); }
+    .nav-l2.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--teal); }
+    .body-wrap > .right-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+    .header { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: sticky; top: 0; z-index: 30; gap: 16px; }
+    .logo-wrap { display: flex; align-items: center; gap: 8px; }
+    .logo-name { font-size: 16px; font-weight: 700; }
+    .global-search { display: flex; align-items: center; width: 320px; height: 32px; background: var(--gray-light); border: 1px solid transparent; border-radius: 8px; padding: 0 10px; cursor: pointer; flex-shrink: 0; }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd { font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: #fff; font-family: ui-monospace, monospace; color: var(--sub); }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; }
+    .header-tab { height: 100%; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: var(--sub); cursor: pointer; position: relative; border: none; background: none; transition: color .15s; text-decoration: none; }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 8px; border-radius: 4px; cursor: pointer; color: var(--sub); background: none; border: none; position: relative; }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-badge { position: absolute; top: 1px; right: 4px; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px; background: var(--red); color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; cursor: pointer; background: none; border: none; }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+    .ai-hero { background: linear-gradient(135deg, #F0EDFF 0%, #EAF3FF 50%, #FFF3E8 100%); padding: 32px 24px 24px; }
+    .ai-hero-inner { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    .ai-hero-title-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .ai-hero-title { font-size: 22px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+    .ai-hero-title .ai-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: linear-gradient(135deg,var(--ai-purple),var(--ai-purple-2)); color: #fff; font-weight: 500; }
+    .ai-hero-sub { font-size: 13px; color: var(--sub); }
+
+    .btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); white-space: nowrap; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    .btn-ai { background: linear-gradient(135deg,var(--ai-purple),var(--ai-purple-2)); border-color: var(--ai-purple); color: #fff; }
+    .btn-ai:hover { background: var(--ai-purple-2); color: #fff; border-color: var(--ai-purple-2); }
+    .btn svg { width: 14px; height: 14px; }
+
+    .ai-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .ai-stat { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all .15s; }
+    .ai-stat:hover { border-color: var(--ai-purple); box-shadow: 0 2px 8px rgba(123,97,255,.10); }
+    .ai-stat-icon { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .ai-stat-icon svg { width: 20px; height: 20px; }
+    .ai-stat-icon.llm     { background: linear-gradient(135deg,#F0EDFF,#FFF3E8); color: #7B61FF; }
+    .ai-stat-icon.online  { background: var(--green-light); color: var(--green); }
+    .ai-stat-icon.token   { background: #FFF7E6; color: #FA8C16; }
+    .ai-stat-icon.cost    { background: #FFF1F0; color: #CF1322; }
+    .ai-stat-num { font-size: 20px; font-weight: 700; line-height: 1.2; }
+    .ai-stat-label { font-size: 12px; color: var(--sub); }
+    .ai-stat-trend { font-size: 11px; color: var(--green); }
+
+    .content { flex: 1; padding: 20px 24px 32px; max-width: 1280px; width: 100%; margin: 0 auto; }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 12px; }
+    .panel-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .panel-title::before { content: ''; width: 3px; height: 14px; background: var(--ai-purple); border-radius: 2px; }
+    .panel-link { font-size: 12px; color: var(--primary); cursor: pointer; text-decoration: none; }
+    .panel-link:hover { text-decoration: underline; }
+
+    .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .tb-search { flex: 1; min-width: 220px; height: 32px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 6px; padding: 0 10px; background: #fff; }
+    .tb-search input { flex: 1; border: none; outline: none; font-size: 13px; background: transparent; }
+    .tb-select { height: 32px; padding: 0 26px 0 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path fill='none' stroke='%2386909C' stroke-width='1.5' d='M3 5l3 3 3-3'/></svg>") no-repeat right 8px center; appearance: none; font-size: 13px; }
+
+    table.llm-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.llm-tbl thead th { font-weight: 600; color: var(--sub); font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px; padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; background: var(--gray-light); white-space: nowrap; }
+    table.llm-tbl tbody td { padding: 12px 10px; border-bottom: 1px solid #F0F3F6; vertical-align: middle; }
+    table.llm-tbl tbody tr { cursor: pointer; }
+    table.llm-tbl tbody tr:hover { background: var(--gray-light); }
+    .llm-name-cell { display: flex; align-items: center; gap: 10px; }
+    .llm-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg,#F0EDFF,#FFF3E8); color: #7B61FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .llm-icon svg { width: 16px; height: 16px; }
+    .llm-name { font-weight: 600; font-size: 13px; }
+    .llm-name-en { font-size: 11px; color: var(--sub); font-family: ui-monospace,monospace; }
+    .a-tag { font-size: 11px; padding: 1px 7px; border-radius: 3px; white-space: nowrap; display: inline-block; }
+    .a-tag.online { background: var(--green-light); color: var(--green); }
+    .a-tag.gray { background: var(--gray-light); color: var(--sub); }
+    .a-tag.warn { background: var(--orange-light); color: var(--orange); }
+    .a-tag.danger { background: var(--red-light); color: var(--red); }
+    .a-tag.purple { background: var(--purple-light); color: var(--purple); }
+    .a-tag.teal { background: var(--teal-light); color: var(--teal); }
+    .price { font-family: ui-monospace,monospace; font-size: 12px; }
+    .cost-bar { width: 120px; height: 6px; background: #F0F3F6; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+    .cost-bar > i { display: block; height: 100%; background: linear-gradient(90deg,var(--ai-purple),var(--orange)); border-radius: 3px; }
+    .foot-note { font-size: 11px; color: var(--sub); text-align: center; padding: 12px 0 0; border-top: 1px dashed var(--border); margin-top: 8px; }
+
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 96px); }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search svg { width: 16px; height: 16px; color: var(--sub); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; background: transparent; }
+    .cmdk-esc { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--sub); font-family: ui-monospace,monospace; }
+    .cmdk-filters { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .cmdk-chip { padding: 3px 10px; font-size: 12px; border-radius: 12px; cursor: pointer; background: var(--gray-light); color: var(--sub); white-space: nowrap; border: 1px solid transparent; }
+    .cmdk-chip.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); font-weight: 500; }
+    .cmdk-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cmdk-group-title { font-size: 11px; color: var(--sub); padding: 6px 16px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+    .cmdk-item:hover, .cmdk-item.focused { background: var(--primary-light); }
+    .cmdk-item-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cmdk-item-icon svg { width: 14px; height: 14px; }
+    .cmdk-item-icon.metric { background: var(--primary-light); color: var(--primary); }
+    .cmdk-item-icon.table { background: var(--purple-light); color: var(--purple); }
+    .cmdk-item-icon.report { background: var(--orange-light); color: var(--orange); }
+    .cmdk-item-icon.term { background: var(--green-light); color: var(--green); }
+    .cmdk-item-icon.source { background: #FFE7E7; color: var(--red); }
+    .cmdk-item-icon.model { background: linear-gradient(135deg,#F0EDFF,#FFF3E8); color: #7B61FF; }
+    .cmdk-item-icon.kb { background: #FFF1F0; color: #CF1322; }
+    .cmdk-item-icon.prompt { background: #FFF7E6; color: #FA8C16; }
+    .cmdk-item-icon.vector { background: #F9F0FF; color: #722ED1; }
+    .cmdk-item-icon.agent { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.tool { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-meta { flex: 1; min-width: 0; }
+    .cmdk-item-title { font-size: 13px; }
+    .cmdk-item-title .hl { background: #FFF3CD; color: #663C00; padding: 0 1px; }
+    .cmdk-item-sub { font-size: 11px; color: var(--sub); }
+    .cmdk-item-type { font-size: 11px; color: var(--sub); padding: 1px 7px; border-radius: 3px; background: var(--gray-light); }
+    .cmdk-empty { padding: 40px 20px; text-align: center; color: var(--sub); }
+    .cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .cmdk-foot kbd { font-family: ui-monospace,monospace; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+
+    .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 13px; pointer-events: auto; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.info { border-color: #ADC6FF; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab" href="metadata-asset.html">数据资产</a>
+    <a class="header-tab active" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" onclick="location.href='metadata-request.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>工单</span><span class="hdr-badge">3</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn"><div class="user-avatar">张</div><span style="font-size:13px;font-weight:500;">张晓明</span></button>
+  </div>
+</header>
+
+<div class="subbar"><div class="subbar-inner"><div class="breadcrumb"><a href="ai-home.html">AI 资产</a><span class="sep">›</span><span class="current">LLM 接入</span></div></div></div>
+
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="nav-l1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>AI 资产</div>
+    <a class="nav-l2" href="ai-home.html">AI 资产首页</a>
+    <a class="nav-l2" href="agent.html">Agent 注册</a>
+    <a class="nav-l2" href="tool.html">Tool / Function</a>
+    <a class="nav-l2 active" href="model.html">LLM 接入</a>
+    <a class="nav-l2" href="llm-gateway.html">LLM 网关</a>
+    <a class="nav-l2" href="dataset.html">知识库 (RAG)</a>
+    <a class="nav-l2" href="prompt.html">Prompt 模板</a>
+    <a class="nav-l2" href="metadata-source.html?filter=vector">向量库</a>
+  </aside>
+
+  <div class="right-col">
+
+<section class="ai-hero">
+  <div class="ai-hero-inner">
+    <div class="ai-hero-title-row">
+      <span class="ai-hero-title">🔮 LLM 接入清单 <span class="ai-badge">Powered by 自研 LLM 注册中心 · Agent-only</span></span>
+      <span class="ai-hero-sub">统一管理开源/商用大模型接入、上下文窗口、Token 单价与配额</span>
+    </div>
+
+    <div class="ai-stats">
+      <div class="ai-stat">
+        <div class="ai-stat-icon llm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01"/></svg>
+        </div>
+        <div>
+          <div class="ai-stat-num">6</div>
+          <div class="ai-stat-label">接入 LLM 总数</div>
+          <div class="ai-stat-trend" style="color:var(--ai-purple);">4 商用 + 2 开源/自托管</div>
+        </div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-icon online">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12l4 4L19 7"/></svg>
+        </div>
+        <div>
+          <div class="ai-stat-num">5</div>
+          <div class="ai-stat-label">在线 LLM</div>
+          <div class="ai-stat-trend">健康检查全部通过</div>
+        </div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-icon token">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h6M9 14h6"/></svg>
+        </div>
+        <div>
+          <div class="ai-stat-num">4.2 亿</div>
+          <div class="ai-stat-label">月 Token 消耗</div>
+          <div class="ai-stat-trend" style="color:var(--orange);">↑ 较上月 +12%</div>
+        </div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-icon cost">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </div>
+        <div>
+          <div class="ai-stat-num">¥18.4 万</div>
+          <div class="ai-stat-label">月成本</div>
+          <div class="ai-stat-trend" style="color:var(--red);">↑ 接近预算 75%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main class="content">
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">📋 LLM 接入列表 (6)</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <a class="panel-link" href="llm-gateway.html">前往 LLM 网关运行时 →</a>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="tb-search">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;color:var(--sub);"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+        <input id="kw" type="text" placeholder="搜索 LLM 名称 / 供应商 / Catalog 标识..." oninput="renderTable()" />
+      </div>
+      <select class="tb-select" id="fType" onchange="renderTable()">
+        <option value="">全部类型</option>
+        <option value="商用">商用</option>
+        <option value="开源">开源</option>
+        <option value="自托管">自托管</option>
+      </select>
+      <select class="tb-select" id="fStatus" onchange="renderTable()">
+        <option value="">全部状态</option>
+        <option value="online">在线</option>
+        <option value="warn">降级</option>
+        <option value="danger">下线</option>
+      </select>
+      <button class="btn btn-ai" onclick="showToast('已打开 LLM 接入向导','success')">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2v10M2 7h10"/></svg>
+        接入新 LLM
+      </button>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="llm-tbl" id="llmTbl">
+        <thead>
+          <tr>
+            <th>LLM 名称</th>
+            <th>供应商</th>
+            <th>类型</th>
+            <th>上下文窗口</th>
+            <th>输入单价</th>
+            <th>输出单价</th>
+            <th>QPS 峰值</th>
+            <th>月消耗</th>
+            <th>状态</th>
+            <th>Owner</th>
+          </tr>
+        </thead>
+        <tbody id="llmBody"></tbody>
+      </table>
+    </div>
+
+    <div class="foot-note">由 Apache Gravitino 自研 LLM 注册中心提供（非 Model Catalog）· 支持 OpenAI / Anthropic / Google / 阿里云 / DeepSeek / 自托管 vLLM</div>
+  </div>
+</main>
+
+  </div><!-- /.right-col -->
+</div><!-- /.body-wrap -->
+
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产..." oninput="renderCmdK()" />
+      <span class="cmdk-esc">ESC</span>
+    </div>
+    <div class="cmdk-filters">
+      <span class="cmdk-chip active" data-type="all" onclick="setCmdKFilter(this)">全部</span>
+      <span class="cmdk-chip" data-type="metric" onclick="setCmdKFilter(this)">指标</span>
+      <span class="cmdk-chip" data-type="table" onclick="setCmdKFilter(this)">库表</span>
+      <span class="cmdk-chip" data-type="report" onclick="setCmdKFilter(this)">报表</span>
+      <span class="cmdk-chip" data-type="agent" onclick="setCmdKFilter(this)">Agent</span>
+      <span class="cmdk-chip" data-type="tool" onclick="setCmdKFilter(this)">工具</span>
+      <span class="cmdk-chip" data-type="model" onclick="setCmdKFilter(this)">LLM</span>
+      <span class="cmdk-chip" data-type="prompt" onclick="setCmdKFilter(this)">Prompt</span>
+      <span class="cmdk-chip" data-type="kb" onclick="setCmdKFilter(this)">知识库</span>
+      <span class="cmdk-chip" data-type="vector" onclick="setCmdKFilter(this)">向量集合</span>
+      <span class="cmdk-chip" data-type="term" onclick="setCmdKFilter(this)">术语</span>
+      <span class="cmdk-chip" data-type="source" onclick="setCmdKFilter(this)">数据源</span>
+    </div>
+    <div class="cmdk-results" id="cmdkResults"></div>
+    <div class="cmdk-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> 选择</span><span><kbd>Enter</kbd> 打开</span><span><kbd>ESC</kbd> 关闭</span><span style="margin-left:auto;">Spark MDM</span></div>
+  </div>
+</div>
+
+<script>
+  const LLM_LIST = [
+    { code:'gpt4_turbo', name:'GPT-4 Turbo', en:'gpt-4-turbo', vendor:'OpenAI', type:'商用', ctx:'128K', priceIn:'¥21.6', priceOut:'¥64.8', qps:120, monthCost:62000, costPct:62, status:'online', owner:'平台管理员' },
+    { code:'claude_35_sonnet', name:'Claude 3.5 Sonnet', en:'claude-3-5-sonnet', vendor:'Anthropic', type:'商用', ctx:'200K', priceIn:'¥21.6', priceOut:'¥108.0', qps:80, monthCost:48000, costPct:48, status:'online', owner:'平台管理员' },
+    { code:'gemini_15_pro', name:'Gemini 1.5 Pro', en:'gemini-1.5-pro', vendor:'Google', type:'商用', ctx:'1M', priceIn:'¥9.0', priceOut:'¥36.0', qps:60, monthCost:18400, costPct:30, status:'warn', owner:'平台管理员' },
+    { code:'qwen2_72b', name:'Qwen2-72B-Instruct', en:'qwen2-72b-instruct', vendor:'阿里云', type:'商用', ctx:'32K', priceIn:'¥4.0', priceOut:'¥12.0', qps:200, monthCost:24600, costPct:35, status:'online', owner:'平台管理员' },
+    { code:'deepseek_v3', name:'DeepSeek-V3', en:'deepseek-v3', vendor:'DeepSeek', type:'商用', ctx:'128K', priceIn:'¥2.0', priceOut:'¥8.0', qps:150, monthCost:14800, costPct:22, status:'online', owner:'平台管理员' },
+    { code:'llama31_70b', name:'Llama-3.1-70B', en:'llama-3.1-70b-instruct', vendor:'自托管 vLLM', type:'开源', ctx:'128K', priceIn:'¥0 (自建)', priceOut:'¥0 (自建)', qps:40, monthCost:12000, costPct:18, status:'online', owner:'AI 平台组' }
+  ];
+
+  function statusTag(s){
+    if(s==='online') return '<span class="a-tag online">在线</span>';
+    if(s==='warn') return '<span class="a-tag warn">降级</span>';
+    return '<span class="a-tag danger">下线</span>';
+  }
+  function typeTag(t){
+    if(t==='商用') return '<span class="a-tag purple">商用</span>';
+    if(t==='开源') return '<span class="a-tag teal">开源</span>';
+    return '<span class="a-tag gray">自托管</span>';
+  }
+  function renderTable(){
+    const kw = (document.getElementById('kw').value||'').toLowerCase();
+    const ft = document.getElementById('fType').value;
+    const fs = document.getElementById('fStatus').value;
+    let list = LLM_LIST.slice();
+    if(ft) list = list.filter(i=>i.type===ft);
+    if(fs) list = list.filter(i=>i.status===fs);
+    if(kw) list = list.filter(i=>(i.name+' '+i.en+' '+i.vendor+' '+i.code).toLowerCase().includes(kw));
+    const body = document.getElementById('llmBody');
+    if(!list.length){ body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--sub);padding:32px;">暂无匹配 LLM</td></tr>'; return; }
+    body.innerHTML = list.map(i=>`
+      <tr onclick="location.href='model-detail.html?code=${i.code}'">
+        <td>
+          <div class="llm-name-cell">
+            <div class="llm-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h12v4H2zM2 9h12v4H2zM5 5h.01M5 11h.01"/></svg></div>
+            <div>
+              <div class="llm-name">${i.name}</div>
+              <div class="llm-name-en">${i.en}</div>
+            </div>
+          </div>
+        </td>
+        <td>${i.vendor}</td>
+        <td>${typeTag(i.type)}</td>
+        <td><span class="price">${i.ctx}</span></td>
+        <td><span class="price">${i.priceIn}</span><div style="font-size:10px;color:var(--sub);">/百万 token</div></td>
+        <td><span class="price">${i.priceOut}</span><div style="font-size:10px;color:var(--sub);">/百万 token</div></td>
+        <td><span class="price">${i.qps}</span></td>
+        <td>
+          <div class="price">¥${i.monthCost.toLocaleString()}</div>
+          <div class="cost-bar"><i style="width:${i.costPct}%;"></i></div>
+        </td>
+        <td>${statusTag(i.status)}</td>
+        <td>${i.owner}</td>
+      </tr>
+    `).join('');
+  }
+
+  window.__GLOBAL_INDEX = [
+    { type:'metric', code:'dau', name:'日活跃用户数', en:'dau', biz:'sport', owner:'张晓明', desc:'去重后日 UV', url:'metadata-asset-detail.html?code=dau' },
+    { type:'table', code:'hive_dwd_user_active_log', name:'HIVE.DWD.user_active_log', en:'用户活跃日志', biz:'sc', owner:'张晓明', desc:'明细层用户端上行为日志', url:'metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志' },
+    { type:'report', code:'game_core_daily', name:'游戏核心指标日报', en:'game_core_daily', biz:'sport', owner:'李明', desc:'每日核心指标日报', url:'metadata-report-detail.html?code=game_core_daily&name=游戏核心指标日报' },
+    { type:'source', code:'src_milvus_main', name:'Milvus 向量主库', en:'milvus_prod', biz:'-', owner:'AI 平台组', desc:'Vector Catalog', url:'metadata-source-detail.html?code=src_milvus_main' },
+
+    { type:'agent', code:'biz_qa_agent', name:'智能问数 Agent', en:'biz_qa_agent', biz:'data', owner:'王晨', desc:'RAG+SQL · 基座 GPT-4 Turbo · 生产 v1.4', url:'agent-detail.html?code=biz_qa_agent' },
+    { type:'agent', code:'cs_intent_agent', name:'客服意图 Agent', en:'cs_intent_agent', biz:'cservice', owner:'李雨', desc:'Function Agent · 基座 Qwen2-72B · 生产', url:'agent-detail.html?code=cs_intent_agent' },
+    { type:'agent', code:'compliance_agent', name:'合规审核 Agent', en:'compliance_agent', biz:'risk', owner:'赵磊', desc:'多步工作流 · 基座 Claude 3.5 · 灰度', url:'agent-detail.html?code=compliance_agent' },
+    { type:'agent', code:'rag_doc_agent', name:'RAG 文档问答 Agent', en:'rag_doc_agent', biz:'cservice', owner:'李雨', desc:'RAG · 基座 DeepSeek-V3 · 灰度 20%', url:'agent-detail.html?code=rag_doc_agent' },
+
+    { type:'tool', code:'call_metric_api', name:'call_metric_api 指标查询工具', en:'call_metric_api', biz:'data', owner:'王晨', desc:'API · 被 6 个 Agent 引用', url:'tool.html?code=call_metric_api' },
+    { type:'tool', code:'sql_runner', name:'sql_runner SQL 执行工具', en:'sql_runner', biz:'data', owner:'王晨', desc:'SQL · Trino 后端 · 已脱敏', url:'tool.html?code=sql_runner' },
+    { type:'tool', code:'vector_search', name:'vector_search 向量检索工具', en:'vector_search', biz:'cservice', owner:'赵磊', desc:'Milvus · 支持 hybrid 检索', url:'tool.html?code=vector_search' },
+
+    { type:'model', code:'gpt4_turbo', name:'GPT-4 Turbo（OpenAI）', en:'gpt-4-turbo', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 128K · ¥21.6/百万 token', url:'model-detail.html?code=gpt4_turbo' },
+    { type:'model', code:'claude_35_sonnet', name:'Claude 3.5 Sonnet（Anthropic）', en:'claude-3-5-sonnet', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 200K', url:'model-detail.html?code=claude_35_sonnet' },
+    { type:'model', code:'qwen2_72b', name:'Qwen2-72B-Instruct（阿里云）', en:'qwen2-72b-instruct', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 32K', url:'model-detail.html?code=qwen2_72b' },
+    { type:'model', code:'deepseek_v3', name:'DeepSeek-V3（DeepSeek）', en:'deepseek-v3', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 128K · ¥2.0/百万', url:'model-detail.html?code=deepseek_v3' },
+    { type:'model', code:'llama31_70b', name:'Llama-3.1-70B（自托管）', en:'llama-3.1-70b', biz:'-', owner:'AI 平台组', desc:'LLM 接入 · 开源 · 自托管 vLLM', url:'model-detail.html?code=llama31_70b' },
+
+    { type:'prompt', code:'pt_summary_v2', name:'文本摘要 Prompt v2', en:'pt_summary_v2', biz:'cservice', owner:'李雨', desc:'多 LLM 适配 · 长文本摘要', url:'prompt-detail.html?code=pt_summary_v2' },
+    { type:'prompt', code:'pt_review_check', name:'内容合规审核 Prompt', en:'pt_review_check', biz:'shop', owner:'赵磊', desc:'A/B 测试 v3 优于 v2', url:'prompt-detail.html?code=pt_review_check' },
+
+    { type:'kb', code:'kb_cs_main', name:'客服知识库（Customer Service KB）', en:'kb_customer_service', biz:'cservice', owner:'李雨', desc:'12.4 万 chunks · bge-m3 · top-k 6', url:'dataset-detail.html?code=kb_cs_main' },
+    { type:'kb', code:'kb_item_spec', name:'商品规格 KB', en:'kb_item_spec', biz:'shop', owner:'王晨', desc:'4.8 万 chunks · bge-m3 · top-k 4', url:'dataset-detail.html?code=kb_item_spec' },
+
+    { type:'vector', code:'vec_item_emb', name:'item_embedding 商品向量集合', en:'vec_item_embedding', biz:'shop', owner:'王晨', desc:'Milvus · 128维 · cosine', url:'metadata-source-detail.html?code=src_milvus_main&collection=item_embedding' },
+    { type:'vector', code:'vec_doc_emb', name:'doc_embedding RAG 文档向量', en:'vec_doc_embedding', biz:'cservice', owner:'李雨', desc:'Milvus · 768维 · L2', url:'metadata-source-detail.html?code=src_milvus_main&collection=doc_embedding' },
+
+    { type:'term', code:'term_embedding', name:'Embedding 嵌入向量', en:'Embedding', biz:'AI', owner:'AI 治理小组', desc:'高维语义特征的低维稠密向量', url:'glossary.html?term=Embedding' }
+  ];
+
+  let _cmdkFilter='all', _cmdkFocus=0;
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');setTimeout(()=>document.getElementById('cmdkInput').focus(),30);renderCmdK();}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  function setCmdKFilter(el){document.querySelectorAll('.cmdk-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');_cmdkFilter=el.dataset.type;renderCmdK();}
+  function highlight(t,q){if(!q)return t;const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return t.replace(re,'<span class="hl">$1</span>');}
+  function typeName(t){return ({metric:'指标',table:'库表',report:'报表',term:'术语',source:'数据源',model:'LLM',agent:'Agent',tool:'工具',prompt:'Prompt',kb:'知识库',vector:'向量集合'})[t]||t;}
+  function typeIcon(t){return ({metric:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/></svg>',table:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/></svg>',report:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>',term:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V3z"/></svg>',source:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="4" rx="5" ry="2"/></svg>',model:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h12v4H2zM2 9h12v4H2z"/></svg>',agent:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="12" height="9" rx="1.5"/><circle cx="6" cy="8.5" r="0.9"/><circle cx="10" cy="8.5" r="0.9"/><path d="M8 1v3"/></svg>',tool:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9.5 4.5l3 3M3 13l5-5M11 2l3 3-2 2-3-3z"/></svg>',kb:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5z"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>',prompt:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 10a1 1 0 01-1 1H5l-2 2V3a1 1 0 011-1h9a1 1 0 011 1z"/></svg>',vector:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="1.2"/><circle cx="12" cy="4" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>'})[t]||'';}
+  function renderCmdK(){const q=document.getElementById('cmdkInput').value.trim().toLowerCase();let items=window.__GLOBAL_INDEX.slice();if(_cmdkFilter!=='all')items=items.filter(i=>i.type===_cmdkFilter);if(q)items=items.filter(i=>(i.name+' '+i.en+' '+(i.desc||'')+' '+(i.code||'')).toLowerCase().includes(q));else items=items.slice(0,8);_cmdkFocus=0;const root=document.getElementById('cmdkResults');if(items.length===0){root.innerHTML='<div class="cmdk-empty">没有找到匹配的资产</div>';return;}const groups={};items.forEach(i=>{(groups[i.type]=groups[i.type]||[]).push(i);});let html='';['metric','table','report','agent','tool','model','prompt','kb','vector','term','source'].forEach(t=>{if(!groups[t])return;html+='<div class="cmdk-group-title">'+typeName(t)+' ('+groups[t].length+')</div>';groups[t].forEach(i=>{html+='<div class="cmdk-item" onclick="cmdkOpen(\''+i.url+'\')" data-url="'+i.url+'"><div class="cmdk-item-icon '+i.type+'">'+typeIcon(i.type)+'</div><div class="cmdk-item-meta"><div class="cmdk-item-title">'+highlight(i.name,q);if(i.en&&i.en!==i.name)html+=' <span style="color:var(--sub);font-size:11px;">'+highlight(i.en,q)+'</span>';html+='</div><div class="cmdk-item-sub">'+(i.desc||'')+' · '+(i.owner||'')+'</div></div><span class="cmdk-item-type">'+typeName(i.type)+'</span></div>';});});root.innerHTML=html;const all=root.querySelectorAll('.cmdk-item');if(all[0])all[0].classList.add('focused');}
+  function cmdkOpen(url){closeCmdK();location.href=url;}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();return;}if(!document.getElementById('cmdkMask').classList.contains('show'))return;if(e.key==='Escape'){closeCmdK();return;}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const items=document.querySelectorAll('#cmdkResults .cmdk-item');if(!items.length)return;items[_cmdkFocus]?.classList.remove('focused');_cmdkFocus=(_cmdkFocus+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[_cmdkFocus].classList.add('focused');items[_cmdkFocus].scrollIntoView({block:'nearest'});}else if(e.key==='Enter'){const f=document.querySelector('#cmdkResults .cmdk-item.focused');if(f)cmdkOpen(f.dataset.url);}});
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{if(e.target.id==='cmdkMask')closeCmdK();});
+
+  function showToast(msg, type){
+    type = type || 'success';
+    let c = document.getElementById('toastContainer');
+    if (!c) { c = document.createElement('div'); c.id='toastContainer'; c.className='toast-container'; document.body.appendChild(c); }
+    const t = document.createElement('div'); t.className='toast '+type;
+    t.innerHTML = '<span>'+msg+'</span>';
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 2400);
+  }
+
+  renderTable();
+</script>
+</body>
+</html>
