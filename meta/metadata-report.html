@@ -1,0 +1,2274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 报表管理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #1677FF;
+      --primary-light:#E6F0FF;
+      --primary-hover:#0958D9;
+      --green:        #00B42A;
+      --green-light:  #E8FFEA;
+      --red:          #F53F3F;
+      --red-light:    #FFECE8;
+      --orange:       #FF7D00;
+      --orange-light: #FFF3E8;
+      --purple:       #7B61FF;
+      --purple-light: #F0EDFF;
+      --gray-light:   #F7F8FA;
+      --sidebar-w:    220px;
+      --header-h:     52px;
+      --subbar-h:     44px;
+      --bg:           #F5F7FA;
+      --card:         #FFFFFF;
+      --border:       #E8ECF0;
+      --text:         #1D2129;
+      --sub:          #86909C;
+    }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+      display: flex; flex-direction: column; min-height: 100vh; overflow-y: auto;
+    }
+
+    /* ══ HEADER ══ */
+    .header {
+      height: var(--header-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 20px; flex-shrink: 0;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .logo-wrap {
+      display: flex; align-items: center; gap: 8px;
+      min-width: var(--sidebar-w); padding-right: 16px;
+      border-right: 1px solid var(--border);
+    }
+    .logo-name { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+    .header-nav { display: flex; align-items: center; height: 100%; margin-left: 20px; gap: 4px; }
+    .header-tab {
+      height: 100%; display: flex; align-items: center; padding: 0 18px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s;
+    }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 4px 8px; border-radius: 4px; cursor: pointer;
+      color: var(--sub); background: none; border: none; transition: color .15s;
+    }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; cursor: pointer;
+      background: none; border: none; color: var(--text);
+    }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+
+    /* ══ SUB-HEADER ══ */
+    .subbar {
+      height: var(--subbar-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 0 0 var(--sidebar-w);
+      flex-shrink: 0;
+      position: sticky; top: var(--header-h); z-index: 10;
+    }
+    .subbar-inner { display: flex; align-items: center; gap: 14px; padding: 0 20px; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+    /* ══ BODY ══ */
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: #fff; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      position: sticky; top: calc(var(--header-h) + var(--subbar-h));
+      height: calc(100vh - var(--header-h) - var(--subbar-h));
+    }
+    .nav-group { padding: 8px 0; }
+    .nav-l1 {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; user-select: none;
+    }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron { margin-left: auto; width: 14px; height: 14px; transition: transform .2s; flex-shrink: 0; }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+    .nav-l1-children { display: none; }
+    .nav-l1.open + .nav-l1-children { display: block; }
+    .nav-l2 {
+      display: flex; align-items: center;
+      padding: 9px 16px 9px 40px; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active { color: var(--primary); font-weight: 500; background: var(--primary-light); }
+    .nav-l2.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+
+    .content {
+      flex: 1; min-width: 0; padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    /* ══ PAGE TITLE ══ */
+    .page-title-bar { display: flex; align-items: center; justify-content: space-between; }
+    .page-title { font-size: 18px; font-weight: 600; color: var(--text); }
+    .page-subtitle { font-size: 12px; color: var(--sub); margin-left: 8px; }
+
+    /* ══ TOOLBAR ══ */
+    .toolbar {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px;
+      display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+    }
+    .toolbar-field { display: flex; flex-direction: column; gap: 5px; }
+    .toolbar-field-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .toolbar-search {
+      flex: 1; min-width: 240px; max-width: 420px;
+      display: flex; align-items: center; min-height: 32px; box-sizing: border-box;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; transition: border-color .15s, box-shadow .15s;
+    }
+    .toolbar-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .toolbar-search-prefix { padding: 0 0 0 10px; display: flex; align-items: center; color: var(--sub); }
+    .toolbar-search-prefix svg { width: 14px; height: 14px; }
+    .toolbar-search input {
+      flex: 1; min-height: 30px; border: none; outline: none; padding: 0 10px;
+      font-size: 13px; color: var(--text); background: transparent;
+    }
+    .toolbar-search input::placeholder { color: #C2C7CF; }
+    .toolbar-field .multi-select { min-width: 160px; }
+    .toolbar-spacer { flex: 1; }
+    .toolbar-stats { font-size: 12px; color: var(--sub); padding-bottom: 8px; }
+    .toolbar-stats strong { color: var(--text); font-weight: 600; }
+
+    /* multi-select */
+    .multi-select { position: relative; }
+    .ms-trigger {
+      min-height: 32px; border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; padding: 3px 28px 3px 8px;
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      cursor: pointer; font-size: 13px;
+      transition: border-color .15s, box-shadow .15s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    .ms-placeholder { color: #C2C7CF; padding: 0 2px; }
+    .ms-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 6px 2px 8px; border-radius: 4px;
+      background: var(--primary-light); color: var(--primary);
+      font-size: 12px; line-height: 1.4;
+    }
+    .ms-tag-close {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; border-radius: 50%; cursor: pointer;
+      color: var(--primary); transition: background .12s;
+    }
+    .ms-tag-close:hover { background: rgba(22,119,255,.18); }
+    .ms-tag-close svg { width: 10px; height: 10px; }
+    .multi-select.open .ms-trigger { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .ms-panel {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      max-height: 220px; overflow-y: auto;
+      display: none; z-index: 110; padding: 4px 0;
+    }
+    .multi-select.open .ms-panel { display: block; }
+    .ms-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; cursor: pointer; font-size: 13px;
+      color: var(--text); user-select: none; transition: background .12s;
+    }
+    .ms-option:hover { background: var(--gray-light); }
+    .ms-option input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary); }
+    .ms-option.selected { color: var(--primary); }
+
+    /* ══ BUTTONS ══ */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 32px; padding: 0 14px; border-radius: 6px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: #fff; color: var(--text);
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+
+    /* ══ VIEW SWITCH ══ */
+    .view-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .view-switch {
+      display: inline-flex; align-items: center;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 3px;
+    }
+    .view-switch button {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 28px; padding: 0 12px; border-radius: 5px;
+      border: none; background: none; cursor: pointer;
+      font-size: 12px; font-weight: 500; color: var(--sub);
+      transition: all .15s; white-space: nowrap;
+    }
+    .view-switch button svg { width: 13px; height: 13px; }
+    .view-switch button:hover { color: var(--text); }
+    .view-switch button.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+
+    /* ══ REPORT CARD ══ */
+    .report-list { display: flex; flex-direction: column; gap: 12px; }
+    .report-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px 20px;
+      display: flex; gap: 14px; align-items: flex-start;
+      transition: border-color .15s, box-shadow .15s;
+      cursor: pointer;
+    }
+    .report-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(22,119,255,.08);
+    }
+    .report-icon {
+      width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .report-icon svg { width: 22px; height: 22px; }
+    .report-icon.dash   { background: linear-gradient(135deg, var(--primary-light) 0%, #C2DAFF 100%); color: var(--primary); }
+    .report-icon.self   { background: linear-gradient(135deg, var(--green-light) 0%, #BFE8C7 100%);   color: var(--green); }
+    .report-icon.custom { background: linear-gradient(135deg, var(--orange-light) 0%, #FFD7B0 100%);  color: var(--orange); }
+    .report-icon.screen { background: linear-gradient(135deg, var(--purple-light) 0%, #DDD3FF 100%);  color: var(--purple); }
+
+    .report-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .report-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .report-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .report-code {
+      font-size: 11px; color: var(--sub); font-family: monospace;
+      background: var(--gray-light); padding: 2px 8px; border-radius: 4px;
+    }
+    .report-tag {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .report-tag.level-core    { background: var(--red-light); color: var(--red); }
+    .report-tag.level-key     { background: var(--orange-light); color: var(--orange); }
+    .report-tag.level-general { background: var(--gray-light); color: var(--sub); }
+    .report-tag.type-dash     { background: var(--primary-light); color: var(--primary); }
+    .report-tag.type-self     { background: var(--green-light); color: var(--green); }
+    .report-tag.type-custom   { background: var(--orange-light); color: var(--orange); }
+    .report-tag.type-screen   { background: var(--purple-light); color: var(--purple); }
+
+    .report-cnname-row {
+      display: flex; align-items: center; gap: 24px; font-size: 12px; color: var(--sub);
+    }
+    .report-cnname-row .label { color: var(--sub); }
+    .report-cnname-row .value { color: var(--text); }
+
+    .report-meta {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 0;
+      padding-top: 8px; border-top: 1px dashed var(--border);
+      font-size: 12px; color: var(--sub);
+    }
+    .meta-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 0 14px; border-right: 1px solid var(--border);
+    }
+    .meta-chip:first-child { padding-left: 0; }
+    .meta-chip:last-child  { border-right: none; }
+    .meta-chip svg { width: 13px; height: 13px; flex-shrink: 0; color: #C2C7CF; }
+    .meta-chip .chip-value { color: var(--text); font-weight: 500; }
+    .meta-chip.status-online .chip-value { color: var(--green); }
+    .meta-chip.status-pending .chip-value { color: var(--orange); }
+    .meta-chip.status-offline .chip-value { color: var(--sub); }
+    .status-online svg.status-icon { color: var(--green); }
+    .status-pending svg.status-icon { color: var(--orange); }
+    .status-offline svg.status-icon { color: var(--sub); }
+    .src-link {
+      color: var(--primary); cursor: pointer; font-weight: 500;
+      display: inline-flex; align-items: center; gap: 2px;
+    }
+    .src-link:hover { color: var(--primary-hover); text-decoration: underline; }
+    .src-link svg { width: 11px; height: 11px; color: currentColor; }
+    .biz-tag {
+      display: inline-flex; align-items: center;
+      padding: 1px 7px; border-radius: 3px;
+      background: var(--gray-light); color: var(--sub);
+      font-size: 11px; font-family: monospace;
+    }
+
+    /* clickable report name */
+    a.report-name, a.dt-name-cn-link {
+      cursor: pointer; text-decoration: none; transition: color .12s;
+    }
+    a.report-name:hover, a.dt-name-cn-link:hover {
+      color: var(--primary); text-decoration: underline;
+    }
+
+    /* right-side actions */
+    .report-actions {
+      display: flex; align-items: center; gap: 4px;
+      flex-shrink: 0; align-self: center;
+    }
+    .op-divider { color: var(--border); font-size: 12px; }
+    .btn-link {
+      border: none; background: none; color: var(--primary); padding: 0 6px;
+      height: auto; font-size: 12px; cursor: pointer;
+    }
+    .btn-link:hover { color: var(--primary-hover); text-decoration: underline; }
+    .btn-link-danger {
+      border: none; background: none; color: var(--red); padding: 0 6px;
+      height: auto; font-size: 12px; cursor: pointer;
+    }
+    .btn-link-danger:hover { color: #CF1322; text-decoration: underline; }
+
+    /* ══ LIST (TABLE) VIEW ══ */
+    .report-table-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+    }
+    .report-table-scroll { overflow-x: auto; }
+    .data-table {
+      width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1240px;
+    }
+    .data-table thead th {
+      background: #FAFBFC; border-bottom: 1px solid var(--border);
+      padding: 10px 14px; text-align: left;
+      font-size: 12px; font-weight: 600; color: var(--sub);
+      white-space: nowrap;
+    }
+    .data-table tbody td {
+      padding: 12px 14px; border-bottom: 1px solid #F0F3F6;
+      vertical-align: middle;
+    }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr { cursor: pointer; transition: background .12s; }
+    .data-table tbody tr:hover td { background: #FAFBFC; }
+
+    .dt-name { display: flex; flex-direction: column; gap: 4px; min-width: 200px; max-width: 300px; }
+    .dt-name-cn { font-weight: 600; color: var(--text); font-size: 13px; }
+    .dt-name-en {
+      font-size: 11px; color: var(--sub); font-family: monospace;
+      background: var(--gray-light); padding: 1px 6px; border-radius: 3px;
+      width: fit-content;
+    }
+    .dt-desc {
+      font-size: 12px; color: var(--sub); line-height: 1.5;
+      max-width: 260px;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .dt-status {
+      display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; white-space: nowrap;
+    }
+    .dt-status svg { width: 13px; height: 13px; }
+    .dt-status.online  { color: var(--green); }
+    .dt-status.pending { color: var(--orange); }
+    .dt-status.offline { color: var(--sub); }
+    .dt-actions { display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+
+    /* ══ PAGINATION ══ */
+    .pagination-bar {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 4px 4px; gap: 8px;
+    }
+    .page-info { font-size: 12px; color: var(--sub); margin-right: auto; }
+    .page-btn {
+      min-width: 28px; height: 28px; padding: 0 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 5px; background: #fff;
+      font-size: 12px; color: var(--sub); cursor: pointer;
+      transition: all .12s;
+    }
+    .page-btn:hover:not(.disabled) { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .page-btn.disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ══ TOAST ══ */
+    .toast-container {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+      z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .toast {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.12);
+      font-size: 13px; color: var(--text); white-space: nowrap;
+      animation: toast-in .25s ease-out; pointer-events: auto;
+    }
+    .toast.fade-out { animation: toast-out .25s ease-in forwards; }
+    .toast-icon { width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .toast-icon svg { width: 18px; height: 18px; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.success .toast-icon { color: var(--green); }
+    .toast.error { border-color: #FFC1B8; }
+    .toast.error .toast-icon { color: var(--red); }
+    .toast.info { border-color: #ADC6FF; }
+    .toast.info .toast-icon { color: var(--primary); }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-12px); }
+    }
+
+    /* ══ MODAL ══ */
+    .modal-mask {
+      position: fixed; inset: 0; background: rgba(29,33,41,.45);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100; padding: 24px;
+    }
+    .modal-mask.show { display: flex; }
+    .modal {
+      background: #fff; border-radius: 10px;
+      width: 100%; max-width: 720px;
+      max-height: calc(100vh - 48px);
+      display: flex; flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,.18);
+      overflow: hidden;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .modal-title { font-size: 16px; font-weight: 600; color: var(--text); }
+    .modal-close {
+      width: 28px; height: 28px; border-radius: 6px; border: none; background: none;
+      color: var(--sub); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background .12s, color .12s;
+    }
+    .modal-close:hover { background: var(--bg); color: var(--text); }
+    .modal-close svg { width: 16px; height: 16px; }
+
+    .modal-tabs {
+      display: flex; align-items: center; padding: 0 20px;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .modal-tab {
+      height: 40px; padding: 0 16px; font-size: 13px; font-weight: 500;
+      color: var(--sub); cursor: pointer; border: none; background: none;
+      position: relative; transition: color .15s;
+    }
+    .modal-tab:hover { color: var(--text); }
+    .modal-tab.active { color: var(--primary); font-weight: 600; }
+    .modal-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 16px; right: 16px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .modal-pane { display: none; }
+    .modal-pane.active { display: block; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+    .form-item { display: flex; flex-direction: column; gap: 5px; }
+    .form-item.full { grid-column: 1 / -1; }
+    .form-label { font-size: 12px; color: var(--text); font-weight: 500; }
+    .form-label .req { color: var(--red); margin-right: 2px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; color: var(--text); font-size: 13px;
+      padding: 0 10px; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      font-family: inherit;
+    }
+    .form-input, .form-select { height: 32px; }
+    .form-textarea { padding: 8px 10px; resize: vertical; min-height: 72px; line-height: 1.5; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1);
+    }
+    .form-input.err, .form-select.err, .form-textarea.err { border-color: var(--red); }
+    .form-input::placeholder, .form-textarea::placeholder { color: #C2C7CF; }
+    .form-select {
+      padding-right: 28px; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    .form-counter { font-size: 11px; color: var(--sub); text-align: right; margin-top: -2px; }
+
+    .modal-footer {
+      display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+      padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0;
+      background: var(--gray-light);
+    }
+    /* mode-driven pane visibility（创建模式仅批量导入；编辑模式仅表单） */
+    .modal[data-mode="create"] .create-only { display: block; }
+    .modal[data-mode="edit"]   .edit-only   { display: block; }
+
+    /* batch import */
+    .batch-step { display: flex; flex-direction: column; gap: 12px; }
+    .batch-tip {
+      background: var(--primary-light); border: 1px solid #ADC6FF;
+      border-radius: 6px; padding: 10px 14px;
+      font-size: 12px; color: var(--text); line-height: 1.6;
+    }
+    .batch-tip strong { color: var(--primary); }
+    .batch-template {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--gray-light);
+    }
+    .batch-template-info { display: flex; align-items: center; gap: 10px; }
+    .batch-template-icon {
+      width: 32px; height: 32px; border-radius: 6px;
+      background: var(--green-light); color: var(--green);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .batch-template-icon svg { width: 18px; height: 18px; }
+    .batch-template-text { display: flex; flex-direction: column; gap: 2px; }
+    .batch-template-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .batch-template-desc { font-size: 11px; color: var(--sub); }
+    .upload-zone {
+      border: 1.5px dashed var(--border); border-radius: 8px;
+      padding: 28px 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      cursor: pointer; transition: border-color .15s, background .15s;
+      background: #fff;
+    }
+    .upload-zone:hover { border-color: var(--primary); background: var(--primary-light); }
+    .upload-zone.has-file { border-style: solid; border-color: var(--primary); background: var(--primary-light); }
+    .upload-icon { color: var(--primary); }
+    .upload-icon svg { width: 32px; height: 32px; }
+    .upload-text { font-size: 13px; color: var(--text); font-weight: 500; }
+    .upload-hint { font-size: 11px; color: var(--sub); }
+
+    /* ══ CONFIRM MODAL (删除确认) ══ */
+    .modal-confirm { max-width: 480px; }
+    .modal-confirm .modal-body {
+      padding: 20px 24px 8px;
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .confirm-icon {
+      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      background: var(--red-light); color: var(--red);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .confirm-icon svg { width: 22px; height: 22px; }
+    .confirm-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+    .confirm-title {
+      font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.5;
+    }
+    .confirm-desc {
+      font-size: 13px; color: var(--sub); line-height: 1.6;
+    }
+    .confirm-target {
+      display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      padding: 8px 10px; margin-top: 2px;
+      background: var(--gray-light); border-radius: 6px;
+      font-size: 12px; max-width: 100%;
+    }
+    .confirm-target-name { color: var(--text); font-weight: 600; word-break: break-all; }
+    .confirm-target-code {
+      color: var(--sub); font-family: monospace;
+      padding: 1px 6px; background: #fff;
+      border: 1px solid var(--border); border-radius: 3px;
+    }
+    .btn-danger {
+      background: var(--red); border-color: var(--red); color: #fff;
+    }
+    .btn-danger:hover {
+      background: #CF1322; border-color: #CF1322; color: #fff;
+    }
+
+    /* ══════════════ COMMON: 全局搜索 / 命令面板 / chip / 批量 / 空状态 ══════════════ */
+    .header { gap: 16px; }
+    .global-search {
+      display: flex; align-items: center; width: 280px; height: 32px;
+      background: var(--gray-light); border: 1px solid transparent; border-radius: 8px;
+      padding: 0 10px; cursor: pointer; transition: all .15s; flex-shrink: 0;
+    }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd {
+      font-size: 11px; color: var(--sub); padding: 1px 6px;
+      border: 1px solid var(--border); border-radius: 4px; background: #fff;
+      font-family: ui-monospace, monospace;
+    }
+    .header-tab { text-decoration: none; }
+    .hdr-action { position: relative; }
+    .hdr-badge {
+      position: absolute; top: 1px; right: 4px;
+      min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px;
+      background: var(--red); color: #fff; font-size: 10px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+    .logo-wrap { min-width: auto !important; padding-right: 0 !important; border-right: none !important; }
+
+    .scope-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .scope-chip {
+      height: 28px; padding: 0 12px; border-radius: 14px;
+      background: var(--card); border: 1px solid var(--border);
+      font-size: 12px; color: var(--sub); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px; transition: all .12s;
+    }
+    .scope-chip:hover { color: var(--text); border-color: var(--primary); }
+    .scope-chip.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+    .scope-chip .sc-cnt { font-size: 11px; padding: 0 5px; border-radius: 7px; background: var(--gray-light); color: var(--sub); }
+    .scope-chip.active .sc-cnt { background: rgba(22,119,255,.15); color: var(--primary); }
+    .scope-chip svg { width: 12px; height: 12px; }
+
+    .batch-bar {
+      background: var(--primary-light); border: 1px solid var(--primary);
+      border-radius: 8px; padding: 10px 14px;
+      display: none; align-items: center; gap: 10px; font-size: 13px;
+    }
+    .batch-bar.show { display: flex; }
+    .batch-bar .bb-count { font-weight: 600; color: var(--primary); }
+    .batch-bar .bb-spacer { flex: 1; }
+    .batch-bar .btn { height: 28px; padding: 0 10px; font-size: 12px; }
+    .batch-bar .btn-link { color: var(--sub); border: none; background: none; font-size: 12px; cursor: pointer; padding: 0 6px; }
+    .batch-bar .btn-link:hover { color: var(--primary); }
+
+    .data-table .col-check { width: 40px; padding-left: 14px; padding-right: 0; }
+    .data-table .col-check input { width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary); }
+    .data-table th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+    .data-table th.sortable:hover { color: var(--text); }
+    .data-table th.sortable .sort-ico {
+      display: inline-flex; flex-direction: column;
+      width: 8px; height: 12px;
+      margin-left: 4px; vertical-align: middle;
+      color: #C2C7CF; line-height: 0; gap: 1px;
+    }
+    .data-table th.sortable .sort-ico svg {
+      width: 8px !important; height: 5px !important;
+      display: block; flex-shrink: 0;
+    }
+    .data-table th.sort-asc  .sort-ico .up   { color: var(--primary); }
+    .data-table th.sort-desc .sort-ico .down { color: var(--primary); }
+
+    .empty-state {
+      padding: 60px 24px; text-align: center; color: var(--sub); font-size: 13px;
+      display: none; flex-direction: column; align-items: center; gap: 10px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .empty-state.show { display: flex; }
+    .empty-state svg { width: 64px; height: 64px; color: #C2C7CF; }
+    .empty-state .es-title { font-size: 14px; color: var(--text); font-weight: 500; }
+    .empty-state .es-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+    .card-fav-btn {
+      width: 28px; height: 28px; border-radius: 4px; border: none; background: none;
+      color: var(--sub); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      transition: background .12s, color .12s;
+    }
+    .card-fav-btn:hover { background: var(--bg); color: var(--orange); }
+    .card-fav-btn.starred { color: var(--orange); }
+    .card-fav-btn svg { width: 16px; height: 16px; }
+    .btn-link-apply {
+      border: none; background: none; color: var(--green); padding: 0 6px;
+      height: auto; font-size: 12px; cursor: pointer;
+    }
+    .btn-link-apply:hover { color: #008520; text-decoration: underline; }
+
+    .cmdk-mask {
+      position: fixed; inset: 0; background: rgba(29,33,41,.45);
+      display: none; align-items: flex-start; justify-content: center;
+      z-index: 200; padding: 80px 16px 16px;
+    }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal {
+      width: 100%; max-width: 640px; background: #fff;
+      border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.18);
+      display: flex; flex-direction: column; overflow: hidden;
+      max-height: calc(100vh - 96px);
+    }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search svg { width: 16px; height: 16px; color: var(--sub); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; background: transparent; }
+    .cmdk-esc { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--sub); font-family: ui-monospace, monospace; }
+    .cmdk-filters { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .cmdk-chip { padding: 3px 10px; font-size: 12px; border-radius: 12px; cursor: pointer; background: var(--gray-light); color: var(--sub); white-space: nowrap; border: 1px solid transparent; transition: all .12s; }
+    .cmdk-chip:hover { color: var(--text); }
+    .cmdk-chip.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); font-weight: 500; }
+    .cmdk-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cmdk-group-title { font-size: 11px; color: var(--sub); padding: 6px 16px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+    .cmdk-item:hover, .cmdk-item.focused { background: var(--primary-light); }
+    .cmdk-item-icon { width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .cmdk-item-icon svg { width: 14px; height: 14px; }
+    .cmdk-item-icon.metric { background: var(--primary-light); color: var(--primary); }
+    .cmdk-item-icon.table  { background: var(--purple-light); color: var(--purple); }
+    .cmdk-item-icon.report { background: var(--orange-light); color: var(--orange); }
+    .cmdk-item-icon.term   { background: var(--green-light); color: var(--green); }
+    .cmdk-item-icon.source { background: #FFE7E7; color: var(--red); }
+    .cmdk-item-icon.model { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.agent { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.tool { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.kb { background: #FFF1F0; color: #CF1322; }
+    .cmdk-item-icon.prompt { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.vector { background: #F9F0FF; color: #722ED1; }
+    .cmdk-item-meta { flex: 1; min-width: 0; }
+    .cmdk-item-title { font-size: 13px; color: var(--text); }
+    .cmdk-item-title .hl { background: #FFF3CD; color: #663C00; padding: 0 1px; }
+    .cmdk-item-sub { font-size: 11px; color: var(--sub); }
+    .cmdk-item-type { font-size: 11px; color: var(--sub); padding: 1px 7px; border-radius: 3px; background: var(--gray-light); }
+    .cmdk-empty { padding: 40px 20px; text-align: center; color: var(--sub); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .cmdk-empty svg { width: 48px; height: 48px; color: #C2C7CF; }
+    .cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .cmdk-foot kbd { font-family: ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════ TOP HEADER (公共组件) ═══════════ -->
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab active" href="metadata-report.html">数据资产</a>
+    <a class="header-tab" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" onclick="location.href='metadata-request.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>工单</span>
+      <span class="hdr-badge">3</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-4-5.7V5a2 2 0 10-4 0v.3C7.7 6.2 6 8.4 6 11v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1"/></svg>
+      <span>通知</span>
+      <span class="hdr-badge">5</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 01-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 004.7 15a1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 009 4.7a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 012.8 2.8l-.1.1A1.7 1.7 0 0019.4 9a1.7 1.7 0 001.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+      <span>设置</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张晓明</span>
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════ SUB-HEADER ═══════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <div class="breadcrumb">
+      <a href="#">数据资产</a>
+      <span class="sep">›</span>
+      <span class="current">报表管理</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ BODY ═══════════ -->
+<div class="body-wrap">
+
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l1 open">
+        <svg class="l1-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        数据资产
+        <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
+      </div>
+      <div class="nav-l1-children">
+        <div class="nav-l2" data-href="home.html">资产概览</div>
+        <div class="nav-l2" data-href="metadata-asset.html">指标管理</div>
+        <div class="nav-l2" data-href="metadata-table.html">库表管理</div>
+        <div class="nav-l2 active">报表管理</div>
+        <div class="nav-l2" data-href="metadata-source.html">数据源管理</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- ─── 页面标题 ─── -->
+    <div class="page-title-bar">
+      <div>
+        <span class="page-title">报表管理</span>
+        <span class="page-subtitle">沉淀业务报表与可视化资产，统一查找与权限分配</span>
+      </div>
+      <button class="btn btn-primary" onclick="newReport()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+        新建报表
+      </button>
+    </div>
+
+    <!-- ─── 工具栏 ─── -->
+    <div class="toolbar">
+      <div class="toolbar-field" style="flex:1;min-width:240px;max-width:420px;">
+        <span class="toolbar-field-label">关键词搜索</span>
+        <div class="toolbar-search">
+          <span class="toolbar-search-prefix">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+          </span>
+          <input type="text" placeholder="搜索报表名 / 中文名 / 描述" />
+        </div>
+      </div>
+      <div class="toolbar-field">
+        <span class="toolbar-field-label">报表类型</span>
+        <div class="multi-select" data-name="rtype-filter">
+          <div class="ms-trigger" onclick="toggleMS(event, this)">
+            <span class="ms-placeholder">全部</span>
+          </div>
+          <div class="ms-panel">
+            <label class="ms-option"><input type="checkbox" value="Dashboard" onchange="onMSChange(this)" /><span>Dashboard</span></label>
+            <label class="ms-option"><input type="checkbox" value="自助分析" onchange="onMSChange(this)" /><span>自助分析</span></label>
+            <label class="ms-option"><input type="checkbox" value="定制报表" onchange="onMSChange(this)" /><span>定制报表</span></label>
+            <label class="ms-option"><input type="checkbox" value="数据大屏" onchange="onMSChange(this)" /><span>数据大屏</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-field">
+        <span class="toolbar-field-label">业务线</span>
+        <div class="multi-select" data-name="biz-filter">
+          <div class="ms-trigger" onclick="toggleMS(event, this)">
+            <span class="ms-placeholder">全部</span>
+          </div>
+          <div class="ms-panel">
+            <label class="ms-option"><input type="checkbox" value="sport" onchange="onMSChange(this)" /><span>sport</span></label>
+            <label class="ms-option"><input type="checkbox" value="skillbase" onchange="onMSChange(this)" /><span>skillbase</span></label>
+            <label class="ms-option"><input type="checkbox" value="sc" onchange="onMSChange(this)" /><span>sc</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-field">
+        <span class="toolbar-field-label">报表分级</span>
+        <div class="multi-select" data-name="level-filter">
+          <div class="ms-trigger" onclick="toggleMS(event, this)">
+            <span class="ms-placeholder">全部</span>
+          </div>
+          <div class="ms-panel">
+            <label class="ms-option"><input type="checkbox" value="核心" onchange="onMSChange(this)" /><span>核心</span></label>
+            <label class="ms-option"><input type="checkbox" value="重要" onchange="onMSChange(this)" /><span>重要</span></label>
+            <label class="ms-option"><input type="checkbox" value="一般" onchange="onMSChange(this)" /><span>一般</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-field">
+        <span class="toolbar-field-label">上架状态</span>
+        <div class="multi-select" data-name="status-filter">
+          <div class="ms-trigger" onclick="toggleMS(event, this)">
+            <span class="ms-placeholder">全部</span>
+          </div>
+          <div class="ms-panel">
+            <label class="ms-option"><input type="checkbox" value="已上架" onchange="onMSChange(this)" /><span>已上架</span></label>
+            <label class="ms-option"><input type="checkbox" value="待上架" onchange="onMSChange(this)" /><span>待上架</span></label>
+            <label class="ms-option"><input type="checkbox" value="已下线" onchange="onMSChange(this)" /><span>已下线</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-field">
+        <span class="toolbar-field-label">负责人</span>
+        <div class="multi-select" data-name="owner-filter">
+          <div class="ms-trigger" onclick="toggleMS(event, this)">
+            <span class="ms-placeholder">全部</span>
+          </div>
+          <div class="ms-panel">
+            <label class="ms-option"><input type="checkbox" value="张晓明" onchange="onMSChange(this)" /><span>张晓明</span></label>
+            <label class="ms-option"><input type="checkbox" value="李明" onchange="onMSChange(this)" /><span>李明</span></label>
+            <label class="ms-option"><input type="checkbox" value="王芳" onchange="onMSChange(this)" /><span>王芳</span></label>
+            <label class="ms-option"><input type="checkbox" value="陈晓" onchange="onMSChange(this)" /><span>陈晓</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <span class="toolbar-stats">共 <strong>86</strong> 个报表</span>
+      <button class="btn" onclick="exportReports()" style="margin-bottom:8px;">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1v8m0 0l-3-3m3 3l3-3"/><path d="M2 11v1a1 1 0 001 1h8a1 1 0 001-1v-1"/></svg>
+        导出
+      </button>
+    </div>
+
+    <!-- ─── 我的视角 chip tab ─── -->
+    <div class="scope-chips">
+      <span class="scope-chip active" data-scope="all" onclick="setScope(this)">全部 <span class="sc-cnt">86</span></span>
+      <span class="scope-chip" data-scope="mine" onclick="setScope(this)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="5" r="2.5"/><path d="M2 12c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/></svg>
+        我负责的 <span class="sc-cnt">8</span>
+      </span>
+      <span class="scope-chip" data-scope="fav" onclick="setScope(this)">
+        <svg viewBox="0 0 14 14" fill="currentColor"><polygon points="7 1 8.8 4.8 13 5.4 10 8.4 10.8 12.6 7 10.6 3.2 12.6 4 8.4 1 5.4 5.2 4.8"/></svg>
+        我收藏的 <span class="sc-cnt" id="favCount">0</span>
+      </span>
+      <span class="scope-chip" data-scope="recent" onclick="setScope(this)">最近浏览 <span class="sc-cnt" id="recentCount">0</span></span>
+    </div>
+
+    <!-- ─── 批量操作栏 ─── -->
+    <div class="batch-bar" id="batchBar">
+      <span>已选 <span class="bb-count" id="batchCount">0</span> 项</span>
+      <button class="btn-link" onclick="clearBatch()">取消选择</button>
+      <span class="bb-spacer"></span>
+      <button class="btn" onclick="batchAction('changeOwner')">改负责人</button>
+      <button class="btn" onclick="batchAction('addTag')">打标签</button>
+      <button class="btn" onclick="batchAction('toggleStatus')">改上架状态</button>
+      <button class="btn" onclick="batchAction('export')">导出选中</button>
+      <button class="btn btn-danger" onclick="batchAction('delete')">删除</button>
+    </div>
+
+    <!-- ─── 视图切换 ─── -->
+    <div class="view-toolbar">
+      <div class="view-switch">
+        <button class="active" data-view="card" onclick="switchView('card')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>
+          卡片视图
+        </button>
+        <button data-view="list" onclick="switchView('list')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="3" y1="3.5" x2="13" y2="3.5"/><line x1="3" y1="7" x2="13" y2="7"/><line x1="3" y1="10.5" x2="13" y2="10.5"/><circle cx="1.2" cy="3.5" r=".8" fill="currentColor"/><circle cx="1.2" cy="7" r=".8" fill="currentColor"/><circle cx="1.2" cy="10.5" r=".8" fill="currentColor"/></svg>
+          列表视图
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── 报表卡片列表 ─── -->
+    <div class="report-list" id="cardView">
+
+      <!-- Card 1 -->
+      <div class="report-card">
+        <div class="report-icon dash">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="14" width="4" height="7"/><rect x="10" y="9" width="4" height="12"/><rect x="17" y="4" width="4" height="17"/></svg>
+        </div>
+        <div class="report-body">
+          <div class="report-head">
+            <a class="report-name" onclick="goReport(event)">游戏核心指标日报</a>
+            <span class="report-code">game_core_daily</span>
+            <span class="report-tag level-core">核心</span>
+            <span class="report-tag type-dash">Dashboard</span>
+          </div>
+          <div class="report-cnname-row">
+            <span><span class="label">描述：</span><span class="value">监控游戏每日核心指标，含 DAU、新增、付费率、ARPU、次留等。</span></span>
+          </div>
+          <div class="report-meta">
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="3.5" rx="5" ry="2"/><path d="M2 3.5v7c0 1.1 2.2 2 5 2s5-.9 5-2v-7"/></svg>
+              关联数据源
+              <span class="src-link" onclick="viewSources(event)"><span class="chip-value">8</span> 张 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 2 9 6 5 10"/></svg></span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2.5"/><path d="M2 12c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/></svg>
+              <span class="chip-value">李明</span>
+            </span>
+            <span class="meta-chip">
+              <span class="biz-tag">sport</span>
+            </span>
+            <span class="meta-chip status-online">
+              <svg class="status-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>
+              <span class="chip-value">已上架</span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4.5l4 4 6-6"/><path d="M2 8.5l4 4 6-6"/></svg>
+              <span class="chip-value">游戏经营</span>
+            </span>
+          </div>
+        </div>
+        <div class="report-actions">
+          <button class="btn-link" onclick="editReport(event)">编辑</button>
+          <span class="op-divider">|</span>
+          <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="report-card">
+        <div class="report-icon self">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="6"/><line x1="20" y1="20" x2="14.5" y2="14.5"/><line x1="7" y1="11" x2="7" y2="13"/><line x1="10" y1="9" x2="10" y2="13"/><line x1="13" y1="7" x2="13" y2="13"/></svg>
+        </div>
+        <div class="report-body">
+          <div class="report-head">
+            <a class="report-name" onclick="goReport(event)">玩家留存漏斗分析</a>
+            <span class="report-code">self_player_retention</span>
+            <span class="report-tag level-key">重要</span>
+            <span class="report-tag type-self">自助分析</span>
+          </div>
+          <div class="report-cnname-row">
+            <span><span class="label">描述：</span><span class="value">玩家从注册、激活、次留、7 日留存、30 日留存全链路漏斗，可按渠道与设备下钻。</span></span>
+          </div>
+          <div class="report-meta">
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="3.5" rx="5" ry="2"/><path d="M2 3.5v7c0 1.1 2.2 2 5 2s5-.9 5-2v-7"/></svg>
+              关联数据源
+              <span class="src-link" onclick="viewSources(event)"><span class="chip-value">5</span> 张 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 2 9 6 5 10"/></svg></span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2.5"/><path d="M2 12c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/></svg>
+              <span class="chip-value">王芳</span>
+            </span>
+            <span class="meta-chip">
+              <span class="biz-tag">sc</span>
+            </span>
+            <span class="meta-chip status-online">
+              <svg class="status-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>
+              <span class="chip-value">已上架</span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4.5l4 4 6-6"/><path d="M2 8.5l4 4 6-6"/></svg>
+              <span class="chip-value">玩家增长</span>
+            </span>
+          </div>
+        </div>
+        <div class="report-actions">
+          <button class="btn-link" onclick="editReport(event)">编辑</button>
+          <span class="op-divider">|</span>
+          <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="report-card">
+        <div class="report-icon custom">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 3h11l4 4v14a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><line x1="8" y1="14" x2="8" y2="17"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="16" y1="13" x2="16" y2="17"/></svg>
+        </div>
+        <div class="report-body">
+          <div class="report-head">
+            <a class="report-name" onclick="goReport(event)">买量投放效果周报</a>
+            <span class="report-code">report_ua_weekly</span>
+            <span class="report-tag level-key">重要</span>
+            <span class="report-tag type-custom">定制报表</span>
+          </div>
+          <div class="report-cnname-row">
+            <span><span class="label">描述：</span><span class="value">各渠道买量数据周度汇总，含 CPA、LTV、ROI、回收周期等关键指标。</span></span>
+          </div>
+          <div class="report-meta">
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="3.5" rx="5" ry="2"/><path d="M2 3.5v7c0 1.1 2.2 2 5 2s5-.9 5-2v-7"/></svg>
+              关联数据源
+              <span class="src-link" onclick="viewSources(event)"><span class="chip-value">12</span> 张 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 2 9 6 5 10"/></svg></span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2.5"/><path d="M2 12c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/></svg>
+              <span class="chip-value">陈晓</span>
+            </span>
+            <span class="meta-chip">
+              <span class="biz-tag">sport</span>
+            </span>
+            <span class="meta-chip status-online">
+              <svg class="status-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>
+              <span class="chip-value">已上架</span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4.5l4 4 6-6"/><path d="M2 8.5l4 4 6-6"/></svg>
+              <span class="chip-value">买量分析</span>
+            </span>
+          </div>
+        </div>
+        <div class="report-actions">
+          <button class="btn-link" onclick="editReport(event)">编辑</button>
+          <span class="op-divider">|</span>
+          <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="report-card">
+        <div class="report-icon screen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="14" rx="1"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="9" y1="9" x2="9" y2="18"/><line x1="2" y1="13" x2="9" y2="13"/><line x1="9" y1="14" x2="22" y2="14"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+        </div>
+        <div class="report-body">
+          <div class="report-head">
+            <a class="report-name" onclick="goReport(event)">实时大屏-新版本上线</a>
+            <span class="report-code">screen_release_launch</span>
+            <span class="report-tag level-core">核心</span>
+            <span class="report-tag type-screen">数据大屏</span>
+          </div>
+          <div class="report-cnname-row">
+            <span><span class="label">描述：</span><span class="value">新版本上线实时大屏，秒级更新在线人数、崩溃率、热门内容、收入趋势等。</span></span>
+          </div>
+          <div class="report-meta">
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="3.5" rx="5" ry="2"/><path d="M2 3.5v7c0 1.1 2.2 2 5 2s5-.9 5-2v-7"/></svg>
+              关联数据源
+              <span class="src-link" onclick="viewSources(event)"><span class="chip-value">18</span> 张 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 2 9 6 5 10"/></svg></span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2.5"/><path d="M2 12c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/></svg>
+              <span class="chip-value">张晓明</span>
+            </span>
+            <span class="meta-chip">
+              <span class="biz-tag">skillbase</span>
+            </span>
+            <span class="meta-chip status-pending">
+              <svg class="status-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="4" x2="7" y2="7"/><line x1="7" y1="7" x2="9" y2="9"/></svg>
+              <span class="chip-value">待上架</span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4.5l4 4 6-6"/><path d="M2 8.5l4 4 6-6"/></svg>
+              <span class="chip-value">版本监控</span>
+            </span>
+          </div>
+        </div>
+        <div class="report-actions">
+          <button class="btn-link" onclick="editReport(event)">编辑</button>
+          <span class="op-divider">|</span>
+          <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+        </div>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="report-card">
+        <div class="report-icon dash">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="14" width="4" height="7"/><rect x="10" y="9" width="4" height="12"/><rect x="17" y="4" width="4" height="17"/></svg>
+        </div>
+        <div class="report-body">
+          <div class="report-head">
+            <a class="report-name" onclick="goReport(event)">充值链路实时监控</a>
+            <span class="report-code">report_recharge_monitor</span>
+            <span class="report-tag level-core">核心</span>
+            <span class="report-tag type-dash">Dashboard</span>
+          </div>
+          <div class="report-cnname-row">
+            <span><span class="label">描述：</span><span class="value">充值各环节成功率、超时率与异常监控，秒级刷新，触达 oncall。</span></span>
+          </div>
+          <div class="report-meta">
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="3.5" rx="5" ry="2"/><path d="M2 3.5v7c0 1.1 2.2 2 5 2s5-.9 5-2v-7"/></svg>
+              关联数据源
+              <span class="src-link" onclick="viewSources(event)"><span class="chip-value">6</span> 张 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 2 9 6 5 10"/></svg></span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2.5"/><path d="M2 12c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/></svg>
+              <span class="chip-value">李明</span>
+            </span>
+            <span class="meta-chip">
+              <span class="biz-tag">skillbase</span>
+            </span>
+            <span class="meta-chip status-online">
+              <svg class="status-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>
+              <span class="chip-value">已上架</span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4.5l4 4 6-6"/><path d="M2 8.5l4 4 6-6"/></svg>
+              <span class="chip-value">充值核心</span>
+            </span>
+          </div>
+        </div>
+        <div class="report-actions">
+          <button class="btn-link" onclick="editReport(event)">编辑</button>
+          <span class="op-divider">|</span>
+          <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+        </div>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="report-card">
+        <div class="report-icon self">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="6"/><line x1="20" y1="20" x2="14.5" y2="14.5"/><line x1="7" y1="11" x2="7" y2="13"/><line x1="10" y1="9" x2="10" y2="13"/><line x1="13" y1="7" x2="13" y2="13"/></svg>
+        </div>
+        <div class="report-body">
+          <div class="report-head">
+            <a class="report-name" onclick="goReport(event)">玩家行为画像分析</a>
+            <span class="report-code">self_player_profile</span>
+            <span class="report-tag level-general">一般</span>
+            <span class="report-tag type-self">自助分析</span>
+          </div>
+          <div class="report-cnname-row">
+            <span><span class="label">描述：</span><span class="value">基于玩家登录、付费、社交、战斗数据的画像分析报表，支持多维度筛选与下钻。</span></span>
+          </div>
+          <div class="report-meta">
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="3.5" rx="5" ry="2"/><path d="M2 3.5v7c0 1.1 2.2 2 5 2s5-.9 5-2v-7"/></svg>
+              关联数据源
+              <span class="src-link" onclick="viewSources(event)"><span class="chip-value">9</span> 张 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 2 9 6 5 10"/></svg></span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2.5"/><path d="M2 12c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/></svg>
+              <span class="chip-value">张晓明</span>
+            </span>
+            <span class="meta-chip">
+              <span class="biz-tag">sc</span>
+            </span>
+            <span class="meta-chip status-offline">
+              <svg class="status-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><line x1="4.5" y1="7" x2="9.5" y2="7"/></svg>
+              <span class="chip-value">已下线</span>
+            </span>
+            <span class="meta-chip">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4.5l4 4 6-6"/><path d="M2 8.5l4 4 6-6"/></svg>
+              <span class="chip-value">玩家画像</span>
+            </span>
+          </div>
+        </div>
+        <div class="report-actions">
+          <button class="btn-link" onclick="editReport(event)">编辑</button>
+          <span class="op-divider">|</span>
+          <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ─── 报表列表（表格视图） ─── -->
+    <div class="report-table-wrap" id="listView" style="display:none;">
+      <div class="report-table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" onchange="toggleAllRows(this)" /></th>
+              <th class="sortable" data-sort="name" onclick="sortBy(this)">报表名称 / 代码 <span class="sort-ico"><svg class="up" width="8" height="5" viewBox="0 0 8 5"><polygon points="4 0 8 5 0 5" fill="currentColor"/></svg><svg class="down" width="8" height="5" viewBox="0 0 8 5"><polygon points="0 0 8 0 4 5" fill="currentColor"/></svg></span></th>
+              <th>描述</th>
+              <th>报表类型</th>
+              <th>业务线</th>
+              <th class="sortable" data-sort="owner" onclick="sortBy(this)">负责人 <span class="sort-ico"><svg class="up" width="8" height="5" viewBox="0 0 8 5"><polygon points="4 0 8 5 0 5" fill="currentColor"/></svg><svg class="down" width="8" height="5" viewBox="0 0 8 5"><polygon points="0 0 8 0 4 5" fill="currentColor"/></svg></span></th>
+              <th>报表分级</th>
+              <th>上架状态</th>
+              <th>业务标签</th>
+              <th style="width:140px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td>
+                <div class="dt-name">
+                  <a class="dt-name-cn-link" onclick="goReport(event)">游戏核心指标日报</a>
+                  <span class="dt-name-en">game_core_daily</span>
+                </div>
+              </td>
+              <td><div class="dt-desc">监控游戏每日核心指标，含 DAU、新增、付费率、ARPU、次留等。</div></td>
+              <td><span class="report-tag type-dash">Dashboard</span></td>
+              <td><span class="biz-tag">sport</span></td>
+              <td>李明</td>
+              <td><span class="report-tag level-core">核心</span></td>
+              <td><span class="dt-status online"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>已上架</span></td>
+              <td>游戏经营</td>
+              <td>
+                <div class="dt-actions">
+                  <button class="btn-link" onclick="editReport(event)">编辑</button>
+                  <span class="op-divider">|</span>
+                  <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="dt-name">
+                  <a class="dt-name-cn-link" onclick="goReport(event)">玩家留存漏斗分析</a>
+                  <span class="dt-name-en">self_player_retention</span>
+                </div>
+              </td>
+              <td><div class="dt-desc">玩家从注册、激活、次留、7 日留存、30 日留存全链路漏斗，可按渠道与设备下钻。</div></td>
+              <td><span class="report-tag type-self">自助分析</span></td>
+              <td><span class="biz-tag">sc</span></td>
+              <td>王芳</td>
+              <td><span class="report-tag level-key">重要</span></td>
+              <td><span class="dt-status online"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>已上架</span></td>
+              <td>玩家增长</td>
+              <td>
+                <div class="dt-actions">
+                  <button class="btn-link" onclick="editReport(event)">编辑</button>
+                  <span class="op-divider">|</span>
+                  <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="dt-name">
+                  <a class="dt-name-cn-link" onclick="goReport(event)">买量投放效果周报</a>
+                  <span class="dt-name-en">report_ua_weekly</span>
+                </div>
+              </td>
+              <td><div class="dt-desc">各渠道买量数据周度汇总，含 CPA、LTV、ROI、回收周期等关键指标。</div></td>
+              <td><span class="report-tag type-custom">定制报表</span></td>
+              <td><span class="biz-tag">sport</span></td>
+              <td>陈晓</td>
+              <td><span class="report-tag level-key">重要</span></td>
+              <td><span class="dt-status online"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>已上架</span></td>
+              <td>买量分析</td>
+              <td>
+                <div class="dt-actions">
+                  <button class="btn-link" onclick="editReport(event)">编辑</button>
+                  <span class="op-divider">|</span>
+                  <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="dt-name">
+                  <a class="dt-name-cn-link" onclick="goReport(event)">实时大屏-新版本上线</a>
+                  <span class="dt-name-en">screen_release_launch</span>
+                </div>
+              </td>
+              <td><div class="dt-desc">新版本上线实时大屏，秒级更新在线人数、崩溃率、热门内容、收入趋势等。</div></td>
+              <td><span class="report-tag type-screen">数据大屏</span></td>
+              <td><span class="biz-tag">skillbase</span></td>
+              <td>张晓明</td>
+              <td><span class="report-tag level-core">核心</span></td>
+              <td><span class="dt-status pending"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="4" x2="7" y2="7"/><line x1="7" y1="7" x2="9" y2="9"/></svg>待上架</span></td>
+              <td>版本监控</td>
+              <td>
+                <div class="dt-actions">
+                  <button class="btn-link" onclick="editReport(event)">编辑</button>
+                  <span class="op-divider">|</span>
+                  <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="dt-name">
+                  <a class="dt-name-cn-link" onclick="goReport(event)">充值链路实时监控</a>
+                  <span class="dt-name-en">report_recharge_monitor</span>
+                </div>
+              </td>
+              <td><div class="dt-desc">充值各环节成功率、超时率与异常监控，秒级刷新，触达 oncall。</div></td>
+              <td><span class="report-tag type-dash">Dashboard</span></td>
+              <td><span class="biz-tag">skillbase</span></td>
+              <td>李明</td>
+              <td><span class="report-tag level-core">核心</span></td>
+              <td><span class="dt-status online"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><polyline points="4.5 7 6.5 9 9.5 5"/></svg>已上架</span></td>
+              <td>充值核心</td>
+              <td>
+                <div class="dt-actions">
+                  <button class="btn-link" onclick="editReport(event)">编辑</button>
+                  <span class="op-divider">|</span>
+                  <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="dt-name">
+                  <a class="dt-name-cn-link" onclick="goReport(event)">玩家行为画像分析</a>
+                  <span class="dt-name-en">self_player_profile</span>
+                </div>
+              </td>
+              <td><div class="dt-desc">基于玩家登录、付费、社交、战斗数据的画像分析报表，支持多维度筛选与下钻。</div></td>
+              <td><span class="report-tag type-self">自助分析</span></td>
+              <td><span class="biz-tag">sc</span></td>
+              <td>张晓明</td>
+              <td><span class="report-tag level-general">一般</span></td>
+              <td><span class="dt-status offline"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5.5"/><line x1="4.5" y1="7" x2="9.5" y2="7"/></svg>已下线</span></td>
+              <td>玩家画像</td>
+              <td>
+                <div class="dt-actions">
+                  <button class="btn-link" onclick="editReport(event)">编辑</button>
+                  <span class="op-divider">|</span>
+                  <button class="btn-link-danger" onclick="deleteReport(event)">删除</button>
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── 空状态 ─── -->
+    <div class="empty-state" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.6" y2="16.6"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      <div class="es-title">没有找到符合条件的报表</div>
+      <div>试试调整筛选条件，或检查关键词拼写</div>
+      <div class="es-actions">
+        <button class="btn" onclick="clearFilters()">清空筛选</button>
+        <button class="btn btn-primary" onclick="newReport()">新建报表</button>
+      </div>
+    </div>
+
+    <!-- ─── 分页 ─── -->
+    <div class="pagination-bar">
+      <span class="page-info">共 86 条记录</span>
+      <button class="page-btn disabled">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg>
+      </button>
+      <button class="page-btn active">1</button>
+      <button class="page-btn">2</button>
+      <button class="page-btn">3</button>
+      <button class="page-btn">…</button>
+      <button class="page-btn">15</button>
+      <button class="page-btn">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 2 9 6 5 10"/></svg>
+      </button>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════ MODAL: 新建/编辑报表 ═══════════ -->
+<div class="modal-mask" id="reportModal">
+  <div class="modal" data-mode="create" onclick="event.stopPropagation()">
+
+    <div class="modal-header">
+      <span class="modal-title" id="reportModalTitle">新建报表</span>
+      <button class="modal-close" onclick="closeReportModal()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <div class="modal-pane edit-only" id="rep-edit-pane">
+        <div class="form-grid">
+          <div class="form-item">
+            <label class="form-label"><span class="req">*</span>报表名称</label>
+            <input class="form-input" data-field="rname" type="text" maxlength="50"
+                   placeholder="请输入报表中文名（50 个字符内）" />
+          </div>
+          <div class="form-item">
+            <label class="form-label"><span class="req">*</span>报表代码</label>
+            <input class="form-input" data-field="rcode" type="text" maxlength="100"
+                   placeholder="请输入报表代码（英文，100 个字符内）"
+                   oninput="this.value=this.value.replace(/[^A-Za-z0-9_]/g,'')" />
+          </div>
+
+          <div class="form-item full">
+            <label class="form-label"><span class="req">*</span>报表描述</label>
+            <textarea class="form-textarea" data-field="desc" maxlength="500" rows="3"
+                      placeholder="请输入报表用途、数据范围、刷新频率等（500 个字符内）"
+                      oninput="updateCounter(this,'rep-desc-counter')"></textarea>
+            <div class="form-counter"><span id="rep-desc-counter">0</span> / 500</div>
+          </div>
+
+          <div class="form-item">
+            <label class="form-label"><span class="req">*</span>报表类型</label>
+            <select class="form-select" data-field="rtype">
+              <option value="" disabled>请选择报表类型</option>
+              <option value="Dashboard">Dashboard</option>
+              <option value="自助分析">自助分析</option>
+              <option value="定制报表">定制报表</option>
+              <option value="数据大屏">数据大屏</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label class="form-label">报表链接</label>
+            <input class="form-input" data-field="url" type="text" maxlength="200"
+                   placeholder="https://bi.example.com/dashboard/xxx" />
+          </div>
+
+          <div class="form-item">
+            <label class="form-label"><span class="req">*</span>业务线</label>
+            <div class="multi-select" data-field="business">
+              <div class="ms-trigger" onclick="toggleMS(event, this)">
+                <span class="ms-placeholder">请选择业务线（可多选）</span>
+              </div>
+              <div class="ms-panel">
+                <label class="ms-option"><input type="checkbox" value="sport" onchange="onMSChange(this)" /><span>sport</span></label>
+                <label class="ms-option"><input type="checkbox" value="skillbase" onchange="onMSChange(this)" /><span>skillbase</span></label>
+                <label class="ms-option"><input type="checkbox" value="sc" onchange="onMSChange(this)" /><span>sc</span></label>
+              </div>
+            </div>
+          </div>
+          <div class="form-item">
+            <label class="form-label"><span class="req">*</span>报表分级</label>
+            <select class="form-select" data-field="level">
+              <option value="" disabled>请选择报表分级</option>
+              <option value="核心">核心</option>
+              <option value="重要">重要</option>
+              <option value="一般">一般</option>
+            </select>
+          </div>
+
+          <div class="form-item">
+            <label class="form-label"><span class="req">*</span>上架状态</label>
+            <select class="form-select" data-field="status">
+              <option value="" disabled>请选择上架状态</option>
+              <option value="已上架">已上架</option>
+              <option value="待上架">待上架</option>
+              <option value="已下线">已下线</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label class="form-label">业务标签</label>
+            <div class="multi-select" data-field="biztag">
+              <div class="ms-trigger" onclick="toggleMS(event, this)">
+                <span class="ms-placeholder">请选择业务标签（可多选）</span>
+              </div>
+              <div class="ms-panel">
+                <label class="ms-option"><input type="checkbox" value="游戏经营" onchange="onMSChange(this)" /><span>游戏经营</span></label>
+                <label class="ms-option"><input type="checkbox" value="玩家增长" onchange="onMSChange(this)" /><span>玩家增长</span></label>
+                <label class="ms-option"><input type="checkbox" value="买量分析" onchange="onMSChange(this)" /><span>买量分析</span></label>
+                <label class="ms-option"><input type="checkbox" value="充值核心" onchange="onMSChange(this)" /><span>充值核心</span></label>
+                <label class="ms-option"><input type="checkbox" value="玩家画像" onchange="onMSChange(this)" /><span>玩家画像</span></label>
+                <label class="ms-option"><input type="checkbox" value="版本监控" onchange="onMSChange(this)" /><span>版本监控</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-item full">
+            <label class="form-label">关联数据源</label>
+            <input class="form-input" data-field="sources" type="text" maxlength="500"
+                   placeholder="多个数据源用英文逗号分隔，如 dwd_order_info, dws_order_amount_d" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-pane create-only" id="rep-create-pane">
+        <div class="batch-step">
+          <div class="batch-tip">
+            请按 <strong>模板格式</strong> 整理报表元信息，单次最多导入 100 条；导入后将自动校验字段合法性，校验失败的行会高亮提示。
+          </div>
+          <div class="batch-template">
+            <div class="batch-template-info">
+              <div class="batch-template-icon">
+                <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="14" height="14" rx="1.5"/><line x1="2" y1="6" x2="16" y2="6"/><line x1="6" y1="2" x2="6" y2="16"/></svg>
+              </div>
+              <div class="batch-template-text">
+                <span class="batch-template-name">报表批量导入模板.xlsx</span>
+                <span class="batch-template-desc">含字段说明 + 示例数据，建议先下载后填写</span>
+              </div>
+            </div>
+            <button class="btn" onclick="downloadReportTemplate()">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1v8m0 0l-3-3m3 3l3-3"/><path d="M2 11v1a1 1 0 001 1h8a1 1 0 001-1v-1"/></svg>
+              下载模板
+            </button>
+          </div>
+          <input type="file" id="batchReportFileInput" accept=".xlsx,.csv,.txt" style="display:none;" onchange="onReportBatchFileSelected(this)" />
+          <div class="upload-zone" id="reportUploadZone" onclick="document.getElementById('batchReportFileInput').click()">
+            <div class="upload-icon">
+              <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 24v3a2 2 0 01-2 2H6a2 2 0 01-2-2V12a2 2 0 012-2h6"/><path d="M16 18l5-5 5 5"/><line x1="21" y1="13" x2="21" y2="25"/><path d="M28 18V8a2 2 0 00-2-2h-4l-2-3h-4"/></svg>
+            </div>
+            <div class="upload-text" id="reportUploadText">点击此处上传文件</div>
+            <div class="upload-hint">支持 xlsx、csv、txt 格式，单个文件不超过 10 MB</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeReportModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmReport()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL: 删除确认 ═══════════ -->
+<div class="modal-mask" id="deleteConfirmModal">
+  <div class="modal modal-confirm" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">删除报表</span>
+      <button class="modal-close" onclick="closeDeleteModal()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
+      </div>
+      <div class="confirm-content">
+        <div class="confirm-title">确认删除该报表？</div>
+        <div class="confirm-target">
+          <span class="confirm-target-name" id="deleteTargetName">-</span>
+          <span class="confirm-target-code" id="deleteTargetCode">-</span>
+        </div>
+        <div class="confirm-desc">删除后报表配置将不可恢复，已订阅该报表的用户将无法继续访问（浏览历史仍会保留）。请谨慎操作。</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeDeleteModal()">取消</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ COMMAND PALETTE (Cmd+K, 公共组件) ═══════════ -->
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产、术语、操作命令..." oninput="renderCmdK()" />
+      <span class="cmdk-esc">ESC</span>
+    </div>
+    <div class="cmdk-filters">
+      <span class="cmdk-chip active" data-type="all" onclick="setCmdKFilter(this)">全部</span>
+      <span class="cmdk-chip" data-type="metric" onclick="setCmdKFilter(this)">指标</span>
+      <span class="cmdk-chip" data-type="table" onclick="setCmdKFilter(this)">库表</span>
+      <span class="cmdk-chip" data-type="report" onclick="setCmdKFilter(this)">报表</span>
+      <span class="cmdk-chip" data-type="agent" onclick="setCmdKFilter(this)">Agent</span>
+      <span class="cmdk-chip" data-type="tool" onclick="setCmdKFilter(this)">工具</span>
+      <span class="cmdk-chip" data-type="model" onclick="setCmdKFilter(this)">LLM</span>
+      <span class="cmdk-chip" data-type="kb" onclick="setCmdKFilter(this)">知识库</span>
+      <span class="cmdk-chip" data-type="prompt" onclick="setCmdKFilter(this)">Prompt</span>
+      <span class="cmdk-chip" data-type="vector" onclick="setCmdKFilter(this)">向量集合</span>
+      <span class="cmdk-chip" data-type="term" onclick="setCmdKFilter(this)">术语</span>
+      <span class="cmdk-chip" data-type="source" onclick="setCmdKFilter(this)">数据源</span>
+    </div>
+    <div class="cmdk-results" id="cmdkResults"></div>
+    <div class="cmdk-foot">
+      <span><kbd>↑</kbd> <kbd>↓</kbd> 选择</span>
+      <span><kbd>Enter</kbd> 打开</span>
+      <span><kbd>ESC</kbd> 关闭</span>
+      <span style="margin-left:auto;">Spark MDM</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── 侧边栏 ───
+  document.querySelectorAll('.nav-l1').forEach(el => {
+    el.addEventListener('click', () => el.classList.toggle('open'));
+  });
+  document.querySelectorAll('.nav-l2').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const href = el.dataset.href;
+      if (href) { location.href = href; return; }
+      document.querySelectorAll('.nav-l2').forEach(n => n.classList.remove('active'));
+      el.classList.add('active');
+    });
+  });
+
+  // ─── 多选下拉 ───
+  function toggleMS(e, trigger) {
+    e.stopPropagation();
+    const ms = trigger.parentElement;
+    const wasOpen = ms.classList.contains('open');
+    closeAllMS();
+    if (!wasOpen) ms.classList.add('open');
+  }
+  function closeAllMS() {
+    document.querySelectorAll('.multi-select.open').forEach(el => el.classList.remove('open'));
+  }
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.ms-panel')) return;
+    closeAllMS();
+  });
+  function onMSChange(checkbox) {
+    const ms = checkbox.closest('.multi-select');
+    const trigger = ms.querySelector('.ms-trigger');
+    const checked = ms.querySelectorAll('input[type="checkbox"]:checked');
+    trigger.innerHTML = '';
+    if (checked.length === 0) {
+      const placeholder = ms.querySelector('.ms-panel').dataset.placeholder || '请选择';
+      const span = document.createElement('span');
+      span.className = 'ms-placeholder';
+      span.textContent = placeholder;
+      trigger.appendChild(span);
+    } else {
+      checked.forEach(cb => {
+        const tag = document.createElement('span');
+        tag.className = 'ms-tag';
+        tag.innerHTML = '<span>' + cb.value + '</span>'
+          + '<span class="ms-tag-close" data-val="' + cb.value + '">'
+          + '<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg>'
+          + '</span>';
+        trigger.appendChild(tag);
+      });
+      trigger.querySelectorAll('.ms-tag-close').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const val = el.dataset.val;
+          const target = ms.querySelector('input[value="' + CSS.escape(val) + '"]');
+          if (target) { target.checked = false; onMSChange(target); }
+        });
+      });
+    }
+    ms.querySelectorAll('.ms-option').forEach(opt => {
+      const cb = opt.querySelector('input[type="checkbox"]');
+      opt.classList.toggle('selected', cb.checked);
+    });
+  }
+  document.querySelectorAll('.multi-select').forEach(ms => {
+    const ph = ms.querySelector('.ms-placeholder');
+    if (ph) ms.querySelector('.ms-panel').dataset.placeholder = ph.textContent;
+  });
+
+  // ─── 视图切换 ───
+  function switchView(view) {
+    document.querySelectorAll('.view-switch button').forEach(b => b.classList.remove('active'));
+    document.querySelector('.view-switch button[data-view="' + view + '"]').classList.add('active');
+    const cardView = document.getElementById('cardView');
+    const listView = document.getElementById('listView');
+    if (view === 'card') { cardView.style.display = ''; listView.style.display = 'none'; }
+    else                  { cardView.style.display = 'none'; listView.style.display = 'block'; }
+  }
+
+  // ─── 卡片交互 ───
+  function goReport(e) {
+    e.stopPropagation();
+    const trigger = e.currentTarget || e.target;
+    const card = trigger.closest('.report-card');
+    const row  = trigger.closest('tr');
+    const data = card ? extractCardData(card) : (row ? extractRowData(row) : null);
+    navigateToDetail(data);
+  }
+  function navigateToDetail(data) {
+    const params = new URLSearchParams();
+    if (data) {
+      if (data.rname)  params.set('name',   data.rname);
+      if (data.rcode)  params.set('code',   data.rcode);
+      if (data.rtype)  params.set('type',   data.rtype);
+      if (data.level)  params.set('level',  data.level);
+      if (data.status) params.set('status', data.status);
+      if (data.owner)  params.set('owner',  data.owner);
+      if (data.business && data.business[0]) params.set('biz',    data.business[0]);
+      if (data.biztag   && data.biztag[0])   params.set('biztag', data.biztag[0]);
+      if (data.desc)   params.set('desc',   data.desc);
+    }
+    const qs = params.toString();
+    location.href = 'metadata-report-detail.html' + (qs ? '?' + qs : '');
+  }
+  function viewSources(e) {
+    e.stopPropagation();
+    showToast('查看关联数据源（示例）', 'info');
+  }
+  function deleteReport(e) {
+    e.stopPropagation();
+    const trigger = e.currentTarget || e.target;
+    const card = trigger.closest('.report-card');
+    const row  = trigger.closest('tr');
+    let name = '', code = '';
+    if (card) {
+      name = card.querySelector('.report-name')?.textContent.trim() || '';
+      code = card.querySelector('.report-code')?.textContent.trim() || '';
+    } else if (row) {
+      name = row.querySelector('.dt-name-cn-link')?.textContent.trim() || '';
+      code = row.querySelector('.dt-name-en')?.textContent.trim() || '';
+    }
+    openDeleteModal(name, code);
+  }
+
+  // ─── 删除确认弹窗 ───
+  function openDeleteModal(name, code) {
+    document.getElementById('deleteTargetName').textContent = name || '未命名报表';
+    document.getElementById('deleteTargetCode').textContent = code || '-';
+    document.getElementById('deleteConfirmModal').classList.add('show');
+  }
+  function closeDeleteModal() {
+    document.getElementById('deleteConfirmModal').classList.remove('show');
+  }
+  function confirmDelete() {
+    closeDeleteModal();
+    showToast('报表已删除', 'success');
+  }
+  document.getElementById('deleteConfirmModal').addEventListener('click', (e) => {
+    if (e.target.id === 'deleteConfirmModal') closeDeleteModal();
+  });
+
+  // ─── 新建/编辑模态 ───
+  let _editSrcCounter = 0;
+  function newReport() { openReportModal('create'); }
+  function editReport(e) {
+    e.stopPropagation();
+    const trigger = e.currentTarget || e.target;
+    const card = trigger.closest('.report-card');
+    const row  = trigger.closest('tr');
+    const data = card ? extractCardData(card) : (row ? extractRowData(row) : null);
+    navigateToDetail(data);
+  }
+  function openReportModal(mode, data) {
+    const mask  = document.getElementById('reportModal');
+    const modal = mask.querySelector('.modal');
+    modal.dataset.mode = mode || 'create';
+    document.getElementById('reportModalTitle').textContent = (mode === 'edit') ? '编辑报表' : '新建报表';
+    if (mode !== 'edit') delete mask.dataset.sourceId;
+    resetReportForm();
+    if (mode === 'edit' && data) populateReportForm(data);
+    mask.classList.add('show');
+  }
+  function closeReportModal() {
+    document.getElementById('reportModal').classList.remove('show');
+    closeAllMS();
+  }
+  document.getElementById('reportModal').addEventListener('click', (e) => {
+    if (e.target.id === 'reportModal') closeReportModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeReportModal();
+      closeDeleteModal();
+    }
+  });
+
+  function updateCounter(el, counterId) {
+    const c = document.getElementById(counterId);
+    if (c) c.textContent = el.value.length;
+  }
+
+  function resetReportForm() {
+    const m = document.getElementById('reportModal');
+    m.querySelectorAll('input.form-input, textarea.form-textarea').forEach(el => { el.value = ''; el.classList.remove('err'); });
+    m.querySelectorAll('select.form-select').forEach(el => { el.selectedIndex = 0; el.classList.remove('err'); });
+    m.querySelectorAll('.multi-select').forEach(ms => {
+      ms.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      const anyCb = ms.querySelector('input[type="checkbox"]');
+      if (anyCb) onMSChange(anyCb);
+    });
+    const counter = document.getElementById('rep-desc-counter');
+    if (counter) counter.textContent = '0';
+    const fileInput = document.getElementById('batchReportFileInput');
+    if (fileInput) { fileInput.value = ''; onReportBatchFileSelected(fileInput); }
+  }
+
+  // ─── 编辑回填：抽取数据 ───
+  function extractCardData(card) {
+    const rname = (card.querySelector('.report-name')?.textContent || '').trim();
+    const rcode = (card.querySelector('.report-code')?.textContent || '').trim();
+    const desc  = (card.querySelector('.report-cnname-row .value')?.textContent || '').trim();
+    const levelTag = card.querySelector('.report-tag[class*="level-"]');
+    const level = (levelTag?.textContent || '').trim();
+    const typeTag = card.querySelector('.report-tag[class*="type-"]');
+    const rtype = (typeTag?.textContent || '').trim();
+    const chips = card.querySelectorAll('.meta-chip');
+    // chips: 0=数据源 1=负责人 2=biz-tag 3=status 4=biztag
+    const owner = (chips[1]?.querySelector('.chip-value')?.textContent || '').trim();
+    const business = (chips[2]?.querySelector('.biz-tag')?.textContent || '').trim();
+    const status = (chips[3]?.querySelector('.chip-value')?.textContent || '').trim();
+    const biztag = (chips[4]?.querySelector('.chip-value')?.textContent || '').trim();
+    return {
+      rname, rcode, desc, rtype, level, status, owner,
+      business: business ? [business] : [],
+      biztag: biztag ? [biztag] : []
+    };
+  }
+  function extractRowData(row) {
+    const cells = row.querySelectorAll('td');
+    const rname = (cells[0]?.querySelector('.dt-name-cn-link')?.textContent || '').trim();
+    const rcode = (cells[0]?.querySelector('.dt-name-en')?.textContent || '').trim();
+    const desc  = (cells[1]?.querySelector('.dt-desc')?.textContent || cells[1]?.textContent || '').trim();
+    const rtype = (cells[2]?.querySelector('.report-tag')?.textContent || cells[2]?.textContent || '').trim();
+    const business = (cells[3]?.querySelector('.biz-tag')?.textContent || cells[3]?.textContent || '').trim();
+    const owner = (cells[4]?.textContent || '').trim();
+    const level = (cells[5]?.querySelector('.report-tag')?.textContent || cells[5]?.textContent || '').trim();
+    const status = (cells[6]?.querySelector('.dt-status')?.textContent || cells[6]?.textContent || '').trim();
+    const biztag = (cells[7]?.textContent || '').trim();
+    return {
+      rname, rcode, desc, rtype, level, status, owner,
+      business: business ? [business] : [],
+      biztag: biztag ? [biztag] : []
+    };
+  }
+
+  function populateReportForm(data) {
+    const m = document.getElementById('reportModal');
+    ['rname','rcode','desc'].forEach(f => {
+      const el = m.querySelector('input[data-field="' + f + '"], textarea[data-field="' + f + '"]');
+      if (el) el.value = data[f] || '';
+    });
+    const descEl = m.querySelector('textarea[data-field="desc"]');
+    if (descEl) updateCounter(descEl, 'rep-desc-counter');
+    ['rtype','level','status'].forEach(f => {
+      const sel = m.querySelector('select[data-field="' + f + '"]');
+      if (sel && data[f]) sel.value = data[f];
+    });
+    [['business', data.business], ['biztag', data.biztag]].forEach(([f, vals]) => {
+      const ms = m.querySelector('.multi-select[data-field="' + f + '"]');
+      if (!ms) return;
+      ms.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      (vals || []).forEach(v => {
+        const cb = ms.querySelector('input[value="' + CSS.escape(v) + '"]');
+        if (cb) cb.checked = true;
+      });
+      const anyCb = ms.querySelector('input[type="checkbox"]');
+      if (anyCb) onMSChange(anyCb);
+    });
+  }
+
+  function collectReportFormData() {
+    const m = document.getElementById('reportModal');
+    return {
+      rname: (m.querySelector('[data-field="rname"]')?.value || '').trim(),
+      rcode: (m.querySelector('[data-field="rcode"]')?.value || '').trim(),
+      desc:  (m.querySelector('[data-field="desc"]')?.value || '').trim(),
+      rtype: (m.querySelector('[data-field="rtype"]')?.value || '').trim(),
+      url:   (m.querySelector('[data-field="url"]')?.value || '').trim(),
+      level: (m.querySelector('[data-field="level"]')?.value || '').trim(),
+      status:(m.querySelector('[data-field="status"]')?.value || '').trim(),
+      business: Array.from(m.querySelectorAll('.multi-select[data-field="business"] input:checked')).map(cb => cb.value),
+      biztag: Array.from(m.querySelectorAll('.multi-select[data-field="biztag"] input:checked')).map(cb => cb.value),
+      sources: (m.querySelector('[data-field="sources"]')?.value || '').trim()
+    };
+  }
+
+  function applyReportEdit(source, data) {
+    if (source.classList && source.classList.contains('report-card')) applyEditToCard(source, data);
+    else if (source.tagName === 'TR') applyEditToRow(source, data);
+  }
+  function applyEditToCard(card, data) {
+    const nameEl = card.querySelector('.report-name');
+    if (nameEl) nameEl.textContent = data.rname;
+    const codeEl = card.querySelector('.report-code');
+    if (codeEl) codeEl.textContent = data.rcode;
+    const levelTag = card.querySelector('.report-tag[class*="level-"]');
+    if (levelTag) {
+      levelTag.textContent = data.level;
+      const cls = data.level === '核心' ? 'level-core' : data.level === '重要' ? 'level-key' : 'level-general';
+      levelTag.className = 'report-tag ' + cls;
+    }
+    const typeTag = card.querySelector('.report-tag[class*="type-"]');
+    if (typeTag) {
+      typeTag.textContent = data.rtype;
+      const tcls = data.rtype === 'Dashboard' ? 'type-dash' :
+                   data.rtype === '自助分析' ? 'type-self' :
+                   data.rtype === '定制报表' ? 'type-custom' : 'type-screen';
+      typeTag.className = 'report-tag ' + tcls;
+    }
+    const icon = card.querySelector('.report-icon');
+    if (icon) {
+      const icls = data.rtype === 'Dashboard' ? 'dash' :
+                   data.rtype === '自助分析' ? 'self' :
+                   data.rtype === '定制报表' ? 'custom' : 'screen';
+      icon.className = 'report-icon ' + icls;
+    }
+    const descVal = card.querySelector('.report-cnname-row .value');
+    if (descVal) descVal.textContent = data.desc;
+    const chips = card.querySelectorAll('.meta-chip');
+    // chips[2] biz-tag
+    if (chips[2]?.querySelector('.biz-tag') && data.business[0]) {
+      chips[2].querySelector('.biz-tag').textContent = data.business[0];
+    }
+    // chips[3] status
+    if (chips[3]) {
+      const stCls = data.status === '已上架' ? 'status-online' : data.status === '待上架' ? 'status-pending' : 'status-offline';
+      chips[3].className = 'meta-chip ' + stCls;
+      const cv = chips[3].querySelector('.chip-value');
+      if (cv) cv.textContent = data.status;
+    }
+    // chips[4] biztag
+    if (chips[4]?.querySelector('.chip-value') && data.biztag[0]) {
+      chips[4].querySelector('.chip-value').textContent = data.biztag[0];
+    }
+  }
+  function applyEditToRow(row, data) {
+    const cells = row.querySelectorAll('td');
+    const nameLink = cells[0]?.querySelector('.dt-name-cn-link');
+    if (nameLink) nameLink.textContent = data.rname;
+    const codeEl = cells[0]?.querySelector('.dt-name-en');
+    if (codeEl) codeEl.textContent = data.rcode;
+    const descDiv = cells[1]?.querySelector('.dt-desc');
+    if (descDiv) descDiv.textContent = data.desc;
+    const typeTag = cells[2]?.querySelector('.report-tag');
+    if (typeTag) {
+      typeTag.textContent = data.rtype;
+      const tcls = data.rtype === 'Dashboard' ? 'type-dash' :
+                   data.rtype === '自助分析' ? 'type-self' :
+                   data.rtype === '定制报表' ? 'type-custom' : 'type-screen';
+      typeTag.className = 'report-tag ' + tcls;
+    }
+    const bizTag = cells[3]?.querySelector('.biz-tag');
+    if (bizTag && data.business[0]) bizTag.textContent = data.business[0];
+    const levelTag = cells[5]?.querySelector('.report-tag');
+    if (levelTag) {
+      levelTag.textContent = data.level;
+      const cls = data.level === '核心' ? 'level-core' : data.level === '重要' ? 'level-key' : 'level-general';
+      levelTag.className = 'report-tag ' + cls;
+    }
+    const statusEl = cells[6]?.querySelector('.dt-status');
+    if (statusEl) {
+      const stCls = data.status === '已上架' ? 'online' : data.status === '待上架' ? 'pending' : 'offline';
+      statusEl.className = 'dt-status ' + stCls;
+      let textNode = null;
+      statusEl.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) textNode = node;
+      });
+      if (textNode) textNode.textContent = data.status;
+      else statusEl.appendChild(document.createTextNode(data.status));
+    }
+    if (cells[7] && data.biztag[0]) cells[7].textContent = data.biztag[0];
+  }
+
+  // ─── 批量导入 ───
+  function downloadReportTemplate() {
+    showToast('已开始下载：报表批量导入模板.xlsx', 'success');
+  }
+  function onReportBatchFileSelected(input) {
+    const zone = document.getElementById('reportUploadZone');
+    const txt  = document.getElementById('reportUploadText');
+    if (input.files && input.files[0]) {
+      const f = input.files[0];
+      const sizeKB = (f.size / 1024).toFixed(1);
+      txt.textContent = f.name + '（' + sizeKB + ' KB）';
+      zone.classList.add('has-file');
+    } else {
+      txt.textContent = '点击此处上传文件';
+      zone.classList.remove('has-file');
+    }
+  }
+
+  // ─── 确认 ───
+  function confirmReport() {
+    const mask = document.getElementById('reportModal');
+    const modal = mask.querySelector('.modal');
+    const mode = modal.dataset.mode || 'create';
+
+    // 创建模式：仅支持批量导入
+    if (mode === 'create') {
+      const f = document.getElementById('batchReportFileInput').files[0];
+      if (!f) { showToast('请先上传文件', 'error'); return; }
+      closeReportModal();
+      showToast('批量导入已提交：' + f.name, 'success');
+      return;
+    }
+
+    // 编辑模式：表单必填校验
+    const m = document.getElementById('reportModal');
+    const required = ['rname','rcode','desc','rtype','level','status'];
+    let firstErr = null;
+    required.forEach(f => {
+      const el = m.querySelector('[data-field="' + f + '"]');
+      if (!el) return;
+      const val = (el.value || '').trim();
+      if (!val) {
+        el.classList.add('err');
+        if (!firstErr) firstErr = f;
+      } else {
+        el.classList.remove('err');
+      }
+    });
+    const bizMS = m.querySelector('.multi-select[data-field="business"]');
+    const bizChecked = bizMS.querySelectorAll('input[type="checkbox"]:checked').length > 0;
+    if (!bizChecked && !firstErr) firstErr = 'business';
+    if (firstErr) {
+      const labelMap = {
+        rname: '请填写报表名称', rcode: '请填写报表代码', desc: '请填写报表描述',
+        rtype: '请选择报表类型', level: '请选择报表分级', status: '请选择上架状态',
+        business: '请至少选择一个业务线'
+      };
+      showToast(labelMap[firstErr] || '请检查必填项', 'error');
+      return;
+    }
+
+    const sourceId = mask.dataset.sourceId;
+    const source = sourceId ? document.getElementById(sourceId) : null;
+    if (source) applyReportEdit(source, collectReportFormData());
+    closeReportModal();
+    showToast('报表已更新', 'success');
+  }
+
+  /* ════════════════════════════════════════════════════════
+   *   公共片段：全局索引 / Cmd+K / 收藏 / 我的视角 / 批量 / 排序
+   * ════════════════════════════════════════════════════════ */
+  window.__GLOBAL_INDEX = [
+    { type:'metric', code:'dau', name:'日活跃用户数', en:'dau', biz:'sport', owner:'张晓明', level:'核心', status:'已上架', desc:'去重后日 UV', url:'metadata-asset-detail.html?code=dau' },
+    { type:'metric', code:'pay_conv', name:'支付转化率', en:'pay_conversion_rate', biz:'skillbase', owner:'李明', level:'核心', status:'已上架', desc:'支付成功 / 下单数', url:'metadata-asset-detail.html?code=pay_conv' },
+    { type:'metric', code:'arpu', name:'用户平均收入', en:'arpu', biz:'skillbase', owner:'李明', level:'关键', status:'已上架', desc:'总收入 / 活跃用户', url:'metadata-asset-detail.html?code=arpu' },
+    { type:'table', code:'hive_dwd_user_active_log', name:'HIVE.DWD.user_active_log', en:'用户活跃日志', biz:'sc', owner:'张晓明', level:'关键', status:'已上架', desc:'明细层用户端上行为日志', url:'metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志' },
+    { type:'table', code:'orcl_order_wide', name:'ORCL.WEDATADB.ABjkajksAB', en:'订单宽表', biz:'skillbase', owner:'王芳', level:'核心', status:'已上架', desc:'订单事实宽表', url:'metadata-table-detail.html?code=orcl_order_wide&name=订单宽表' },
+    { type:'report', code:'game_core_daily', name:'游戏核心指标日报', en:'game_core_daily', biz:'sport', owner:'李明', level:'核心', status:'已上架', desc:'每日核心指标日报', url:'metadata-report-detail.html?code=game_core_daily&name=游戏核心指标日报' },
+    { type:'report', code:'self_player_retention', name:'玩家留存漏斗分析', en:'self_player_retention', biz:'sc', owner:'王芳', level:'关键', status:'已上架', desc:'玩家全链路留存漏斗', url:'metadata-report-detail.html?code=self_player_retention&name=玩家留存漏斗分析' },
+    { type:'report', code:'report_ua_weekly', name:'买量投放效果周报', en:'report_ua_weekly', biz:'sport', owner:'陈晓', level:'关键', status:'已上架', desc:'各渠道买量周度汇总', url:'metadata-report-detail.html?code=report_ua_weekly&name=买量投放效果周报' },
+    { type:'term', code:'term_dau', name:'DAU (Daily Active User)', en:'DAU', biz:'通用', owner:'数据治理委员会', level:'-', status:'已发布', desc:'每日活跃用户数', url:'glossary.html?term=DAU' },
+    { type:'source', code:'src_hive_main', name:'Hive 主仓', en:'hive_prod_cluster', biz:'-', owner:'平台组', level:'-', status:'已连接', desc:'主数据仓库 Hive 集群', url:'metadata-source-detail.html?code=src_hive_main' },
+    { type:'model', code:'gpt4_turbo', name:'GPT-4 Turbo（OpenAI）', en:'gpt-4-turbo', biz:'-', owner:'平台管理员', level:'-', status:'在线', desc:'LLM 接入 · 商用 · 上下文 128K', url:'model-detail.html?code=gpt4_turbo' },
+    { type:'model', code:'qwen2_72b', name:'Qwen2-72B-Instruct（阿里云）', en:'qwen2-72b-instruct', biz:'-', owner:'平台管理员', level:'-', status:'在线', desc:'LLM 接入 · 商用 · 上下文 32K', url:'model-detail.html?code=qwen2_72b' },
+    { type:'agent', code:'biz_qa_agent', name:'智能问数 Agent', en:'biz_qa_agent', biz:'data', owner:'王晨', level:'核心', status:'生产', desc:'RAG+SQL · 基座 GPT-4 Turbo', url:'agent-detail.html?code=biz_qa_agent' },
+    { type:'agent', code:'cs_intent_agent', name:'客服意图 Agent', en:'cs_intent_agent', biz:'cservice', owner:'李雨', level:'关键', status:'生产', desc:'Function Agent · 基座 Qwen2-72B', url:'agent-detail.html?code=cs_intent_agent' },
+    { type:'tool', code:'call_metric_api', name:'call_metric_api 指标查询工具', en:'call_metric_api', biz:'data', owner:'王晨', level:'核心', status:'已发布', desc:'API · 被 6 个 Agent 引用', url:'tool.html?code=call_metric_api' },
+    { type:'tool', code:'sql_runner', name:'sql_runner SQL 执行工具', en:'sql_runner', biz:'data', owner:'王晨', level:'关键', status:'已发布', desc:'SQL · Trino 后端', url:'tool.html?code=sql_runner' },
+    { type:'kb', code:'kb_cs_main', name:'客服 FAQ KB', en:'kb_customer_service', biz:'cservice', owner:'李雨', level:'核心', status:'已发布', desc:'12.4 万 chunks · bge-m3', url:'dataset-detail.html?code=kb_cs_main' },
+    { type:'prompt', code:'pt_summary_v2', name:'文本摘要 Prompt v2', en:'pt_summary_v2', biz:'cservice', owner:'李雨', level:'关键', status:'已发布', desc:'Claude/GPT-4 摘要', url:'prompt-detail.html?code=pt_summary_v2' },
+    { type:'vector', code:'vec_item_emb', name:'item_embedding 商品向量集合', en:'vec_item_embedding', biz:'recsys', owner:'王晨', level:'核心', status:'已上架', desc:'Milvus · 128维', url:'metadata-source-detail.html?code=src_milvus_main&collection=item_embedding' }
+  ];
+
+  const STORAGE_FAV='mdm_favorites', STORAGE_RECENT='mdm_recent';
+  function getFavorites(){try{return JSON.parse(localStorage.getItem(STORAGE_FAV))||[]}catch(e){return[]}}
+  function getRecent(){try{return JSON.parse(localStorage.getItem(STORAGE_RECENT))||[]}catch(e){return[]}}
+  function setFavorites(a){localStorage.setItem(STORAGE_FAV,JSON.stringify(a));updateScopeCounts();}
+  function toggleFavorite(code, ev) {
+    if (ev) ev.stopPropagation();
+    const favs = getFavorites();
+    const idx = favs.indexOf(code);
+    if (idx >= 0) { favs.splice(idx, 1); showToast('已取消收藏', 'info'); }
+    else { favs.unshift(code); showToast('已收藏', 'success'); }
+    setFavorites(favs);
+    updateCardStarStates();
+    if (currentScope === 'fav') applyScopeFilter();
+  }
+
+  let _cmdkFilter='all', _cmdkFocus=0;
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');setTimeout(()=>document.getElementById('cmdkInput').focus(),30);renderCmdK();}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  function setCmdKFilter(el){document.querySelectorAll('.cmdk-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');_cmdkFilter=el.dataset.type;renderCmdK();}
+  function highlight(t,q){if(!q)return t;const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return t.replace(re,'<span class="hl">$1</span>');}
+  function typeName(t){return ({metric:'指标',table:'库表',report:'报表',term:'术语',source:'数据源',model:'LLM',agent:'Agent',tool:'工具',kb:'知识库',prompt:'Prompt',vector:'向量集合'})[t]||t;}
+  function typeIcon(t){return ({metric:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/></svg>',table:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/></svg>',report:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>',term:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V3z"/></svg>',source:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="4" rx="5" ry="2"/></svg>',model:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>',agent:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="12" height="9" rx="1.5"/><circle cx="6" cy="8.5" r="0.9"/><circle cx="10" cy="8.5" r="0.9"/><path d="M8 1v3"/></svg>',tool:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9.5 4.5l3 3M3 13l5-5M11 2l3 3-2 2-3-3z"/></svg>',kb:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4l6-2.5L14 4l-6 2.5z"/></svg>',prompt:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 10a1 1 0 01-1 1H5l-2 2V3a1 1 0 011-1h9a1 1 0 011 1z"/></svg>',vector:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="1.2"/><circle cx="12" cy="4" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>'})[t]||'';}
+  function renderCmdK(){const q=document.getElementById('cmdkInput').value.trim().toLowerCase();let items=window.__GLOBAL_INDEX.slice();if(_cmdkFilter!=='all')items=items.filter(i=>i.type===_cmdkFilter);if(q)items=items.filter(i=>(i.name+' '+i.en+' '+(i.desc||'')+' '+(i.code||'')).toLowerCase().includes(q));else items=items.slice(0,8);_cmdkFocus=0;const root=document.getElementById('cmdkResults');if(items.length===0){root.innerHTML='<div class="cmdk-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg><div>没有找到匹配的资产</div></div>';return;}const groups={};items.forEach(i=>{(groups[i.type]=groups[i.type]||[]).push(i);});let html='';['metric','table','report','agent','tool','model','prompt','kb','vector','term','source'].forEach(t=>{if(!groups[t])return;html+='<div class="cmdk-group-title">'+typeName(t)+' ('+groups[t].length+')</div>';groups[t].forEach(i=>{html+='<div class="cmdk-item" onclick="cmdkOpen(\''+i.url+'\')" data-url="'+i.url+'">';html+='<div class="cmdk-item-icon '+i.type+'">'+typeIcon(i.type)+'</div>';html+='<div class="cmdk-item-meta"><div class="cmdk-item-title">'+highlight(i.name,q);if(i.en&&i.en!==i.name)html+=' <span style="color:var(--sub);font-size:11px;">'+highlight(i.en,q)+'</span>';html+='</div><div class="cmdk-item-sub">'+(i.desc||'')+' · '+(i.owner||'')+'</div></div>';html+='<span class="cmdk-item-type">'+typeName(i.type)+'</span></div>';});});root.innerHTML=html;const all=root.querySelectorAll('.cmdk-item');if(all[0])all[0].classList.add('focused');}
+  function cmdkOpen(url){closeCmdK();location.href=url;}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();return;}if(!document.getElementById('cmdkMask').classList.contains('show'))return;if(e.key==='Escape'){closeCmdK();return;}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const items=document.querySelectorAll('#cmdkResults .cmdk-item');if(!items.length)return;items[_cmdkFocus]?.classList.remove('focused');_cmdkFocus=(_cmdkFocus+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[_cmdkFocus].classList.add('focused');items[_cmdkFocus].scrollIntoView({block:'nearest'});}else if(e.key==='Enter'){const f=document.querySelector('#cmdkResults .cmdk-item.focused');if(f)cmdkOpen(f.dataset.url);}});
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{if(e.target.id==='cmdkMask')closeCmdK();});
+
+  /* ─── 我的视角 / 批量 / 排序 ─── */
+  const ME='张晓明';
+  const REPORT_CODES = ['game_core_daily','self_player_retention','report_ua_weekly','screen_release','recharge_monitor','self_player_profile'];
+  let currentScope='all', _sortField=null, _sortDir=0;
+  function setScope(el){document.querySelectorAll('.scope-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');currentScope=el.dataset.scope;applyScopeFilter();}
+  function applyScopeFilter(){
+    const favs=getFavorites();const recent=getRecent().map(r=>r.code);
+    const cards=document.querySelectorAll('#cardView .report-card');
+    const rows=document.querySelectorAll('#listView tbody tr');
+    let visible=0;
+    cards.forEach((c,i)=>{
+      const code=REPORT_CODES[i]||'';
+      const owner=c.querySelectorAll('.meta-chip')[1]?.querySelector('.chip-value')?.textContent.trim()||'';
+      let show=true;
+      if(currentScope==='mine')show=(owner===ME);
+      else if(currentScope==='fav')show=favs.includes(code);
+      else if(currentScope==='recent')show=recent.includes(code);
+      c.style.display=show?'':'none';if(show)visible++;
+    });
+    rows.forEach((r,i)=>{
+      const code=REPORT_CODES[i]||'';
+      const owner=r.querySelectorAll('td')[5]?.textContent.trim()||'';
+      let show=true;
+      if(currentScope==='mine')show=(owner===ME);
+      else if(currentScope==='fav')show=favs.includes(code);
+      else if(currentScope==='recent')show=recent.includes(code);
+      r.style.display=show?'':'none';
+    });
+    const empty=document.getElementById('emptyState');
+    if(visible===0&&cards.length>0){empty.classList.add('show');document.getElementById('cardView').style.display='none';document.getElementById('listView').style.display='none';}
+    else{empty.classList.remove('show');const isList=document.querySelector('.view-switch button.active')?.dataset.view==='list';document.getElementById('cardView').style.display=isList?'none':'';document.getElementById('listView').style.display=isList?'block':'none';}
+  }
+  function clearFilters(){
+    document.querySelectorAll('.toolbar input[type="text"]').forEach(el=>el.value='');
+    document.querySelectorAll('.toolbar .multi-select input[type="checkbox"]').forEach(cb=>cb.checked=false);
+    document.querySelectorAll('.toolbar .multi-select').forEach(ms=>{const a=ms.querySelector('input[type="checkbox"]');if(a)onMSChange(a);});
+    document.querySelectorAll('.scope-chip').forEach(c=>c.classList.remove('active'));
+    document.querySelector('.scope-chip[data-scope="all"]').classList.add('active');
+    currentScope='all';applyScopeFilter();showToast('已清空筛选','info');
+  }
+  function updateScopeCounts(){document.getElementById('favCount').textContent=getFavorites().length;document.getElementById('recentCount').textContent=getRecent().length;}
+
+  function sortBy(th){
+    const f=th.dataset.sort;
+    document.querySelectorAll('th.sortable').forEach(t=>t.classList.remove('sort-asc','sort-desc'));
+    if(_sortField===f&&_sortDir===1){_sortDir=-1;th.classList.add('sort-desc');}
+    else{_sortField=f;_sortDir=1;th.classList.add('sort-asc');}
+    const tbody=document.querySelector('#listView tbody');
+    const rows=Array.from(tbody.querySelectorAll('tr'));
+    rows.sort((a,b)=>{const av=sortValueOf(a,f),bv=sortValueOf(b,f);if(av===bv)return 0;return(av>bv?1:-1)*_sortDir;});
+    rows.forEach(r=>tbody.appendChild(r));
+    showToast('已按"'+({name:'报表名',owner:'负责人'})[f]+'"排序','info');
+  }
+  function sortValueOf(row,f){
+    const c=row.querySelectorAll('td');
+    if(f==='name')return(c[1]?.querySelector('.dt-name-cn-link')?.textContent||'').toLowerCase();
+    if(f==='owner')return c[5]?.textContent.trim()||'';
+    return '';
+  }
+
+  function injectCheckboxColumn(){
+    document.querySelectorAll('#listView tbody tr').forEach(r=>{
+      if(r.querySelector('.row-check'))return;
+      const td=document.createElement('td');td.className='col-check';
+      td.innerHTML='<input type="checkbox" class="row-check" onclick="event.stopPropagation()" onchange="onRowCheck()" />';
+      r.insertBefore(td,r.firstChild);
+    });
+  }
+  function toggleAllRows(cb){document.querySelectorAll('#listView tbody tr:not([style*="display: none"]) .row-check').forEach(c=>c.checked=cb.checked);onRowCheck();}
+  function onRowCheck(){const n=document.querySelectorAll('#listView .row-check:checked').length;const bar=document.getElementById('batchBar');if(n>0){bar.classList.add('show');document.getElementById('batchCount').textContent=n;}else bar.classList.remove('show');}
+  function clearBatch(){document.querySelectorAll('#listView .row-check').forEach(c=>c.checked=false);document.querySelectorAll('#listView thead .col-check input').forEach(c=>c.checked=false);onRowCheck();}
+  function batchAction(act){const n=document.querySelectorAll('#listView .row-check:checked').length;const m={changeOwner:'批量改负责人',addTag:'批量打标签',toggleStatus:'批量改状态',export:'导出选中',delete:'批量删除'};showToast((m[act]||'操作')+' · 已选 '+n+' 项（演示）',act==='delete'?'error':'success');if(act==='delete'||act==='export')clearBatch();}
+  function exportReports(){showToast('已导出当前列表为 报表清单.xlsx','success');}
+
+  function injectCardActions(){
+    document.querySelectorAll('#cardView .report-card').forEach((c,i)=>{
+      if(c.querySelector('.card-fav-btn'))return;
+      const code=REPORT_CODES[i]||'';
+      const isFav=getFavorites().includes(code);
+      const actions=c.querySelector('.report-actions');if(!actions)return;
+      const fav=document.createElement('button');
+      fav.className='card-fav-btn '+(isFav?'starred':'');
+      fav.title=isFav?'取消收藏':'收藏';fav.dataset.code=code;
+      fav.innerHTML=isFav?'<svg viewBox="0 0 16 16" fill="currentColor"><polygon points="8 1 10.2 5.8 15.5 6.4 11.5 10 12.7 15.2 8 12.5 3.3 15.2 4.5 10 0.5 6.4 5.8 5.8"/></svg>':'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="8 1 10.2 5.8 15.5 6.4 11.5 10 12.7 15.2 8 12.5 3.3 15.2 4.5 10 0.5 6.4 5.8 5.8"/></svg>';
+      fav.onclick=(e)=>toggleFavorite(code,e);
+      actions.insertBefore(fav,actions.firstChild);
+      const apply=document.createElement('button');apply.className='btn-link-apply';apply.textContent='申请使用';
+      apply.onclick=(e)=>{e.stopPropagation();applyForReport(code);};
+      const editBtn=actions.querySelector('.btn-link');
+      if(editBtn){const sep=document.createElement('span');sep.className='op-divider';sep.textContent='|';actions.insertBefore(apply,editBtn);actions.insertBefore(sep,editBtn);}
+    });
+  }
+  function updateCardStarStates(){
+    const favs=getFavorites();
+    document.querySelectorAll('.card-fav-btn').forEach(btn=>{
+      const c=btn.dataset.code;const isFav=favs.includes(c);
+      btn.classList.toggle('starred',isFav);btn.title=isFav?'取消收藏':'收藏';
+      btn.innerHTML=isFav?'<svg viewBox="0 0 16 16" fill="currentColor"><polygon points="8 1 10.2 5.8 15.5 6.4 11.5 10 12.7 15.2 8 12.5 3.3 15.2 4.5 10 0.5 6.4 5.8 5.8"/></svg>':'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="8 1 10.2 5.8 15.5 6.4 11.5 10 12.7 15.2 8 12.5 3.3 15.2 4.5 10 0.5 6.4 5.8 5.8"/></svg>';
+    });
+  }
+  function applyForReport(code){location.href='metadata-request.html?action=new&type=report&code='+encodeURIComponent(code);}
+
+  /* URL 直链 */
+  const _origNav = window.navigateToDetail;
+  window.navigateToDetail = function(data) {
+    const card = event && (event.currentTarget || event.target)?.closest('.report-card');
+    const row  = event && (event.currentTarget || event.target)?.closest('tr');
+    let code = '';
+    if (card) code = REPORT_CODES[Array.from(document.querySelectorAll('.report-card')).indexOf(card)] || '';
+    else if (row) code = REPORT_CODES[Array.from(document.querySelectorAll('#listView tbody tr')).indexOf(row)] || '';
+    const params = new URLSearchParams();
+    if (code) params.set('code', code);
+    if (data) {
+      if (data.rname) params.set('name', data.rname);
+      if (data.rcode) params.set('rcode', data.rcode);
+      if (data.rtype) params.set('type', data.rtype);
+      if (data.level) params.set('level', data.level);
+      if (data.status) params.set('status', data.status);
+      if (data.owner) params.set('owner', data.owner);
+      if (data.business && data.business[0]) params.set('biz', data.business[0]);
+    }
+    location.href = 'metadata-report-detail.html' + (params.toString() ? '?' + params.toString() : '');
+  };
+
+  injectCheckboxColumn();
+  injectCardActions();
+  updateScopeCounts();
+
+  // ─── Toast (原有) ───
+  function showToast(msg, type) {
+    type = type || 'success';
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    const icons = {
+      success: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><polyline points="5.5 9.5 8 12 13 6.5"/></svg>',
+      error:   '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="9" y1="5" x2="9" y2="10"/><circle cx="9" cy="13" r=".8" fill="currentColor"/></svg>',
+      info:    '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="9" y1="8" x2="9" y2="13"/><circle cx="9" cy="5.5" r=".8" fill="currentColor"/></svg>',
+    };
+    toast.innerHTML = '<span class="toast-icon">' + (icons[type] || icons.info) + '</span><span>' + msg + '</span>';
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => toast.remove(), 250);
+    }, 2200);
+  }
+</script>
+</body>
+</html>
