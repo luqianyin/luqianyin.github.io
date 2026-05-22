@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 权限与申请</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #1677FF;
+      --primary-light:#E6F0FF;
+      --primary-hover:#0958D9;
+      --green:        #00B42A;
+      --green-light:  #E8FFEA;
+      --red:          #F53F3F;
+      --red-light:    #FFECE8;
+      --orange:       #FF7D00;
+      --orange-light: #FFF3E8;
+      --purple:       #7B61FF;
+      --purple-light: #F0EDFF;
+      --gray-light:   #F7F8FA;
+      --sidebar-w:    220px;
+      --header-h:     52px;
+      --subbar-h:     44px;
+      --bg:           #F5F7FA;
+      --card:         #FFFFFF;
+      --border:       #E8ECF0;
+      --text:         #1D2129;
+      --sub:          #86909C;
+      --link:         #1677FF;
+    }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+      display: flex; flex-direction: column; min-height: 100vh; overflow-y: auto;
+    }
+
+    /* Header */
+    .header {
+      height: var(--header-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 20px; gap: 16px;
+      flex-shrink: 0; position: sticky; top: 0; z-index: 20;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 8px; }
+    .logo-name { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+    .global-search {
+      display: flex; align-items: center; width: 280px; height: 32px;
+      background: var(--gray-light); border: 1px solid transparent; border-radius: 8px;
+      padding: 0 10px; cursor: pointer; transition: all .15s; flex-shrink: 0;
+    }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd {
+      font-size: 11px; color: var(--sub); padding: 1px 6px;
+      border: 1px solid var(--border); border-radius: 4px; background: #fff;
+      font-family: ui-monospace, monospace;
+    }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; margin-left: 20px; }
+    .header-tab {
+      height: 100%; display: flex; align-items: center; padding: 0 18px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s; text-decoration: none;
+    }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 4px 8px; border-radius: 4px; cursor: pointer;
+      color: var(--sub); background: none; border: none; transition: color .15s; position: relative;
+    }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-badge {
+      position: absolute; top: 1px; right: 4px;
+      min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px;
+      background: var(--red); color: #fff; font-size: 10px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; cursor: pointer;
+      background: none; border: none; color: var(--text);
+    }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+
+    /* Subbar */
+    .subbar {
+      height: var(--subbar-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 0 0 var(--sidebar-w);
+      flex-shrink: 0;
+      position: sticky; top: var(--header-h); z-index: 10;
+    }
+    .subbar-inner { display: flex; align-items: center; gap: 14px; padding: 0 20px; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+    /* Body */
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: #fff; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      position: sticky; top: calc(var(--header-h) + var(--subbar-h));
+      height: calc(100vh - var(--header-h) - var(--subbar-h));
+    }
+    .nav-group { padding: 8px 0; }
+    .nav-l1 {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; user-select: none;
+      transition: background .12s;
+    }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron {
+      margin-left: auto; width: 14px; height: 14px;
+      transition: transform .2s; flex-shrink: 0;
+    }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+    .nav-l1-children { display: none; }
+    .nav-l1.open + .nav-l1-children { display: block; }
+    .nav-l2 {
+      display: flex; align-items: center;
+      padding: 9px 16px 9px 40px; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active {
+      color: var(--primary); font-weight: 500;
+      background: var(--primary-light);
+    }
+    .nav-l2.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+
+    /* Content */
+    .content {
+      flex: 1; min-width: 0; padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    /* Page title */
+    .page-title-bar { display: flex; align-items: center; justify-content: space-between; }
+    .page-title { font-size: 18px; font-weight: 600; color: var(--text); }
+    .page-subtitle { font-size: 12px; color: var(--sub); margin-left: 8px; }
+
+    /* Toolbar */
+    .toolbar {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px;
+      display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+    }
+    .toolbar-field { display: flex; flex-direction: column; gap: 5px; }
+    .toolbar-field-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .toolbar-search {
+      flex: 1; min-width: 240px; max-width: 420px;
+      display: flex; align-items: center; gap: 0;
+      min-height: 32px; box-sizing: border-box;
+      border: 1px solid var(--border); border-radius: 6px; background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .toolbar-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .toolbar-search-prefix { padding: 0 0 0 10px; display: flex; align-items: center; color: var(--sub); }
+    .toolbar-search-prefix svg { width: 14px; height: 14px; }
+    .toolbar-search input {
+      flex: 1; min-height: 30px; border: none; outline: none; padding: 0 10px;
+      font-size: 13px; color: var(--text); background: transparent;
+    }
+    .toolbar-search input::placeholder { color: #C2C7CF; }
+    .toolbar-select {
+      height: 32px; border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; color: var(--text); font-size: 13px;
+      padding: 0 28px 0 10px; outline: none; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center; min-width: 130px;
+    }
+    .toolbar-select:focus { border-color: var(--primary); }
+    .toolbar-spacer { flex: 1; }
+    .toolbar-stats { font-size: 12px; color: var(--sub); padding-bottom: 8px; }
+    .toolbar-stats strong { color: var(--text); font-weight: 600; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 32px; padding: 0 14px; border-radius: 6px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: #fff; color: var(--text);
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    .btn-danger { background: var(--red); border-color: var(--red); color: #fff; }
+    .btn-danger:hover { background: #CF1322; border-color: #CF1322; color: #fff; }
+    .btn-link { border: none; background: none; color: var(--primary); padding: 0 6px; height: auto; font-size: 12px; cursor: pointer; }
+    .btn-link:hover { color: var(--primary-hover); text-decoration: underline; }
+    .btn-link-danger { border: none; background: none; color: var(--red); padding: 0 6px; height: auto; font-size: 12px; cursor: pointer; }
+    .btn-link-danger:hover { color: #CF1322; text-decoration: underline; }
+    .op-divider { color: var(--border); font-size: 12px; }
+
+    /* Pagination */
+    .pagination-bar { display: flex; align-items: center; justify-content: flex-end; padding: 4px 4px; gap: 8px; }
+    .page-info { font-size: 12px; color: var(--sub); margin-right: auto; }
+    .page-btn {
+      min-width: 28px; height: 28px; padding: 0 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 5px; background: #fff;
+      font-size: 12px; color: var(--sub); cursor: pointer; transition: all .12s;
+    }
+    .page-btn:hover:not(.disabled) { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .page-btn.disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Modal */
+    .modal-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
+    .modal-mask.show { display: flex; }
+    .modal { background: #fff; border-radius: 10px; width: 100%; max-width: 640px; max-height: calc(100vh - 48px); display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,.18); overflow: hidden; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .modal-title { font-size: 16px; font-weight: 600; color: var(--text); }
+    .modal-close { width: 28px; height: 28px; border-radius: 6px; border: none; background: none; color: var(--sub); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .12s, color .12s; }
+    .modal-close:hover { background: var(--bg); color: var(--text); }
+    .modal-close svg { width: 16px; height: 16px; }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--gray-light); }
+
+    /* Form */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+    .form-item { display: flex; flex-direction: column; gap: 5px; }
+    .form-item.full { grid-column: 1 / -1; }
+    .form-label { font-size: 12px; color: var(--text); font-weight: 500; }
+    .form-label .req { color: var(--red); margin-right: 2px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; color: var(--text); font-size: 13px;
+      padding: 0 10px; outline: none; transition: border-color .15s, box-shadow .15s;
+      font-family: inherit;
+    }
+    .form-input, .form-select { height: 32px; }
+    .form-input:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .form-input::placeholder { color: #C2C7CF; }
+    .form-select {
+      padding-right: 28px; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+
+    /* Multi-select */
+    .multi-select { position: relative; }
+    .ms-trigger {
+      min-height: 32px; border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; padding: 3px 28px 3px 8px;
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      cursor: pointer; font-size: 13px;
+      transition: border-color .15s, box-shadow .15s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    .ms-placeholder { color: #C2C7CF; padding: 0 2px; }
+    .ms-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 8px; border-radius: 4px; background: var(--primary-light); color: var(--primary); font-size: 12px; line-height: 1.4; }
+    .ms-tag-close { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; cursor: pointer; color: var(--primary); transition: background .12s; }
+    .ms-tag-close:hover { background: rgba(22,119,255,.18); }
+    .ms-tag-close svg { width: 10px; height: 10px; }
+    .multi-select.open .ms-trigger { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+    .ms-panel { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.08); max-height: 220px; overflow-y: auto; display: none; z-index: 110; padding: 4px 0; }
+    .multi-select.open .ms-panel { display: block; }
+    .ms-option { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--text); user-select: none; transition: background .12s; }
+    .ms-option:hover { background: var(--gray-light); }
+    .ms-option input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary); }
+    .ms-option.selected { color: var(--primary); }
+
+    /* Confirm modal */
+    .modal-confirm { max-width: 440px; }
+    .modal-confirm .modal-body { padding: 20px 24px 8px; display: flex; gap: 14px; align-items: flex-start; }
+    .confirm-icon { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; background: var(--red-light); color: var(--red); display: flex; align-items: center; justify-content: center; }
+    .confirm-icon svg { width: 22px; height: 22px; }
+    .confirm-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+    .confirm-title { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.5; }
+    .confirm-desc { font-size: 13px; color: var(--sub); line-height: 1.6; }
+    .confirm-target { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; margin-top: 2px; background: var(--gray-light); border-radius: 6px; font-size: 12px; }
+    .confirm-target-cn { color: var(--text); font-weight: 600; }
+    .confirm-target-en { color: var(--sub); font-family: monospace; padding: 1px 6px; background: #fff; border: 1px solid var(--border); border-radius: 3px; }
+
+    /* Toast */
+    .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 13px; color: var(--text); white-space: nowrap; animation: toast-in .25s ease-out; pointer-events: auto; }
+    .toast.fade-out { animation: toast-out .25s ease-in forwards; }
+    .toast-icon { width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.success .toast-icon { color: var(--green); }
+    .toast.error  { border-color: #FFC1B8; }
+    .toast.error .toast-icon { color: var(--red); }
+    .toast.info   { border-color: #ADC6FF; }
+    .toast.info .toast-icon { color: var(--primary); }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toast-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-12px); } }
+
+    /* Table common */
+    .data-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .data-table-scroll { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table thead th { background: #FAFBFC; border-bottom: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+    .data-table tbody td { padding: 12px 14px; border-bottom: 1px solid #F0F3F6; vertical-align: middle; }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover td { background: #FAFBFC; }
+    .meta-avatar { width: 18px; height: 18px; border-radius: 50%; background: #7B61FF; color: #fff; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+
+    /* 申请单标签 */
+    .req-tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .req-tag.pending { background: var(--orange-light); color: var(--orange); }
+    .req-tag.approved { background: var(--green-light); color: var(--green); }
+    .req-tag.rejected { background: var(--red-light); color: var(--red); }
+    .req-tag.urgent { background: var(--red-light); color: var(--red); }
+    .req-tag.normal { background: var(--primary-light); color: var(--primary); }
+    .req-tag.ai { background: var(--purple-light); color: var(--purple); }
+    .req-id { font-family: ui-monospace, monospace; font-size: 11px; color: var(--sub); }
+
+    /* 权限管理 */
+    .perm-table { min-width: 1280px; }
+    .perm-table thead th { font-weight: 600; }
+    .perm-table thead th.perm-th-group { text-align: center; border-bottom: 1px solid var(--border); }
+    .perm-table thead th.perm-th-sub { width: 64px; text-align: center; font-weight: 500; background: #FAFBFC; }
+    .perm-name { display: flex; flex-direction: column; gap: 3px; }
+    .perm-name-main { font-size: 14px; font-weight: 600; color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
+    .perm-name-desc { font-size: 12px; color: var(--sub); line-height: 1.5; max-width: 220px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .perm-type-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+    .perm-type-tag.group { background: var(--primary-light); color: var(--primary); }
+    .perm-type-tag.user  { background: var(--orange-light); color: var(--orange); }
+    .perm-type-tag svg { width: 11px; height: 11px; }
+    .perm-users { display: flex; flex-direction: column; gap: 4px; max-width: 220px; }
+    .perm-users-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .perm-user-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 4px; border-radius: 12px; font-size: 11px; background: var(--gray-light); color: var(--text); max-width: 100px; }
+    .perm-user-chip .pu-avatar { width: 16px; height: 16px; border-radius: 50%; color: #fff; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .perm-user-more { font-size: 11px; color: var(--sub); padding: 2px 6px; background: var(--gray-light); border-radius: 10px; }
+    .perm-table tbody tr.perm-row-first td { border-top: 2px solid var(--border); }
+    .perm-table tbody tr:first-child td { border-top: none; }
+    .perm-table tbody td.perm-menu-cell { font-weight: 500; color: var(--text); white-space: nowrap; }
+    .perm-table tbody td.perm-cell-td { text-align: center; padding: 8px 0; }
+    .perm-cell { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; border-radius: 4px; font-size: 13px; font-weight: 700; }
+    .perm-cell.yes { background: var(--green-light); color: var(--green); }
+    .perm-cell.no  { background: var(--red-light);   color: var(--red); }
+    .perm-meta-name { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text); }
+    .perm-meta-time { font-size: 11px; color: var(--sub); }
+    .tbl-actions { display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+
+    /* 权限模态 */
+    .perm-modal { max-width: 760px; }
+    .perm-type-selector { display: inline-flex; align-items: center; background: var(--gray-light); border: 1px solid var(--border); border-radius: 6px; padding: 3px; }
+    .perm-type-selector button { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 14px; border-radius: 4px; border: none; background: none; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--sub); transition: all .15s; white-space: nowrap; }
+    .perm-type-selector button.active { background: #fff; color: var(--primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .perm-type-selector svg { width: 12px; height: 12px; }
+    .perm-form-section { display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px; border-bottom: 1px dashed var(--border); margin-bottom: 16px; }
+    .perm-form-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .perm-form-section-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .perm-form-section-title .num { width: 18px; height: 18px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
+    .perm-form-section-tip { font-size: 11px; color: var(--sub); font-weight: 400; margin-left: auto; }
+    .perm-matrix-table { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .perm-matrix-table th, .perm-matrix-table td { padding: 8px 12px; text-align: center; font-size: 12px; border-bottom: 1px solid var(--border); }
+    .perm-matrix-table th { background: #FAFBFC; color: var(--sub); font-weight: 600; border-bottom: 1px solid var(--border); }
+    .perm-matrix-table th.menu-col, .perm-matrix-table td.menu-col { text-align: left; color: var(--text); font-weight: 500; width: 200px; }
+    .perm-matrix-table tr:last-child td { border-bottom: none; }
+    .perm-matrix-table tr:hover td { background: #FAFBFE; }
+    .perm-matrix-table input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary); }
+    .perm-matrix-table .perm-row-all { background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .perm-row-all th { background: var(--gray-light); }
+    .perm-col-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--primary); cursor: pointer; user-select: none; }
+    .perm-col-toggle:hover { text-decoration: underline; }
+
+    /* Cmd+K */
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 96px); }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search svg { width: 16px; height: 16px; color: var(--sub); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; background: transparent; }
+    .cmdk-esc { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--sub); font-family: ui-monospace, monospace; }
+    .cmdk-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cmdk-empty { padding: 40px 20px; text-align: center; color: var(--sub); font-size: 13px; }
+    .cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+    .cmdk-item:hover { background: var(--primary-light); }
+    .cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .cmdk-foot kbd { font-family: ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab" href="metadata-asset.html">数据资产</a>
+    <a class="header-tab" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab active" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" onclick="switchPage('todo')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>工单</span>
+      <span class="hdr-badge">3</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-4-5.7V5a2 2 0 10-4 0v.3C7.7 6.2 6 8.4 6 11v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1"/></svg>
+      <span>通知</span>
+      <span class="hdr-badge">5</span>
+    </button>
+    <button class="hdr-action">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 01-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 004.7 15a1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 009 4.7a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 012.8 2.8l-.1.1A1.7 1.7 0 0019.4 9a1.7 1.7 0 001.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+      <span>设置</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张晓明</span>
+    </button>
+  </div>
+</header>
+
+<div class="subbar">
+  <div class="subbar-inner">
+    <div class="breadcrumb" id="breadcrumb">
+      <a href="#">权限与申请</a>
+      <span class="sep">›</span>
+      <span class="current">权限详情列表</span>
+    </div>
+  </div>
+</div>
+
+<div class="body-wrap">
+
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l1 open">
+        <svg class="l1-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1l6 3v4c0 3.5-2.5 6-6 7-3.5-1-6-3.5-6-7V4l6-3z"/><polyline points="5 8 7 10 11 6"/></svg>
+        权限与申请
+        <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
+      </div>
+      <div class="nav-l1-children">
+        <div class="nav-l2" data-page="mine" data-breadcrumb="权限与申请|我的申请">我的申请</div>
+        <div class="nav-l2" data-page="todo" data-breadcrumb="权限与申请|待我审批">待我审批</div>
+        <div class="nav-l2 active" data-page="permission" data-breadcrumb="权限与申请|权限详情列表">权限详情列表</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- ═══════ 我的申请 ═══════ -->
+    <div class="page-container" id="page-mine" style="display:none;">
+      <div class="page-title-bar">
+        <div>
+          <span class="page-title">我的申请</span>
+          <span class="page-subtitle">查看我提交的资产 / 权限 / 配额申请单</span>
+        </div>
+        <button class="btn btn-primary" onclick="alert('演示：发起新申请')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+          发起申请
+        </button>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-field" style="flex:1;min-width:240px;max-width:360px;">
+          <span class="toolbar-field-label">关键词搜索</span>
+          <div class="toolbar-search">
+            <span class="toolbar-search-prefix"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg></span>
+            <input type="text" id="mineSearchInput" oninput="renderMineTable()" placeholder="搜索申请编号 / 资产名" />
+          </div>
+        </div>
+        <div class="toolbar-field">
+          <span class="toolbar-field-label">状态</span>
+          <select class="toolbar-select" id="mineStatusFilter" onchange="renderMineTable()">
+            <option value="">全部</option>
+            <option value="pending">审批中</option>
+            <option value="approved">已通过</option>
+            <option value="rejected">已驳回</option>
+          </select>
+        </div>
+        <div class="toolbar-spacer"></div>
+        <span class="toolbar-stats">共 <strong id="mineTotalCount">0</strong> 条申请</span>
+      </div>
+
+      <div class="data-table-wrap">
+        <div class="data-table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:140px;">申请编号</th>
+                <th style="width:90px;">类型</th>
+                <th>申请内容</th>
+                <th style="width:100px;">状态</th>
+                <th style="width:140px;">审批人</th>
+                <th style="width:160px;">提交时间</th>
+                <th style="width:100px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="mineTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pagination-bar">
+        <span class="page-info" id="minePageInfo">共 0 条</span>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg></button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 2 9 6 5 10"/></svg></button>
+      </div>
+    </div>
+
+    <!-- ═══════ 待我审批 ═══════ -->
+    <div class="page-container" id="page-todo" style="display:none;">
+      <div class="page-title-bar">
+        <div>
+          <span class="page-title">待我审批</span>
+          <span class="page-subtitle">由我审批的工单 — 资产 / 权限 / 配额 / AI 上线</span>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-field" style="flex:1;min-width:240px;max-width:360px;">
+          <span class="toolbar-field-label">关键词搜索</span>
+          <div class="toolbar-search">
+            <span class="toolbar-search-prefix"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg></span>
+            <input type="text" id="todoSearchInput" oninput="renderTodoTable()" placeholder="搜索申请编号 / 申请人" />
+          </div>
+        </div>
+        <div class="toolbar-field">
+          <span class="toolbar-field-label">优先级</span>
+          <select class="toolbar-select" id="todoPriorityFilter" onchange="renderTodoTable()">
+            <option value="">全部</option>
+            <option value="urgent">紧急</option>
+            <option value="normal">普通</option>
+          </select>
+        </div>
+        <div class="toolbar-spacer"></div>
+        <span class="toolbar-stats">待我审批 <strong id="todoTotalCount">0</strong> 条</span>
+      </div>
+
+      <div class="data-table-wrap">
+        <div class="data-table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:140px;">工单编号</th>
+                <th style="width:90px;">优先级</th>
+                <th style="width:90px;">类别</th>
+                <th>申请内容</th>
+                <th style="width:120px;">申请人</th>
+                <th style="width:160px;">提交时间</th>
+                <th style="width:160px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="todoTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pagination-bar">
+        <span class="page-info" id="todoPageInfo">共 0 条</span>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg></button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 2 9 6 5 10"/></svg></button>
+      </div>
+    </div>
+
+    <!-- ═══════ 权限详情列表 ═══════ -->
+    <div class="page-container" id="page-permission">
+
+      <div class="page-title-bar">
+        <div>
+          <span class="page-title">权限详情列表</span>
+          <span class="page-subtitle">统一管理角色组与个人的菜单权限，权限粒度：新增 / 删除 / 修改 / 查询</span>
+        </div>
+        <button class="btn btn-primary" onclick="openPermModal('create','group')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1l5 2.5v3.5c0 3-2 5-5 6-3-1-5-3-5-6V3.5L7 1z"/><polyline points="4.5 7 6.5 9 9.5 5.5"/></svg>
+          权限管理
+        </button>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-field" style="flex:1;min-width:240px;max-width:360px;">
+          <span class="toolbar-field-label">关键词搜索</span>
+          <div class="toolbar-search">
+            <span class="toolbar-search-prefix"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg></span>
+            <input type="text" id="permSearchInput" oninput="renderPermTable()" placeholder="搜索角色组名 / 用户名" />
+          </div>
+        </div>
+        <div class="toolbar-field">
+          <span class="toolbar-field-label">类型</span>
+          <select class="toolbar-select" id="permTypeFilter" onchange="renderPermTable()">
+            <option value="">全部</option>
+            <option value="group">角色组</option>
+            <option value="user">个人</option>
+          </select>
+        </div>
+        <div class="toolbar-spacer"></div>
+        <span class="toolbar-stats">共 <strong id="permTotalCount">0</strong> 条权限记录</span>
+      </div>
+
+      <div class="data-table-wrap">
+        <div class="data-table-scroll">
+          <table class="data-table perm-table">
+            <thead>
+              <tr>
+                <th rowspan="2" style="width:110px;">菜单</th>
+                <th rowspan="2" style="min-width:180px;">名称 / 描述</th>
+                <th rowspan="2" style="width:90px;">类型</th>
+                <th rowspan="2" style="min-width:200px;">用户 / 成员</th>
+                <th colspan="4" class="perm-th-group">权限明细</th>
+                <th rowspan="2" style="width:120px;">创建人</th>
+                <th rowspan="2" style="min-width:160px;">最近修改</th>
+                <th rowspan="2" style="width:110px;">操作</th>
+              </tr>
+              <tr>
+                <th class="perm-th-sub">新增</th>
+                <th class="perm-th-sub">删除</th>
+                <th class="perm-th-sub">修改</th>
+                <th class="perm-th-sub">查询</th>
+              </tr>
+            </thead>
+            <tbody id="permTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pagination-bar">
+        <span class="page-info" id="permPageInfo">共 0 条</span>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 2 3 6 7 10"/></svg></button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn disabled"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 2 9 6 5 10"/></svg></button>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- 权限编辑模态 -->
+<div class="modal-mask" id="permModal">
+  <div class="modal perm-modal" data-mode="create" data-perm-type="group" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="permModalTitle">权限管理</span>
+      <button class="modal-close" onclick="closePermModal()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
+    </div>
+    <div class="modal-body">
+
+      <div class="perm-form-section" id="permTypeSection">
+        <div class="perm-form-section-title"><span class="num">1</span>选择类型</div>
+        <div class="perm-type-selector" id="permTypeSelector">
+          <button type="button" data-type="group" class="active" onclick="onPermTypeChange('group')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5" cy="5" r="2"/><circle cx="10" cy="5.5" r="1.5"/><path d="M1 12c0-2 1.7-3.5 4-3.5s4 1.5 4 3.5"/><path d="M9 11.5c0-1.5 1.3-2.5 3-2.5s2 .8 2 2"/></svg>
+            角色组
+          </button>
+          <button type="button" data-type="user" onclick="onPermTypeChange('user')">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2.5"/><path d="M2 13c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/></svg>
+            个人
+          </button>
+        </div>
+      </div>
+
+      <div class="perm-form-section">
+        <div class="perm-form-section-title"><span class="num">2</span><span id="permBasicTitle">角色组信息</span></div>
+        <div class="form-grid" id="permBasicGrid">
+          <div class="form-item perm-group-only">
+            <label class="form-label"><span class="req">*</span>角色组名</label>
+            <input class="form-input" data-pf="name" type="text" maxlength="50" placeholder="请输入角色组名（50个字符内）" />
+          </div>
+          <div class="form-item perm-group-only">
+            <label class="form-label">描述</label>
+            <input class="form-input" data-pf="desc" type="text" maxlength="100" placeholder="简要描述角色组职责（100个字符内）" />
+          </div>
+          <div class="form-item full perm-group-only">
+            <label class="form-label"><span class="req">*</span>组成员（用户）</label>
+            <div class="multi-select" data-pf="users">
+              <div class="ms-trigger" onclick="toggleMS(event, this)">
+                <span class="ms-placeholder">请选择组成员（可多选）</span>
+              </div>
+              <div class="ms-panel" id="permGroupUserPanel"></div>
+            </div>
+          </div>
+          <div class="form-item full perm-user-only" style="display:none;">
+            <label class="form-label"><span class="req">*</span>选择用户</label>
+            <select class="form-select" data-pf="singleUser" id="permSingleUserSelect">
+              <option value="" disabled selected>请选择用户</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="perm-form-section">
+        <div class="perm-form-section-title">
+          <span class="num">3</span>菜单权限分配
+          <span class="perm-form-section-tip">勾选对应菜单的 新增 / 删除 / 修改 / 查询 权限 · <strong style="color:#7B61FF;">含 AI 模型 / 特征 / 数据集 / Prompt / 向量</strong></span>
+        </div>
+        <table class="perm-matrix-table" id="permMatrixTable">
+          <thead>
+            <tr>
+              <th class="menu-col">菜单</th>
+              <th>新增</th>
+              <th>删除</th>
+              <th>修改</th>
+              <th>查询</th>
+              <th style="width:80px;">本行全选</th>
+            </tr>
+          </thead>
+          <tbody id="permMatrixBody"></tbody>
+          <tfoot>
+            <tr class="perm-row-all">
+              <th class="menu-col" style="text-align:left;">
+                <span class="perm-col-toggle" onclick="permToggleAll()">
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg>
+                  一键全选 / 取消
+                </span>
+              </th>
+              <th><input type="checkbox" data-pcol="add" onchange="permToggleCol('add', this.checked)" /></th>
+              <th><input type="checkbox" data-pcol="delete" onchange="permToggleCol('delete', this.checked)" /></th>
+              <th><input type="checkbox" data-pcol="edit" onchange="permToggleCol('edit', this.checked)" /></th>
+              <th><input type="checkbox" data-pcol="view" onchange="permToggleCol('view', this.checked)" /></th>
+              <th></th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="perm-form-section" style="background:linear-gradient(180deg,rgba(123,97,255,.04),transparent);padding:14px 16px;border-radius:8px;border:1px dashed #D6CFFF;">
+        <div class="perm-form-section-title">
+          <span class="num" style="background:#7B61FF;">4</span>🤖 模型操作权限粒度 <span class="perm-form-section-tip">P1 · 模型资产专属粒度（独立于菜单 CRUD）</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+          <label style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+            <input type="checkbox" id="modelOpUse" />
+            <span style="font-size:12px;font-weight:500;">查看模型</span>
+            <span style="font-size:11px;color:var(--sub);text-align:center;">浏览模型详情、签名、评估指标</span>
+          </label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+            <input type="checkbox" id="modelOpInfer" />
+            <span style="font-size:12px;font-weight:500;color:#08979C;">调用推理</span>
+            <span style="font-size:11px;color:var(--sub);text-align:center;">调用在线 / 离线推理服务</span>
+          </label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+            <input type="checkbox" id="modelOpFinetune" />
+            <span style="font-size:12px;font-weight:500;color:#0958D9;">微调训练</span>
+            <span style="font-size:11px;color:var(--sub);text-align:center;">基于模型派生新版本</span>
+          </label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+            <input type="checkbox" id="modelOpDeploy" />
+            <span style="font-size:12px;font-weight:500;color:#FA8C16;">部署上线</span>
+            <span style="font-size:11px;color:var(--sub);text-align:center;">将模型版本部署到推理服务</span>
+          </label>
+          <label style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+            <input type="checkbox" id="modelOpRetire" />
+            <span style="font-size:12px;font-weight:500;color:#CF1322;">下线归档</span>
+            <span style="font-size:11px;color:var(--sub);text-align:center;">高危操作，需二次确认</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="perm-form-section" style="background:linear-gradient(180deg,rgba(0,180,42,.04),transparent);padding:14px 16px;border-radius:8px;border:1px dashed #A3E8B0;">
+        <div class="perm-form-section-title">
+          <span class="num" style="background:#00B42A;">5</span>🛡 字段脱敏策略 <span class="perm-form-section-tip">同字段在 BI 查询 / 模型训练 时可应用不同策略</span>
+        </div>
+        <table class="perm-matrix-table" style="margin-top:8px;">
+          <thead>
+            <tr>
+              <th style="text-align:left;">敏感字段</th>
+              <th>分级</th>
+              <th>BI 查询时</th>
+              <th>模型训练时（P1）</th>
+              <th>RAG 检索时（P1）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-family:ui-monospace,monospace;font-size:12px;">user.mobile</td>
+              <td><span style="background:var(--orange-light);color:var(--orange);padding:1px 6px;border-radius:3px;font-size:11px;">L3</span></td>
+              <td><select class="form-select" style="height:28px;font-size:12px;"><option>中间 4 位 ***</option><option>明文</option><option>禁止访问</option></select></td>
+              <td><select class="form-select" style="height:28px;font-size:12px;"><option style="color:#7B61FF;">SHA256 哈希</option><option>禁止访问</option><option>明文</option></select></td>
+              <td><select class="form-select" style="height:28px;font-size:12px;"><option>禁止访问</option><option>SHA256 哈希</option></select></td>
+            </tr>
+            <tr>
+              <td style="font-family:ui-monospace,monospace;font-size:12px;">user.id_card</td>
+              <td><span style="background:var(--red-light);color:var(--red);padding:1px 6px;border-radius:3px;font-size:11px;">L4</span></td>
+              <td><select class="form-select" style="height:28px;font-size:12px;"><option>哈希 SHA256</option><option>禁止访问</option></select></td>
+              <td><select class="form-select" style="height:28px;font-size:12px;"><option style="color:#CF1322;">禁止访问</option><option>SHA256 + 加盐</option></select></td>
+              <td><select class="form-select" style="height:28px;font-size:12px;"><option style="color:#CF1322;">禁止访问</option></select></td>
+            </tr>
+            <tr>
+              <td style="font-family:ui-monospace,monospace;font-size:12px;">order.real_name</td>
+              <td><span style="background:var(--orange-light);color:var(--orange);padding:1px 6px;border-radius:3px;font-size:11px;">L3</span></td>
+              <td><select class="form-select" style="height:28px;font-size:12px;"><option>姓显示，名 *</option><option>明文</option></select></td>
+              <td><select class="form-select" style="height:28px;font-size:12px;"><option style="color:#7B61FF;">姓哈希 + 名删除</option><option>明文（高敏审批）</option></select></td>
+              <td><select class="form-select" style="height:28px;font-size:12px;"><option>禁止访问</option></select></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closePermModal()">取消</button>
+      <button class="btn btn-primary" onclick="savePermModal()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 权限删除确认 -->
+<div class="modal-mask" id="permDeleteModal">
+  <div class="modal modal-confirm" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">删除权限</span>
+      <button class="modal-close" onclick="closePermDeleteModal()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
+      </div>
+      <div class="confirm-content">
+        <div class="confirm-title">确认删除该权限记录？</div>
+        <div class="confirm-target">
+          <span class="confirm-target-cn" id="permDelName">-</span>
+          <span class="confirm-target-en" id="permDelType">-</span>
+        </div>
+        <div class="confirm-desc">删除后该角色组/个人的菜单权限将立即失效，请谨慎操作。</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closePermDeleteModal()">取消</button>
+      <button class="btn btn-danger" onclick="confirmPermDelete()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cmd+K -->
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产、术语、操作命令..." />
+      <span class="cmdk-esc">ESC</span>
+    </div>
+    <div class="cmdk-results"><div class="cmdk-empty">演示版 — 请回到首页使用完整 Cmd+K</div></div>
+    <div class="cmdk-foot"><span><kbd>ESC</kbd> 关闭</span><span style="margin-left:auto;">Spark MDM</span></div>
+  </div>
+</div>
+
+<script>
+  // ─── 通用 ───
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function formatNow() {
+    const d = new Date();
+    const pad = n => (n < 10 ? '0' : '') + n;
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+      + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+  function showToast(msg, type) {
+    type = type || 'success';
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    const icons = {
+      success: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><polyline points="5.5 9.5 8 12 13 6.5"/></svg>',
+      error:   '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="9" y1="5" x2="9" y2="10"/><circle cx="9" cy="13" r=".8" fill="currentColor"/></svg>',
+      info:    '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="8"/><line x1="9" y1="8" x2="9" y2="13"/><circle cx="9" cy="5.5" r=".8" fill="currentColor"/></svg>',
+    };
+    toast.innerHTML = '<span class="toast-icon">' + (icons[type] || icons.info) + '</span><span>' + msg + '</span>';
+    container.appendChild(toast);
+    setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 250); }, 2200);
+  }
+
+  // ─── multi-select ───
+  function toggleMS(e, trigger) {
+    e.stopPropagation();
+    const ms = trigger.parentElement;
+    const wasOpen = ms.classList.contains('open');
+    closeAllMS();
+    if (!wasOpen) ms.classList.add('open');
+  }
+  function closeAllMS() { document.querySelectorAll('.multi-select.open').forEach(el => el.classList.remove('open')); }
+  document.addEventListener('click', (e) => { if (e.target.closest('.ms-panel')) return; closeAllMS(); });
+  function onMSChange(checkbox) {
+    const ms = checkbox.closest('.multi-select');
+    const trigger = ms.querySelector('.ms-trigger');
+    const checked = ms.querySelectorAll('input[type="checkbox"]:checked');
+    trigger.innerHTML = '';
+    if (checked.length === 0) {
+      const placeholder = ms.querySelector('.ms-panel').dataset.placeholder || '请选择';
+      const span = document.createElement('span');
+      span.className = 'ms-placeholder';
+      span.textContent = placeholder;
+      trigger.appendChild(span);
+    } else {
+      checked.forEach(cb => {
+        const tag = document.createElement('span');
+        tag.className = 'ms-tag';
+        tag.innerHTML = '<span>' + cb.value + '</span>'
+          + '<span class="ms-tag-close" data-val="' + cb.value + '">'
+          + '<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg>'
+          + '</span>';
+        trigger.appendChild(tag);
+      });
+      trigger.querySelectorAll('.ms-tag-close').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const val = el.dataset.val;
+          const target = ms.querySelector('input[value="' + CSS.escape(val) + '"]');
+          if (target) { target.checked = false; onMSChange(target); }
+        });
+      });
+    }
+    ms.querySelectorAll('.ms-option').forEach(opt => {
+      const cb = opt.querySelector('input[type="checkbox"]');
+      opt.classList.toggle('selected', cb.checked);
+    });
+  }
+  document.querySelectorAll('.multi-select').forEach(ms => {
+    const ph = ms.querySelector('.ms-placeholder');
+    if (ph) ms.querySelector('.ms-panel').dataset.placeholder = ph.textContent;
+  });
+
+  // ─── 我的申请 ───
+  const mineData = [
+    { id: 'M-2026-0520-1', type: '资产权限', content: '申请数据资产 dau 的查询权限', status: 'pending', approver: '张晓明', time: '2026-05-20 14:23' },
+    { id: 'AI-2026-0518-2', type: 'AI 配额', content: '申请 GPT-4 Turbo 月预算 ¥5,000', status: 'approved', approver: '张晓明', time: '2026-05-18 10:12' },
+    { id: 'M-2026-0512-1', type: '角色组', content: '申请加入 数据治理组', status: 'rejected', approver: '李明', time: '2026-05-12 09:30' },
+    { id: 'AI-2026-0509-3', type: 'AI 上线', content: '申请发布 客服意图 Agent v2.0 至生产', status: 'approved', approver: '王芳', time: '2026-05-09 16:08' },
+    { id: 'M-2026-0501-2', type: '资产权限', content: '申请库表 dwd_order_info 修改权限', status: 'approved', approver: '王芳', time: '2026-05-01 11:50' }
+  ];
+  const STATUS_LABEL = { pending: '审批中', approved: '已通过', rejected: '已驳回' };
+  function renderMineTable() {
+    const tbody = document.getElementById('mineTableBody');
+    if (!tbody) return;
+    const kw = (document.getElementById('mineSearchInput')?.value || '').trim().toLowerCase();
+    const status = document.getElementById('mineStatusFilter')?.value || '';
+    const items = mineData.filter(it => {
+      if (status && it.status !== status) return false;
+      if (!kw) return true;
+      return (it.id + ' ' + it.content).toLowerCase().includes(kw);
+    });
+    if (items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px 0;color:var(--sub);">暂无匹配的申请记录</td></tr>';
+    } else {
+      tbody.innerHTML = items.map(it =>
+        '<tr>'
+        + '<td><span class="req-id">' + it.id + '</span></td>'
+        + '<td><span class="req-tag normal">' + it.type + '</span></td>'
+        + '<td>' + escapeHtml(it.content) + '</td>'
+        + '<td><span class="req-tag ' + it.status + '">' + STATUS_LABEL[it.status] + '</span></td>'
+        + '<td>' + escapeHtml(it.approver) + '</td>'
+        + '<td>' + it.time + '</td>'
+        + '<td><button class="btn-link" onclick="alert(\'演示：查看 ' + it.id + '\')">查看</button>'
+        + (it.status === 'pending' ? '<span class="op-divider">|</span><button class="btn-link-danger" onclick="alert(\'演示：撤回 ' + it.id + '\')">撤回</button>' : '')
+        + '</td>'
+        + '</tr>'
+      ).join('');
+    }
+    document.getElementById('mineTotalCount').textContent = items.length;
+    document.getElementById('minePageInfo').textContent = '共 ' + items.length + ' 条';
+  }
+
+  // ─── 待我审批 ───
+  const todoData = [
+    { id: 'AI-2026-0520-1', priority: 'urgent', category: 'AI 上线', content: '陈晓 申请发布 RAG 文档问答 Agent 至生产 (灰度 20%)', applicant: '陈晓', time: '2026-05-20 15:30' },
+    { id: 'AI-2026-0520-2', priority: 'normal', category: 'LLM 配额', content: '李雨 申请使用 GPT-4o 调用配额（月预算 ¥12,000）', applicant: '李雨', time: '2026-05-20 10:20' },
+    { id: 'AI-2026-0519-2', priority: 'normal', category: '工具注册', content: '赵磊 申请将 vector_search 工具注册到工具中心', applicant: '赵磊', time: '2026-05-19 18:30' }
+  ];
+  const PRIORITY_LABEL = { urgent: '紧急', normal: '普通' };
+  function renderTodoTable() {
+    const tbody = document.getElementById('todoTableBody');
+    if (!tbody) return;
+    const kw = (document.getElementById('todoSearchInput')?.value || '').trim().toLowerCase();
+    const priority = document.getElementById('todoPriorityFilter')?.value || '';
+    const items = todoData.filter(it => {
+      if (priority && it.priority !== priority) return false;
+      if (!kw) return true;
+      return (it.id + ' ' + it.applicant + ' ' + it.content).toLowerCase().includes(kw);
+    });
+    if (items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px 0;color:var(--sub);">暂无待我审批的工单</td></tr>';
+    } else {
+      tbody.innerHTML = items.map(it =>
+        '<tr>'
+        + '<td><span class="req-id">' + it.id + '</span></td>'
+        + '<td><span class="req-tag ' + it.priority + '">' + PRIORITY_LABEL[it.priority] + '</span></td>'
+        + '<td><span class="req-tag ai">' + it.category + '</span></td>'
+        + '<td>' + escapeHtml(it.content) + '</td>'
+        + '<td>' + escapeHtml(it.applicant) + '</td>'
+        + '<td>' + it.time + '</td>'
+        + '<td>'
+        + '<button class="btn-link" onclick="alert(\'演示：通过 ' + it.id + '\')">通过</button>'
+        + '<span class="op-divider">|</span>'
+        + '<button class="btn-link-danger" onclick="alert(\'演示：驳回 ' + it.id + '\')">驳回</button>'
+        + '</td>'
+        + '</tr>'
+      ).join('');
+    }
+    document.getElementById('todoTotalCount').textContent = items.length;
+    document.getElementById('todoPageInfo').textContent = '共 ' + items.length + ' 条';
+  }
+
+  // ─── 权限管理 ───
+  const PERM_MENUS = ['指标管理', '库表管理', '报表管理', '🤖 LLM 接入', '🤖 Agent 注册', '🤖 Tool / Function', '🤖 RAG 知识库', '🤖 Prompt 模板', '🤖 向量集合', '🤖 LLM 网关', '权限管理'];
+  const PERM_TYPES = [
+    { key: 'add',    label: '新增' },
+    { key: 'delete', label: '删除' },
+    { key: 'edit',   label: '修改' },
+    { key: 'view',   label: '查询' }
+  ];
+  const USER_POOL = [
+    { name: '张晓明', color: '#FF7D00' },
+    { name: '李明',   color: '#1677FF' },
+    { name: '王芳',   color: '#00B42A' },
+    { name: '陈晓',   color: '#7B61FF' },
+    { name: '刘伟',   color: '#F53F3F' },
+    { name: '赵磊',   color: '#13C2C2' },
+    { name: '孙雯',   color: '#EB2F96' },
+    { name: '周航',   color: '#722ED1' },
+    { name: '王晨',   color: '#0958D9' },
+    { name: '李雨',   color: '#FA8C16' }
+  ];
+  const userColor = (name) => (USER_POOL.find(u => u.name === name) || {}).color || '#86909C';
+  const fullPerm = () => PERM_MENUS.reduce((acc, m) => (acc[m] = { add:true, delete:true, edit:true, view:true }, acc), {});
+  const ensureAiKeys = (perms) => {
+    PERM_MENUS.forEach(m => { if (!perms[m]) perms[m] = { add:false, delete:false, edit:false, view:false }; });
+    return perms;
+  };
+
+  let permissionData = [
+    {
+      id: 'rg_001', type: 'group',
+      name: '指标管理员组',
+      desc: '负责指标资产的全生命周期管理',
+      users: ['李明', '王芳'],
+      permissions: ensureAiKeys({
+        '指标管理': { add:true,  delete:true,  edit:true,  view:true  },
+        '库表管理': { add:false, delete:false, edit:true,  view:true  },
+        '报表管理': { add:true,  delete:false, edit:true,  view:true  },
+        '权限管理': { add:false, delete:false, edit:false, view:false }
+      }),
+      creator: '张晓明',  createdAt: '2025-08-15 10:23:48',
+      modifier: '张晓明', modifiedAt: '2026-05-02 09:41:20'
+    },
+    {
+      id: 'rg_002', type: 'group',
+      name: '数据治理组',
+      desc: '管理库表与报表，参与数据质量治理',
+      users: ['陈晓', '刘伟', '赵磊'],
+      permissions: ensureAiKeys({
+        '指标管理': { add:false, delete:false, edit:false, view:true  },
+        '库表管理': { add:true,  delete:true,  edit:true,  view:true  },
+        '报表管理': { add:true,  delete:false, edit:true,  view:true  },
+        '权限管理': { add:false, delete:false, edit:false, view:true  }
+      }),
+      creator: '张晓明',  createdAt: '2025-10-08 14:15:22',
+      modifier: '李明',   modifiedAt: '2026-04-19 11:08:50'
+    },
+    {
+      id: 'rg_003', type: 'group',
+      name: '只读访客组',
+      desc: '业务方只读使用，所有菜单仅查询权限',
+      users: ['孙雯', '周航'],
+      permissions: ensureAiKeys({
+        '指标管理': { add:false, delete:false, edit:false, view:true  },
+        '库表管理': { add:false, delete:false, edit:false, view:true  },
+        '报表管理': { add:false, delete:false, edit:false, view:true  },
+        '权限管理': { add:false, delete:false, edit:false, view:false }
+      }),
+      creator: '李明',    createdAt: '2026-01-12 09:30:00',
+      modifier: '王芳',   modifiedAt: '2026-03-22 16:42:11'
+    },
+    {
+      id: 'usr_001', type: 'user',
+      name: '张晓明',
+      desc: '平台超级管理员',
+      users: ['张晓明'],
+      permissions: fullPerm(),
+      creator: '系统',    createdAt: '2024-06-01 09:00:00',
+      modifier: '张晓明', modifiedAt: '2026-05-10 09:23:15'
+    },
+    {
+      id: 'rg_004', type: 'group',
+      name: '🤖 AI 算法工程组',
+      desc: '负责模型训练 / 推理服务管理（P1 · 含模型操作粒度）',
+      users: ['王晨', '李雨', '赵磊'],
+      permissions: ensureAiKeys({
+        '指标管理':            { add:false, delete:false, edit:false, view:true  },
+        '库表管理':            { add:false, delete:false, edit:false, view:true  },
+        '报表管理':            { add:false, delete:false, edit:false, view:true  },
+        '🤖 LLM 接入':         { add:true,  delete:true,  edit:true,  view:true  },
+        '🤖 Agent 注册':       { add:true,  delete:false, edit:true,  view:true  },
+        '🤖 Tool / Function':  { add:true,  delete:false, edit:true,  view:true  },
+        '🤖 RAG 知识库':       { add:true,  delete:false, edit:true,  view:true  },
+        '🤖 Prompt 模板':      { add:true,  delete:false, edit:true,  view:true  },
+        '🤖 向量集合':         { add:true,  delete:false, edit:true,  view:true  },
+        '🤖 LLM 网关':         { add:false, delete:false, edit:true,  view:true  },
+        '权限管理':            { add:false, delete:false, edit:false, view:false }
+      }),
+      modelOps: { use:true, infer:true, finetune:true, deploy:false, retire:false },
+      creator: '张晓明',  createdAt: '2026-03-01 10:00:00',
+      modifier: '张晓明', modifiedAt: '2026-05-15 14:00:00'
+    },
+    {
+      id: 'rg_005', type: 'group',
+      name: '🤖 AI 应用调用组',
+      desc: '只能调用推理服务，不能查看模型参数（P1）',
+      users: ['孙雯', '周航'],
+      permissions: ensureAiKeys({
+        '🤖 LLM 接入':     { add:false, delete:false, edit:false, view:false },
+        '🤖 Prompt 模板':  { add:false, delete:false, edit:false, view:true  }
+      }),
+      modelOps: { use:false, infer:true, finetune:false, deploy:false, retire:false },
+      creator: '李明',  createdAt: '2026-04-10 09:00:00',
+      modifier: '李明', modifiedAt: '2026-05-08 11:00:00'
+    },
+    {
+      id: 'usr_002', type: 'user',
+      name: '陈晓',
+      desc: '临时授予报表新增权限（项目期）',
+      users: ['陈晓'],
+      permissions: ensureAiKeys({
+        '指标管理': { add:false, delete:false, edit:false, view:true  },
+        '库表管理': { add:false, delete:false, edit:false, view:true  },
+        '报表管理': { add:true,  delete:false, edit:true,  view:true  },
+        '权限管理': { add:false, delete:false, edit:false, view:false }
+      }),
+      creator: '张晓明',  createdAt: '2026-04-01 10:00:00',
+      modifier: '张晓明', modifiedAt: '2026-04-20 17:55:33'
+    }
+  ];
+  let permDeleteTarget = null;
+  let permEditId = null;
+
+  function renderPermTable() {
+    const tbody = document.getElementById('permTableBody');
+    if (!tbody) return;
+    const kw = (document.getElementById('permSearchInput')?.value || '').trim().toLowerCase();
+    const typeFilter = document.getElementById('permTypeFilter')?.value || '';
+    const filtered = permissionData.filter(it => {
+      if (typeFilter && it.type !== typeFilter) return false;
+      if (!kw) return true;
+      return it.name.toLowerCase().includes(kw)
+          || (it.users || []).some(u => u.toLowerCase().includes(kw));
+    });
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px 0;color:var(--sub);">暂无匹配的权限记录</td></tr>';
+    } else {
+      tbody.innerHTML = filtered.map(rowHTML).join('');
+    }
+    document.getElementById('permTotalCount').textContent = filtered.length;
+    document.getElementById('permPageInfo').textContent = '共 ' + filtered.length + ' 条';
+  }
+  function rowHTML(it) {
+    const typeTag = it.type === 'group'
+      ? '<span class="perm-type-tag group"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5" cy="5" r="2"/><circle cx="10" cy="5.5" r="1.5"/><path d="M1 12c0-2 1.7-3.5 4-3.5s4 1.5 4 3.5"/><path d="M9 11.5c0-1.5 1.3-2.5 3-2.5s2 .8 2 2"/></svg>角色组</span>'
+      : '<span class="perm-type-tag user"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2.5"/><path d="M2 13c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5"/></svg>个人</span>';
+    const users = it.users || [];
+    const visibleUsers = users.slice(0, 4);
+    const chips = visibleUsers.map(u =>
+      '<span class="perm-user-chip"><span class="pu-avatar" style="background:' + userColor(u) + ';">' + u.charAt(0) + '</span>' + escapeHtml(u) + '</span>'
+    ).join('');
+    const more = users.length > 4 ? '<span class="perm-user-more">+' + (users.length - 4) + '</span>' : '';
+    const usersHTML = '<div class="perm-users"><div class="perm-users-chips">' + chips + more + '</div></div>';
+    const creatorHTML = '<span class="perm-meta-name"><span class="meta-avatar" style="background:' + userColor(it.creator) + ';">' + it.creator.charAt(0) + '</span>' + escapeHtml(it.creator) + '</span>'
+      + '<div class="perm-meta-time">' + escapeHtml(it.createdAt) + '</div>';
+    const modifierHTML = '<span class="perm-meta-name"><span class="meta-avatar" style="background:' + userColor(it.modifier) + ';">' + it.modifier.charAt(0) + '</span>' + escapeHtml(it.modifier) + '</span>'
+      + '<div class="perm-meta-time">' + escapeHtml(it.modifiedAt) + '</div>';
+    const actionsHTML = '<div class="tbl-actions">'
+      + '<button class="btn-link" onclick="editPerm(\'' + it.id + '\')">编辑</button>'
+      + '<span class="op-divider">|</span>'
+      + '<button class="btn-link-danger" onclick="deletePerm(\'' + it.id + '\')">删除</button>'
+      + '</div>';
+    return PERM_MENUS.map((menu, idx) => {
+      const row = (it.permissions && it.permissions[menu]) || { add:false, delete:false, edit:false, view:false };
+      const cells =
+        '<td class="perm-menu-cell">' + menu + '</td>'
+        + '<td><div class="perm-name"><span class="perm-name-main">' + escapeHtml(it.name) + '</span>'
+          + (it.desc ? '<span class="perm-name-desc">' + escapeHtml(it.desc) + '</span>' : '')
+          + '</div></td>'
+        + '<td>' + typeTag + '</td>'
+        + '<td>' + usersHTML + '</td>'
+        + PERM_TYPES.map(t => '<td class="perm-cell-td">' + (row[t.key]
+            ? '<span class="perm-cell yes" title="' + t.label + '：有权限">✓</span>'
+            : '<span class="perm-cell no" title="' + t.label + '：无权限">✗</span>') + '</td>').join('')
+        + '<td>' + creatorHTML + '</td>'
+        + '<td>' + modifierHTML + '</td>'
+        + '<td>' + actionsHTML + '</td>';
+      const cls = (idx === 0 ? 'perm-row-first' : '');
+      return '<tr data-id="' + it.id + '"' + (cls ? ' class="' + cls + '"' : '') + '>' + cells + '</tr>';
+    }).join('');
+  }
+
+  function openPermModal(mode, type, data) {
+    const mask = document.getElementById('permModal');
+    const modal = mask.querySelector('.modal');
+    modal.dataset.mode = mode;
+    modal.dataset.permType = type;
+    permEditId = data ? data.id : null;
+    document.getElementById('permModalTitle').textContent = '权限管理';
+    document.getElementById('permTypeSection').style.display = '';
+    document.querySelectorAll('#permTypeSelector button').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    onPermTypeChange(type, true);
+    fillUserPanels();
+    resetPermForm();
+    renderPermMatrix(data ? data.permissions : null);
+    if (mode === 'edit' && data) populatePermForm(data);
+    refreshPermColAllStates();
+    mask.classList.add('show');
+  }
+  function closePermModal() {
+    document.getElementById('permModal').classList.remove('show');
+    closeAllMS();
+  }
+  document.getElementById('permModal').addEventListener('click', (e) => {
+    if (e.target.id === 'permModal') closePermModal();
+  });
+
+  function onPermTypeChange(type) {
+    const modal = document.getElementById('permModal').querySelector('.modal');
+    modal.dataset.permType = type;
+    document.querySelectorAll('#permTypeSelector button').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    document.getElementById('permBasicTitle').textContent = (type === 'group') ? '角色组信息' : '用户信息';
+    document.querySelectorAll('.perm-group-only').forEach(el => el.style.display = (type === 'group' ? '' : 'none'));
+    document.querySelectorAll('.perm-user-only').forEach(el => el.style.display = (type === 'user' ? '' : 'none'));
+  }
+
+  function fillUserPanels() {
+    const groupPanel = document.getElementById('permGroupUserPanel');
+    if (groupPanel && !groupPanel.dataset.filled) {
+      groupPanel.innerHTML = USER_POOL.map(u =>
+        '<label class="ms-option"><input type="checkbox" value="' + u.name + '" onchange="onMSChange(this)" /><span>' + u.name + '</span></label>'
+      ).join('');
+      groupPanel.dataset.filled = '1';
+      const ms = groupPanel.closest('.multi-select');
+      const ph = ms.querySelector('.ms-placeholder');
+      if (ph) groupPanel.dataset.placeholder = ph.textContent;
+    }
+    const sel = document.getElementById('permSingleUserSelect');
+    if (sel && sel.options.length <= 1) {
+      USER_POOL.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.name; opt.textContent = u.name;
+        sel.appendChild(opt);
+      });
+    }
+  }
+
+  function renderPermMatrix(currentPerm) {
+    const body = document.getElementById('permMatrixBody');
+    if (!body) return;
+    body.innerHTML = PERM_MENUS.map(menu => {
+      const row = (currentPerm && currentPerm[menu]) || { add:false, delete:false, edit:false, view:false };
+      return '<tr data-menu="' + menu + '">'
+        + '<td class="menu-col">' + menu + '</td>'
+        + PERM_TYPES.map(t =>
+            '<td><input type="checkbox" data-prow="' + menu + '" data-pkey="' + t.key + '" '
+              + (row[t.key] ? 'checked' : '') + ' onchange="refreshPermColAllStates()" /></td>'
+          ).join('')
+        + '<td><input type="checkbox" class="perm-row-toggle" onchange="permToggleRow(this)" '
+          + (PERM_TYPES.every(t => row[t.key]) ? 'checked' : '') + ' /></td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  function permToggleRow(cb) {
+    const tr = cb.closest('tr');
+    tr.querySelectorAll('input[type="checkbox"][data-pkey]').forEach(c => c.checked = cb.checked);
+    refreshPermColAllStates();
+  }
+  function permToggleCol(key, checked) {
+    document.querySelectorAll('input[type="checkbox"][data-pkey="' + key + '"]').forEach(c => c.checked = checked);
+    refreshPermRowAllStates();
+  }
+  function permToggleAll() {
+    const allChecked = Array.from(document.querySelectorAll('input[type="checkbox"][data-pkey]')).every(c => c.checked);
+    const next = !allChecked;
+    document.querySelectorAll('input[type="checkbox"][data-pkey]').forEach(c => c.checked = next);
+    refreshPermColAllStates();
+    refreshPermRowAllStates();
+  }
+  function refreshPermColAllStates() {
+    PERM_TYPES.forEach(t => {
+      const cbs = document.querySelectorAll('input[type="checkbox"][data-pkey="' + t.key + '"]');
+      const all = cbs.length > 0 && Array.from(cbs).every(c => c.checked);
+      const top = document.querySelector('input[type="checkbox"][data-pcol="' + t.key + '"]');
+      if (top) top.checked = all;
+    });
+    refreshPermRowAllStates();
+  }
+  function refreshPermRowAllStates() {
+    document.querySelectorAll('#permMatrixBody tr').forEach(tr => {
+      const cbs = tr.querySelectorAll('input[type="checkbox"][data-pkey]');
+      const all = cbs.length > 0 && Array.from(cbs).every(c => c.checked);
+      const rowToggle = tr.querySelector('.perm-row-toggle');
+      if (rowToggle) rowToggle.checked = all;
+    });
+  }
+
+  function resetPermForm() {
+    const modal = document.getElementById('permModal').querySelector('.modal');
+    modal.querySelectorAll('input.form-input').forEach(el => el.value = '');
+    const sel = document.getElementById('permSingleUserSelect');
+    if (sel) sel.selectedIndex = 0;
+    modal.querySelectorAll('.multi-select').forEach(ms => {
+      ms.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      const anyCb = ms.querySelector('input[type="checkbox"]');
+      if (anyCb) onMSChange(anyCb);
+    });
+  }
+
+  function populatePermForm(data) {
+    const modal = document.getElementById('permModal').querySelector('.modal');
+    if (data.type === 'group') {
+      modal.querySelector('[data-pf="name"]').value = data.name || '';
+      modal.querySelector('[data-pf="desc"]').value = data.desc || '';
+      const ms = modal.querySelector('.multi-select[data-pf="users"]');
+      (data.users || []).forEach(u => {
+        const cb = ms.querySelector('input[value="' + CSS.escape(u) + '"]');
+        if (cb) { cb.checked = true; onMSChange(cb); }
+      });
+    } else {
+      const sel = document.getElementById('permSingleUserSelect');
+      if (sel) sel.value = (data.users && data.users[0]) || data.name || '';
+    }
+  }
+
+  function savePermModal() {
+    const modal = document.getElementById('permModal').querySelector('.modal');
+    const mode = modal.dataset.mode;
+    const type = modal.dataset.permType;
+    let name = '', desc = '', users = [];
+    if (type === 'group') {
+      name = (modal.querySelector('[data-pf="name"]').value || '').trim();
+      desc = (modal.querySelector('[data-pf="desc"]').value || '').trim();
+      users = Array.from(modal.querySelectorAll('.multi-select[data-pf="users"] input:checked')).map(c => c.value);
+      if (!name) { showToast('请填写角色组名', 'error'); return; }
+      if (!users.length) { showToast('请至少选择一个组成员', 'error'); return; }
+    } else {
+      const sel = document.getElementById('permSingleUserSelect');
+      const u = sel?.value || '';
+      if (!u) { showToast('请选择用户', 'error'); return; }
+      name = u; users = [u];
+    }
+    const perms = {};
+    PERM_MENUS.forEach(menu => {
+      perms[menu] = {};
+      PERM_TYPES.forEach(t => {
+        const cb = modal.querySelector('input[data-prow="' + menu + '"][data-pkey="' + t.key + '"]');
+        perms[menu][t.key] = !!(cb && cb.checked);
+      });
+    });
+    const now = formatNow();
+    const currentUser = '张晓明';
+    if (mode === 'edit' && permEditId) {
+      const idx = permissionData.findIndex(p => p.id === permEditId);
+      if (idx >= 0) {
+        permissionData[idx] = {
+          ...permissionData[idx],
+          name, desc, users, permissions: perms,
+          modifier: currentUser, modifiedAt: now
+        };
+      }
+      showToast('权限已更新', 'success');
+    } else {
+      if (type === 'user' && permissionData.some(p => p.type === 'user' && p.name === name)) {
+        showToast('该用户已存在权限记录，请直接编辑', 'error');
+        return;
+      }
+      const id = (type === 'group' ? 'rg_' : 'usr_') + Date.now();
+      permissionData.unshift({
+        id, type, name, desc, users, permissions: perms,
+        creator: currentUser, createdAt: now,
+        modifier: currentUser, modifiedAt: now
+      });
+      showToast((type === 'group' ? '角色组' : '个人权限') + '已创建', 'success');
+    }
+    closePermModal();
+    renderPermTable();
+  }
+
+  function editPerm(id) {
+    const data = permissionData.find(p => p.id === id);
+    if (!data) return;
+    openPermModal('edit', data.type, data);
+  }
+  function deletePerm(id) {
+    const data = permissionData.find(p => p.id === id);
+    if (!data) return;
+    permDeleteTarget = id;
+    document.getElementById('permDelName').textContent = data.name;
+    document.getElementById('permDelType').textContent = (data.type === 'group' ? '角色组' : '个人');
+    document.getElementById('permDeleteModal').classList.add('show');
+  }
+  function closePermDeleteModal() {
+    document.getElementById('permDeleteModal').classList.remove('show');
+    permDeleteTarget = null;
+  }
+  function confirmPermDelete() {
+    if (permDeleteTarget) {
+      permissionData = permissionData.filter(p => p.id !== permDeleteTarget);
+      renderPermTable();
+      showToast('权限记录已删除', 'success');
+    }
+    closePermDeleteModal();
+  }
+  document.getElementById('permDeleteModal').addEventListener('click', (e) => {
+    if (e.target.id === 'permDeleteModal') closePermDeleteModal();
+  });
+
+  // ─── 页面切换 ───
+  document.querySelectorAll('.nav-l1').forEach(el => {
+    el.addEventListener('click', () => el.classList.toggle('open'));
+  });
+  document.querySelectorAll('.nav-l2').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.nav-l2').forEach(n => n.classList.remove('active'));
+      el.classList.add('active');
+      const page = el.dataset.page;
+      if (page) switchPage(page);
+      const bc = el.dataset.breadcrumb;
+      if (bc) updateBreadcrumb(bc);
+    });
+  });
+  function switchPage(page) {
+    document.querySelectorAll('.page-container').forEach(p => p.style.display = 'none');
+    const target = document.getElementById('page-' + page);
+    if (target) target.style.display = '';
+    if (page === 'mine')       renderMineTable();
+    if (page === 'todo')       renderTodoTable();
+    if (page === 'permission') renderPermTable();
+    document.querySelectorAll('.nav-l2').forEach(n => {
+      n.classList.toggle('active', n.dataset.page === page);
+      if (n.dataset.page === page && n.dataset.breadcrumb) updateBreadcrumb(n.dataset.breadcrumb);
+    });
+  }
+  function updateBreadcrumb(bc) {
+    const el = document.getElementById('breadcrumb');
+    if (!el) return;
+    const parts = bc.split('|');
+    el.innerHTML = '<a href="#">' + parts[0] + '</a><span class="sep">›</span><span class="current">' + (parts[1] || '') + '</span>';
+  }
+
+  // ─── ESC 关闭 ───
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closePermModal();
+      closePermDeleteModal();
+      closeCmdK();
+    }
+  });
+
+  // ─── Cmd+K（演示版） ───
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openCmdK();
+    }
+  });
+  document.getElementById('cmdkMask').addEventListener('click', (e) => {
+    if (e.target.id === 'cmdkMask') closeCmdK();
+  });
+
+  // ─── 初始路由 ───
+  (function applyInitPageFromURL() {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    const page = params.get('page');
+    const id = params.get('id');
+    let initPage = 'permission';
+    if (tab === 'mine' || page === 'mine') initPage = 'mine';
+    else if (tab === 'todo' || page === 'todo' || id) initPage = 'todo';
+    else if (tab === 'permission' || page === 'permission') initPage = 'permission';
+    switchPage(initPage);
+  })();
+</script>
+</body>
+</html>
