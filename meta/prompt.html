@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · Prompt 模板</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1677FF; --primary-light: #E6F0FF;
+      --green: #00B42A; --green-light: #E8FFEA;
+      --red: #F53F3F; --red-light: #FFECE8;
+      --orange: #FF7D00; --orange-light: #FFF3E8;
+      --purple: #7B61FF; --purple-light: #F0EDFF;
+      --gray-light: #F7F8FA;
+      --sidebar-w: 220px; --header-h: 52px; --subbar-h: 44px;
+      --bg: #F5F7FA; --card: #FFFFFF; --border: #E8ECF0;
+      --text: #1D2129; --sub: #86909C;
+      --ai-teal: #08979C;
+    }
+    body { font-family: -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; background: var(--bg); color: var(--text); font-size: 13px; display: flex; flex-direction: column; min-height: 100vh; }
+    .header { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; position: sticky; top: 0; z-index: 30; }
+    .logo-name { font-size: 16px; font-weight: 700; }
+    .global-search { display: flex; align-items: center; width: 280px; height: 32px; background: var(--gray-light); border-radius: 8px; padding: 0 10px; cursor: pointer; }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; }
+    .header-tab { height: 100%; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: var(--sub); position: relative; text-decoration: none; }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2px; background: var(--primary); }
+    .header-right { margin-left: auto; display: flex; gap: 6px; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); }
+    .user-btn { display: flex; align-items: center; gap: 6px; padding: 4px 8px; cursor: pointer; background: none; border: none; }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+    .subbar { height: var(--subbar-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w); position: sticky; top: var(--header-h); z-index: 10; }
+    .subbar-inner { padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar { width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); position: sticky; top: calc(var(--header-h) + var(--subbar-h)); height: calc(100vh - var(--header-h) - var(--subbar-h)); }
+    .nav-l1 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--purple); }
+    .nav-l1 svg { width: 16px; height: 16px; }
+    .nav-l2 { display: flex; align-items: center; padding: 9px 16px 9px 40px; font-size: 13px; color: var(--sub); position: relative; text-decoration: none; }
+    .nav-l2.active { color: var(--ai-teal); font-weight: 500; background: #E6FFFB; }
+    .nav-l2.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--ai-teal); }
+
+    .content { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .page-title-bar { display: flex; align-items: center; justify-content: space-between; }
+    .page-title { font-size: 18px; font-weight: 600; }
+    .page-subtitle { font-size: 12px; color: var(--sub); margin-left: 8px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; }
+    .btn-ai-teal { background: linear-gradient(135deg,var(--ai-teal),#006D75); border-color: var(--ai-teal); color: #fff; }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-link { border: none; background: none; color: var(--primary); padding: 0 6px; font-size: 12px; cursor: pointer; }
+    .op-divider { color: var(--border); font-size: 12px; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .stat-icon { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #E6FFFB; color: var(--ai-teal); }
+    .stat-icon.s2 { background: var(--green-light); color: var(--green); }
+    .stat-icon.s3 { background: var(--orange-light); color: var(--orange); }
+    .stat-icon.s4 { background: var(--purple-light); color: var(--purple); }
+    .stat-icon svg { width: 20px; height: 20px; }
+    .stat-num { font-size: 22px; font-weight: 700; }
+    .stat-label { font-size: 12px; color: var(--sub); }
+    .stat-trend { font-size: 11px; color: var(--green); }
+
+    /* Prompt 卡片 */
+    .pt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .pt-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; }
+    .pt-card:hover { border-color: var(--ai-teal); box-shadow: 0 2px 12px rgba(8,151,156,.08); }
+    .pt-head { display: flex; align-items: flex-start; gap: 10px; }
+    .pt-icon { width: 38px; height: 38px; border-radius: 8px; background: linear-gradient(135deg,#E6FFFB,#87E8DE); color: var(--ai-teal); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pt-icon svg { width: 18px; height: 18px; }
+    .pt-title { flex: 1; min-width: 0; }
+    .pt-name { font-size: 14px; font-weight: 600; }
+    .pt-en { font-family: ui-monospace,monospace; font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .pt-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .pt-tag { font-size: 11px; padding: 1px 7px; border-radius: 3px; background: var(--gray-light); color: var(--sub); }
+    .pt-tag.teal { background: #E6FFFB; color: var(--ai-teal); }
+    .pt-tag.green { background: var(--green-light); color: var(--green); }
+    .pt-tag.warn { background: var(--orange-light); color: var(--orange); }
+    .pt-preview { background: var(--gray-light); border-left: 3px solid var(--ai-teal); border-radius: 0 4px 4px 0; padding: 8px 10px; font-family: ui-monospace,monospace; font-size: 11px; color: var(--text); line-height: 1.6; max-height: 60px; overflow: hidden; position: relative; }
+    .pt-preview::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 16px; background: linear-gradient(to bottom, transparent, var(--gray-light)); }
+    .pt-vars { display: flex; gap: 4px; flex-wrap: wrap; font-size: 11px; }
+    .pt-var { background: #FFF3E8; color: var(--orange); padding: 1px 6px; border-radius: 3px; font-family: ui-monospace,monospace; }
+    .pt-foot { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 11px; color: var(--sub); }
+    .pt-rating { display: inline-flex; align-items: center; gap: 4px; color: var(--orange); font-weight: 600; }
+
+    .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .toolbar-field { display: flex; flex-direction: column; gap: 5px; }
+    .toolbar-field-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .toolbar-search { flex: 1; min-width: 240px; max-width: 420px; display: flex; align-items: center; min-height: 32px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+    .toolbar-search input { flex: 1; min-height: 30px; border: none; outline: none; padding: 0 10px; font-size: 13px; background: transparent; }
+    .toolbar-search-prefix { padding: 0 0 0 10px; color: var(--sub); }
+    .toolbar-search-prefix svg { width: 14px; height: 14px; }
+    .toolbar-spacer { flex: 1; }
+    .toolbar-stats { font-size: 12px; color: var(--sub); padding-bottom: 8px; }
+    select.tb-select { height: 32px; padding: 0 26px 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-color: #fff; min-width: 140px; }
+
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; }
+    .cmdk-results { flex: 1; padding: 8px 0; }
+    .cmdk-item { padding: 8px 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab" href="metadata-asset.html">数据资产</a>
+    <a class="header-tab active" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <div class="hdr-divider"></div>
+    <button class="user-btn"><div class="user-avatar">李</div><span style="font-size:13px;font-weight:500;">李雨</span></button>
+  </div>
+</header>
+
+<div class="subbar"><div class="subbar-inner"><div class="breadcrumb"><a href="ai-home.html">AI 资产</a><span class="sep">›</span><span class="current">Prompt 模板</span></div></div></div>
+
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="nav-l1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>AI 资产</div>
+    <a class="nav-l2" href="ai-home.html">AI 资产首页</a>
+    <a class="nav-l2" href="agent.html">Agent 注册</a>
+    <a class="nav-l2" href="tool.html">Tool / Function</a>
+    <a class="nav-l2" href="model.html">LLM 接入</a>
+    <a class="nav-l2" href="llm-gateway.html">LLM 网关</a>
+    <a class="nav-l2" href="dataset.html">知识库 (RAG)</a>
+    <a class="nav-l2 active" href="prompt.html">Prompt 模板</a>
+    <a class="nav-l2" href="metadata-source.html?filter=vector">向量库</a>
+  </aside>
+
+  <main class="content">
+
+    <div class="page-title-bar">
+      <div>
+        <span class="page-title">💬 Prompt 模板</span>
+        <span class="page-subtitle">自研扩展（Gravitino 暂无原生支持） · 多模型适配 / A-B 评估</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn">📤 导出</button>
+        <button class="btn btn-ai-teal" onclick="alert('打开 Prompt 编辑器（演示）')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+          新建 Prompt
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <div><span class="stat-num">76</span><div class="stat-label">Prompt 总数</div><span class="stat-trend">↑ 本周新增 8</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon s2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 7 6 10 11 4"/></svg></div>
+        <div><span class="stat-num">42</span><div class="stat-label">已发布</div><span class="stat-trend">线上调用中</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon s3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2L2 22h20L12 2z"/></svg></div>
+        <div><span class="stat-num">23</span><div class="stat-label">RAG 类型</div><span class="stat-trend">含向量检索</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon s4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <div><span class="stat-num">14</span><div class="stat-label">A/B 测试中</div><span class="stat-trend">v2 vs v3</span></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="toolbar-field" style="flex:1;min-width:240px;max-width:420px;">
+        <span class="toolbar-field-label">关键词搜索</span>
+        <div class="toolbar-search">
+          <span class="toolbar-search-prefix"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg></span>
+          <input type="text" placeholder="搜索 Prompt 名 / 关键词" />
+        </div>
+      </div>
+      <div class="toolbar-field"><span class="toolbar-field-label">类型</span><select class="tb-select"><option>全部</option><option>摘要</option><option>分类</option><option>RAG</option><option>Agent</option><option>翻译</option><option>代码生成</option></select></div>
+      <div class="toolbar-field"><span class="toolbar-field-label">适配模型</span><select class="tb-select"><option>全部</option><option>Claude 3.5 / 4</option><option>GPT-4 / 4o</option><option>Gemini</option><option>通义千问 Qwen</option><option>DeepSeek</option></select></div>
+      <div class="toolbar-field"><span class="toolbar-field-label">状态</span><select class="tb-select"><option>全部</option><option>已发布</option><option>A/B 测试</option><option>草稿</option><option>已废弃</option></select></div>
+      <div class="toolbar-spacer"></div>
+      <span class="toolbar-stats">共 <strong>76</strong> 个</span>
+    </div>
+
+    <!-- Prompt 卡片 -->
+    <div class="pt-grid">
+      <div class="pt-card" onclick="location.href='prompt-detail.html?code=pt_summary_v2'">
+        <div class="pt-head">
+          <div class="pt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg></div>
+          <div class="pt-title">
+            <div class="pt-name">文本摘要 Prompt v2</div>
+            <div class="pt-en">pt_summary_v2 · v2.1.0</div>
+          </div>
+          <span class="pt-rating">★ 4.6/5</span>
+        </div>
+        <div class="pt-tags">
+          <span class="pt-tag teal">摘要</span>
+          <span class="pt-tag">Claude 3.5 / GPT-4</span>
+          <span class="pt-tag green">已发布</span>
+        </div>
+        <div class="pt-preview">你是专业的文本摘要助手。请为以下{{language}}文本生成一份{{length}}字以内的摘要，保留关键信息和主要观点。如果文本中包含数据，请保留数字。<br/><br/>原文：<br/>{{text}}<br/><br/>摘要：</div>
+        <div class="pt-vars">
+          <span class="pt-var">{{language}}</span>
+          <span class="pt-var">{{length}}</span>
+          <span class="pt-var">{{text}}</span>
+        </div>
+        <div class="pt-foot">
+          <span>李雨 · 调用 4,020 PV/周</span>
+          <span>1820 tokens 平均</span>
+        </div>
+      </div>
+
+      <div class="pt-card" onclick="location.href='prompt-detail.html?code=pt_review_check'">
+        <div class="pt-head">
+          <div class="pt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div>
+          <div class="pt-title">
+            <div class="pt-name">内容合规审核 Prompt</div>
+            <div class="pt-en">pt_review_check · v3.0.0</div>
+          </div>
+          <span class="pt-rating">★ 4.8/5</span>
+        </div>
+        <div class="pt-tags">
+          <span class="pt-tag teal">分类</span>
+          <span class="pt-tag">Claude 4</span>
+          <span class="pt-tag warn">A/B v2 vs v3</span>
+        </div>
+        <div class="pt-preview">作为内容审核员，请判断以下用户生成内容是否违反平台规则。规则包括：① 涉政；② 暴力；③ 色情；④ 广告引流；⑤ 个人信息泄露。<br/><br/>内容：{{user_content}}<br/><br/>请输出 JSON：{ "violation": true/false, "categories": [], "confidence": 0-1 }</div>
+        <div class="pt-vars">
+          <span class="pt-var">{{user_content}}</span>
+        </div>
+        <div class="pt-foot">
+          <span>赵磊 · 调用 8,400 PV/周</span>
+          <span>v3 胜出 +12%</span>
+        </div>
+      </div>
+
+      <div class="pt-card">
+        <div class="pt-head">
+          <div class="pt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg></div>
+          <div class="pt-title">
+            <div class="pt-name">RAG 知识库问答 Prompt</div>
+            <div class="pt-en">pt_kb_qa_rag · v1.4.0</div>
+          </div>
+          <span class="pt-rating">★ 4.5/5</span>
+        </div>
+        <div class="pt-tags">
+          <span class="pt-tag teal">RAG</span>
+          <span class="pt-tag">Claude 3.5 · doc_embedding</span>
+          <span class="pt-tag green">已发布</span>
+        </div>
+        <div class="pt-preview">你是公司知识库助手。请基于以下检索到的文档片段回答用户问题。<strong>禁止编造</strong>文档中没有的信息。<br/><br/>检索文档：<br/>{{retrieved_docs}}<br/><br/>用户问题：{{query}}<br/><br/>回答（含引用编号）：</div>
+        <div class="pt-vars">
+          <span class="pt-var">{{retrieved_docs}}</span>
+          <span class="pt-var">{{query}}</span>
+        </div>
+        <div class="pt-foot">
+          <span>李雨 · 调用 2,180 PV/周</span>
+          <span>使用 doc_embedding</span>
+        </div>
+      </div>
+
+      <div class="pt-card">
+        <div class="pt-head">
+          <div class="pt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 01-14 0"/></svg></div>
+          <div class="pt-title">
+            <div class="pt-name">客服对话生成 Prompt</div>
+            <div class="pt-en">pt_dialog_gen · v2.0.0</div>
+          </div>
+          <span class="pt-rating">★ 4.3/5</span>
+        </div>
+        <div class="pt-tags">
+          <span class="pt-tag teal">对话</span>
+          <span class="pt-tag">Claude / Qwen</span>
+          <span class="pt-tag green">已发布</span>
+        </div>
+        <div class="pt-preview">你是温和、专业的电商客服。请基于用户的问题{{user_question}}和订单信息{{order_info}}生成回复。<br/><br/>风格：礼貌、解决问题、不超过 200 字...</div>
+        <div class="pt-vars">
+          <span class="pt-var">{{user_question}}</span>
+          <span class="pt-var">{{order_info}}</span>
+        </div>
+        <div class="pt-foot">
+          <span>李雨 · 调用 3,260 PV/周</span>
+          <span>满意度 4.3</span>
+        </div>
+      </div>
+
+      <div class="pt-card">
+        <div class="pt-head">
+          <div class="pt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+          <div class="pt-title">
+            <div class="pt-name">SQL 生成 Agent</div>
+            <div class="pt-en">pt_text2sql · v1.2.0</div>
+          </div>
+          <span class="pt-rating">★ 4.4/5</span>
+        </div>
+        <div class="pt-tags">
+          <span class="pt-tag teal">Agent · 代码生成</span>
+          <span class="pt-tag">GPT-4o</span>
+          <span class="pt-tag green">已发布</span>
+        </div>
+        <div class="pt-preview">将自然语言描述转换为 SQL 查询。已知表结构：{{schema}}<br/><br/>用户问题：{{question}}<br/><br/>请输出 SQL（仅 SELECT，不允许 INSERT/UPDATE/DELETE）：</div>
+        <div class="pt-vars">
+          <span class="pt-var">{{schema}}</span>
+          <span class="pt-var">{{question}}</span>
+        </div>
+        <div class="pt-foot">
+          <span>陈晓 · 调用 1,420 PV/周</span>
+          <span>准确率 87%</span>
+        </div>
+      </div>
+
+      <div class="pt-card">
+        <div class="pt-head">
+          <div class="pt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h18M3 6h18M3 18h18"/></svg></div>
+          <div class="pt-title">
+            <div class="pt-name">用户意图分类 Prompt</div>
+            <div class="pt-en">pt_intent_classify · v3.2.0</div>
+          </div>
+          <span class="pt-rating">★ 4.7/5</span>
+        </div>
+        <div class="pt-tags">
+          <span class="pt-tag teal">分类</span>
+          <span class="pt-tag">Claude 3.5</span>
+          <span class="pt-tag green">已发布</span>
+        </div>
+        <div class="pt-preview">将用户输入分类到 32 个意图类别中（咨询/投诉/退款/物流/...）。仅输出类别名，不输出其他文字。<br/><br/>用户输入：{{user_input}}</div>
+        <div class="pt-vars">
+          <span class="pt-var">{{user_input}}</span>
+        </div>
+        <div class="pt-foot">
+          <span>李雨 · 调用 12,400 PV/周</span>
+          <span>F1 0.93</span>
+        </div>
+      </div>
+
+      <div class="pt-card" style="opacity:.7;">
+        <div class="pt-head">
+          <div class="pt-icon" style="background:linear-gradient(135deg,#FFE7E7,#FFC1B8);color:var(--red);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+          <div class="pt-title">
+            <div class="pt-name" style="text-decoration:line-through;">文本摘要 Prompt v1（已替代）</div>
+            <div class="pt-en">pt_summary_v1 · v1.5.0</div>
+          </div>
+          <span class="pt-rating" style="color:var(--sub);">已废弃</span>
+        </div>
+        <div class="pt-tags">
+          <span class="pt-tag" style="background:#FFE7E7;color:var(--red);">已替代为 v2</span>
+        </div>
+        <div class="pt-foot">
+          <span>李雨 · A/B 测试落败 -10%</span>
+          <span>5 天前下线</span>
+        </div>
+      </div>
+
+      <div class="pt-card">
+        <div class="pt-head">
+          <div class="pt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M2 12h20"/></svg></div>
+          <div class="pt-title">
+            <div class="pt-name">中英翻译 Prompt</div>
+            <div class="pt-en">pt_translate_zhen · v1.0.0</div>
+          </div>
+          <span class="pt-rating">★ 4.2/5</span>
+        </div>
+        <div class="pt-tags">
+          <span class="pt-tag teal">翻译</span>
+          <span class="pt-tag">Claude / Gemini</span>
+          <span class="pt-tag green">已发布</span>
+        </div>
+        <div class="pt-preview">将以下{{src_lang}}文本翻译为{{tgt_lang}}，保持原文风格与术语...</div>
+        <div class="pt-vars">
+          <span class="pt-var">{{src_lang}}</span>
+          <span class="pt-var">{{tgt_lang}}</span>
+          <span class="pt-var">{{text}}</span>
+        </div>
+        <div class="pt-foot">
+          <span>赵磊 · 调用 820 PV/周</span>
+          <span>BLEU 0.42</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;font-size:12px;color:var(--sub);text-align:center;">已展示 8 / 76 个 · <a style="color:var(--primary);cursor:pointer;">查看全部</a></div>
+
+  </main>
+</div>
+
+<div class="cmdk-mask" id="cmdkMask"><div class="cmdk-modal" onclick="event.stopPropagation()"><div class="cmdk-search"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg><input id="cmdkInput" type="text" placeholder="搜索资产..." /></div><div class="cmdk-results"><div class="cmdk-item">演示版 — 请回到首页使用完整 Cmd+K</div></div></div></div>
+
+<script>
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();}else if(e.key==='Escape'){closeCmdK();}});
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{if(e.target.id==='cmdkMask')closeCmdK();});
+</script>
+</body>
+</html>
