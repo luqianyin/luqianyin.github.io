@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 知识库管理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1677FF; --primary-light: #E6F0FF; --primary-hover: #0958D9;
+      --green: #00B42A; --green-light: #E8FFEA;
+      --red: #F53F3F; --red-light: #FFECE8;
+      --orange: #FF7D00; --orange-light: #FFF3E8;
+      --purple: #7B61FF; --purple-light: #F0EDFF;
+      --gray-light: #F7F8FA;
+      --header-h: 52px; --subbar-h: 44px; --sidebar-w: 220px;
+      --bg: #F5F7FA; --card: #FFFFFF; --border: #E8ECF0;
+      --text: #1D2129; --sub: #86909C;
+      --ai-purple: #7B61FF; --ai-purple-2: #5346B6;
+      --ai-red: #CF1322; --ai-red-2: #A8071A;
+      --teal: #08979C; --teal-light: #E6FFFB;
+    }
+    body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; display: flex; flex-direction: column; min-height: 100vh; }
+    /* Sidebar 左侧导航 */
+    .subbar { height: var(--subbar-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w); position: sticky; top: var(--header-h); z-index: 10; }
+    .subbar-inner { padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar { width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); position: sticky; top: calc(var(--header-h) + var(--subbar-h)); height: calc(100vh - var(--header-h) - var(--subbar-h)); flex-shrink: 0; }
+    .nav-l1 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--purple); }
+    .nav-l1 svg { width: 16px; height: 16px; }
+    .nav-l2 { display: flex; align-items: center; padding: 9px 16px 9px 40px; font-size: 13px; color: var(--sub); position: relative; text-decoration: none; }
+    .nav-l2:hover { color: var(--text); background: var(--gray-light); }
+    .nav-l2.active { color: var(--teal); font-weight: 500; background: var(--teal-light); }
+    .nav-l2.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--teal); }
+    .body-wrap > .right-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+    .header { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: sticky; top: 0; z-index: 30; gap: 16px; }
+    .logo-wrap { display: flex; align-items: center; gap: 8px; }
+    .logo-name { font-size: 16px; font-weight: 700; }
+    .global-search { display: flex; align-items: center; width: 320px; height: 32px; background: var(--gray-light); border: 1px solid transparent; border-radius: 8px; padding: 0 10px; cursor: pointer; flex-shrink: 0; }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd { font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: #fff; font-family: ui-monospace, monospace; color: var(--sub); }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; }
+    .header-tab { height: 100%; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: var(--sub); cursor: pointer; position: relative; text-decoration: none; }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; cursor: pointer; background: none; border: none; }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+    /* AI Hero（红色渐变 — 知识库主题） */
+    .ai-hero { background: linear-gradient(135deg, #FFF1F0 0%, #FFE7E7 50%, #FFF7E6 100%); padding: 32px 24px 24px; }
+    .ai-hero-inner { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    .ai-hero-title-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .ai-hero-title { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .ai-hero-title .ai-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: linear-gradient(135deg, var(--ai-red), var(--ai-red-2)); color: #fff; font-weight: 500; }
+    .ai-hero-sub { font-size: 13px; color: var(--sub); }
+
+    .ai-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .ai-stat { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .ai-stat:hover { border-color: var(--ai-red); box-shadow: 0 2px 8px rgba(207,19,34,.10); }
+    .ai-stat-icon { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .ai-stat-icon svg { width: 20px; height: 20px; }
+    .ai-stat-icon.kb     { background: #FFF1F0; color: var(--ai-red); }
+    .ai-stat-icon.doc    { background: var(--green-light); color: var(--green); }
+    .ai-stat-icon.vec    { background: #F9F0FF; color: #722ED1; }
+    .ai-stat-icon.search { background: var(--orange-light); color: var(--orange); }
+    .ai-stat-num { font-size: 20px; font-weight: 700; line-height: 1.2; }
+    .ai-stat-label { font-size: 12px; color: var(--sub); }
+    .ai-stat-trend { font-size: 11px; color: var(--green); }
+
+    .content { flex: 1; padding: 18px 24px 28px; max-width: 1280px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-ai-red { background: linear-gradient(135deg, var(--ai-red), var(--ai-red-2)); border-color: var(--ai-red); color: #fff; }
+    .btn-ai-red:hover { background: var(--ai-red-2); color: #fff; border-color: var(--ai-red-2); }
+    .btn svg { width: 14px; height: 14px; }
+
+    /* Toolbar */
+    .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .toolbar-field { display: flex; flex-direction: column; gap: 5px; }
+    .toolbar-field-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+    .toolbar-search { flex: 1; min-width: 240px; max-width: 380px; display: flex; align-items: center; min-height: 32px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+    .toolbar-search input { flex: 1; min-height: 30px; border: none; outline: none; padding: 0 10px; font-size: 13px; background: transparent; }
+    .toolbar-search-prefix { padding: 0 0 0 10px; color: var(--sub); }
+    .toolbar-search-prefix svg { width: 14px; height: 14px; }
+    .toolbar-spacer { flex: 1; }
+    .toolbar-stats { font-size: 12px; color: var(--sub); padding-bottom: 8px; }
+    select.tb-select { height: 32px; padding: 0 26px 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-color: #fff; min-width: 130px; }
+
+    /* 知识库卡片网格（2 列） */
+    .kb-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .kb-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: all .15s; }
+    .kb-card:hover { border-color: var(--ai-red); box-shadow: 0 4px 16px rgba(207,19,34,.10); }
+    .kb-head { display: flex; align-items: flex-start; gap: 12px; }
+    .kb-icon { width: 42px; height: 42px; border-radius: 10px; background: linear-gradient(135deg, #FFF1F0, #FFCCC7); color: var(--ai-red); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .kb-icon svg { width: 20px; height: 20px; }
+    .kb-title { flex: 1; min-width: 0; }
+    .kb-name { font-size: 15px; font-weight: 600; line-height: 1.3; }
+    .kb-desc { font-size: 12px; color: var(--sub); margin-top: 4px; line-height: 1.5; }
+    .kb-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .kb-tag { font-size: 11px; padding: 1px 7px; border-radius: 3px; background: var(--gray-light); color: var(--sub); }
+    .kb-tag.red { background: #FFF1F0; color: var(--ai-red); }
+    .kb-tag.green { background: var(--green-light); color: var(--green); }
+    .kb-tag.warn { background: var(--orange-light); color: var(--orange); }
+    .kb-tag.purple { background: var(--purple-light); color: var(--purple); }
+    .kb-tag.blue { background: var(--primary-light); color: var(--primary); }
+    .kb-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 12px; background: var(--gray-light); border-radius: 6px; }
+    .kb-stat-item { font-size: 11px; color: var(--sub); }
+    .kb-stat-item strong { display: block; color: var(--text); font-size: 13px; font-weight: 600; margin-top: 2px; }
+    .kb-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12px; color: var(--sub); }
+    .kb-meta b { color: var(--text); font-weight: 500; }
+    .kb-foot { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 11px; color: var(--sub); }
+    .kb-foot .agent-cnt { color: var(--ai-purple); font-weight: 600; }
+
+    /* Cmd+K */
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 96px); }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search svg { width: 16px; height: 16px; color: var(--sub); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; background: transparent; }
+    .cmdk-esc { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--sub); font-family: ui-monospace,monospace; }
+    .cmdk-filters { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .cmdk-chip { padding: 3px 10px; font-size: 12px; border-radius: 12px; cursor: pointer; background: var(--gray-light); color: var(--sub); white-space: nowrap; border: 1px solid transparent; }
+    .cmdk-chip.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); font-weight: 500; }
+    .cmdk-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cmdk-group-title { font-size: 11px; color: var(--sub); padding: 6px 16px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+    .cmdk-item:hover, .cmdk-item.focused { background: var(--primary-light); }
+    .cmdk-item-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cmdk-item-icon svg { width: 14px; height: 14px; }
+    .cmdk-item-icon.metric { background: var(--primary-light); color: var(--primary); }
+    .cmdk-item-icon.table { background: var(--purple-light); color: var(--purple); }
+    .cmdk-item-icon.report { background: var(--orange-light); color: var(--orange); }
+    .cmdk-item-icon.term { background: var(--green-light); color: var(--green); }
+    .cmdk-item-icon.source { background: #FFE7E7; color: var(--red); }
+    .cmdk-item-icon.kb { background: #FFF1F0; color: var(--ai-red); }
+    .cmdk-item-icon.prompt { background: #FFF7E6; color: #FA8C16; }
+    .cmdk-item-icon.vector { background: #F9F0FF; color: #722ED1; }
+    .cmdk-item-icon.agent { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.tool { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-icon.model { background: linear-gradient(135deg,#F0EDFF,#FFF3E8); color: #7B61FF; }
+    .cmdk-item-meta { flex: 1; min-width: 0; }
+    .cmdk-item-title { font-size: 13px; }
+    .cmdk-item-title .hl { background: #FFF3CD; color: #663C00; padding: 0 1px; }
+    .cmdk-item-sub { font-size: 11px; color: var(--sub); }
+    .cmdk-item-type { font-size: 11px; color: var(--sub); padding: 1px 7px; border-radius: 3px; background: var(--gray-light); }
+    .cmdk-empty { padding: 40px 20px; text-align: center; color: var(--sub); }
+    .cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .cmdk-foot kbd { font-family: ui-monospace,monospace; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+
+    .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 13px; pointer-events: auto; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.info { border-color: #ADC6FF; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab" href="metadata-asset.html">数据资产</a>
+    <a class="header-tab active" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <div class="hdr-divider"></div>
+    <button class="user-btn"><div class="user-avatar">李</div><span style="font-size:13px;font-weight:500;">李雨</span></button>
+  </div>
+</header>
+
+<div class="subbar"><div class="subbar-inner"><div class="breadcrumb"><a href="ai-home.html">AI 资产</a><span class="sep">›</span><span class="current">知识库 (RAG)</span></div></div></div>
+
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="nav-l1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>AI 资产</div>
+    <a class="nav-l2" href="ai-home.html">AI 资产首页</a>
+    <a class="nav-l2" href="agent.html">Agent 注册</a>
+    <a class="nav-l2" href="tool.html">Tool / Function</a>
+    <a class="nav-l2" href="model.html">LLM 接入</a>
+    <a class="nav-l2" href="llm-gateway.html">LLM 网关</a>
+    <a class="nav-l2 active" href="dataset.html">知识库 (RAG)</a>
+    <a class="nav-l2" href="prompt.html">Prompt 模板</a>
+    <a class="nav-l2" href="metadata-source.html?filter=vector">向量库</a>
+  </aside>
+
+  <div class="right-col">
+
+<!-- AI Hero -->
+<section class="ai-hero">
+  <div class="ai-hero-inner">
+    <div class="ai-hero-title-row">
+      <span class="ai-hero-title">📚 RAG 知识库 <span class="ai-badge">Powered by Apache Gravitino · Fileset Catalog + Vector Catalog</span></span>
+    </div>
+    <div class="ai-hero-sub">统一管理 Agent 检索增强用的文档语料、切片配置、向量索引</div>
+
+    <div class="ai-stats">
+      <div class="ai-stat">
+        <div class="ai-stat-icon kb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5A1.5 1.5 0 014.5 3h6.8a1.5 1.5 0 011.5 1.5V20l-4-2-4 2V4.5z"/><path d="M14 5h5.5A1.5 1.5 0 0121 6.5V20l-3.5-1.8L14 20"/></svg></div>
+        <div><div class="ai-stat-num">18</div><div class="ai-stat-label">知识库总数</div><div class="ai-stat-trend">↑ 本周新增 2 · 14 已发布</div></div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-icon doc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div><div class="ai-stat-num">4.3 万</div><div class="ai-stat-label">文档总数</div><div class="ai-stat-trend">本周 +1,820</div></div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-icon vec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <div><div class="ai-stat-num">218 万</div><div class="ai-stat-label">向量数</div><div class="ai-stat-trend">Milvus + Qdrant</div></div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-icon search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="16" y1="16" x2="21" y2="21"/></svg></div>
+        <div><div class="ai-stat-num">1,420 万</div><div class="ai-stat-label">月检索次数</div><div class="ai-stat-trend">命中率 86.4%</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main class="content">
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-field" style="flex:1;min-width:240px;max-width:380px;">
+      <span class="toolbar-field-label">关键词搜索</span>
+      <div class="toolbar-search">
+        <span class="toolbar-search-prefix"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg></span>
+        <input type="text" placeholder="搜索知识库名 / 描述 / 标签" />
+      </div>
+    </div>
+    <div class="toolbar-field"><span class="toolbar-field-label">类型</span><select class="tb-select"><option>全部</option><option>业务知识</option><option>文档手册</option><option>客户 FAQ</option><option>内部规章</option><option>代码片段</option></select></div>
+    <div class="toolbar-field"><span class="toolbar-field-label">状态</span><select class="tb-select"><option>全部</option><option>已发布</option><option>构建中</option><option>同步中</option><option>已下线</option></select></div>
+    <div class="toolbar-field"><span class="toolbar-field-label">合规级别</span><select class="tb-select"><option>全部</option><option>公开</option><option>内部</option><option>机密</option><option>PII 隔离</option></select></div>
+    <div class="toolbar-spacer"></div>
+    <span class="toolbar-stats">共 <strong>18</strong> 个知识库</span>
+    <button class="btn btn-ai-red" onclick="showToast('打开知识库创建向导（演示）','info')">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+      新建知识库
+    </button>
+  </div>
+
+  <!-- 知识库卡片网格 -->
+  <div class="kb-grid">
+
+    <div class="kb-card" onclick="location.href='dataset-detail.html?code=kb_cs_faq'">
+      <div class="kb-head">
+        <div class="kb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 4M12 17.5h.01"/></svg></div>
+        <div class="kb-title">
+          <div class="kb-name">客服 FAQ KB</div>
+          <div class="kb-desc">客服中心高频问答 + 工单回访话术，支撑客服意图 / RAG 文档问答 Agent</div>
+        </div>
+      </div>
+      <div class="kb-tags">
+        <span class="kb-tag red">客户 FAQ</span>
+        <span class="kb-tag green">已发布</span>
+        <span class="kb-tag warn">PII 隔离</span>
+        <span class="kb-tag">cservice</span>
+      </div>
+      <div class="kb-stats">
+        <div class="kb-stat-item">文档<strong>8,420</strong></div>
+        <div class="kb-stat-item">向量<strong>42.6 万</strong></div>
+        <div class="kb-stat-item">索引<strong>1.8 GB</strong></div>
+        <div class="kb-stat-item">月检索<strong>286 万</strong></div>
+      </div>
+      <div class="kb-meta">
+        <span>来源：<b>飞书 / Confluence</b></span>
+        <span>Embedding：<b>bge-large-zh-v1.5</b></span>
+        <span>向量库：<b>Milvus</b></span>
+        <span>更新：<b>今天 09:30</b></span>
+      </div>
+      <div class="kb-foot">
+        <span>李雨 · 已发布 v3</span>
+        <span class="agent-cnt">被 4 个 Agent 使用</span>
+      </div>
+    </div>
+
+    <div class="kb-card" onclick="location.href='dataset-detail.html?code=kb_item_spec'">
+      <div class="kb-head">
+        <div class="kb-icon" style="background:linear-gradient(135deg,#FFF3E8,#FFD699);color:var(--orange);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+        <div class="kb-title">
+          <div class="kb-name">商品规格 KB</div>
+          <div class="kb-desc">SKU 详情 / 参数表 / 包装规格，支撑商品问数 + 智能客服</div>
+        </div>
+      </div>
+      <div class="kb-tags">
+        <span class="kb-tag warn">业务知识</span>
+        <span class="kb-tag green">已发布</span>
+        <span class="kb-tag blue">内部</span>
+        <span class="kb-tag">shop</span>
+      </div>
+      <div class="kb-stats">
+        <div class="kb-stat-item">文档<strong>12,800</strong></div>
+        <div class="kb-stat-item">向量<strong>78.4 万</strong></div>
+        <div class="kb-stat-item">索引<strong>3.2 GB</strong></div>
+        <div class="kb-stat-item">月检索<strong>412 万</strong></div>
+      </div>
+      <div class="kb-meta">
+        <span>来源：<b>S3 / 商品中台</b></span>
+        <span>Embedding：<b>text-embedding-3-large</b></span>
+        <span>向量库：<b>Milvus</b></span>
+        <span>更新：<b>今天 03:00</b></span>
+      </div>
+      <div class="kb-foot">
+        <span>王晨 · 已发布 v5</span>
+        <span class="agent-cnt">被 3 个 Agent 使用</span>
+      </div>
+    </div>
+
+    <div class="kb-card" onclick="location.href='dataset-detail.html?code=kb_legal'">
+      <div class="kb-head">
+        <div class="kb-icon" style="background:linear-gradient(135deg,#F0EDFF,#D6CFFF);color:var(--purple);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l9 4v6c0 5-4 8-9 8s-9-3-9-8V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <div class="kb-title">
+          <div class="kb-name">法务合规 KB</div>
+          <div class="kb-desc">合同模板 / 监管法规 / 内部合规手册，仅法务与合规小组检索</div>
+        </div>
+      </div>
+      <div class="kb-tags">
+        <span class="kb-tag purple">内部规章</span>
+        <span class="kb-tag green">已发布</span>
+        <span class="kb-tag" style="background:#FFE7E7;color:var(--red);">机密</span>
+        <span class="kb-tag">legal</span>
+      </div>
+      <div class="kb-stats">
+        <div class="kb-stat-item">文档<strong>1,240</strong></div>
+        <div class="kb-stat-item">向量<strong>9.6 万</strong></div>
+        <div class="kb-stat-item">索引<strong>420 MB</strong></div>
+        <div class="kb-stat-item">月检索<strong>4.8 万</strong></div>
+      </div>
+      <div class="kb-meta">
+        <span>来源：<b>Confluence 法务空间</b></span>
+        <span>Embedding：<b>bge-large-zh-v1.5</b></span>
+        <span>向量库：<b>Qdrant（内网）</b></span>
+        <span>更新：<b>昨天 18:00</b></span>
+      </div>
+      <div class="kb-foot">
+        <span>王芳 · 已发布 v2</span>
+        <span class="agent-cnt">被 2 个 Agent 使用</span>
+      </div>
+    </div>
+
+    <div class="kb-card" onclick="location.href='dataset-detail.html?code=kb_product_manual'">
+      <div class="kb-head">
+        <div class="kb-icon" style="background:linear-gradient(135deg,#E8F4FF,#B5D4FF);color:#0958D9;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v14l-4-3-4 3-4-3-4 3z"/></svg></div>
+        <div class="kb-title">
+          <div class="kb-name">内部产品手册</div>
+          <div class="kb-desc">产品功能说明 / 操作手册 / 上线变更日志，全员可检索</div>
+        </div>
+      </div>
+      <div class="kb-tags">
+        <span class="kb-tag blue">文档手册</span>
+        <span class="kb-tag green">已发布</span>
+        <span class="kb-tag">公开</span>
+        <span class="kb-tag">platform</span>
+      </div>
+      <div class="kb-stats">
+        <div class="kb-stat-item">文档<strong>3,860</strong></div>
+        <div class="kb-stat-item">向量<strong>21.4 万</strong></div>
+        <div class="kb-stat-item">索引<strong>880 MB</strong></div>
+        <div class="kb-stat-item">月检索<strong>184 万</strong></div>
+      </div>
+      <div class="kb-meta">
+        <span>来源：<b>Confluence 产品空间</b></span>
+        <span>Embedding：<b>text-embedding-3-large</b></span>
+        <span>向量库：<b>Milvus</b></span>
+        <span>更新：<b>2 小时前</b></span>
+      </div>
+      <div class="kb-foot">
+        <span>陈晓 · 已发布 v8</span>
+        <span class="agent-cnt">被 5 个 Agent 使用</span>
+      </div>
+    </div>
+
+    <div class="kb-card" onclick="location.href='dataset-detail.html?code=kb_code_snippet'">
+      <div class="kb-head">
+        <div class="kb-icon" style="background:linear-gradient(135deg,#E6FFFB,#87E8DE);color:var(--teal);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+        <div class="kb-title">
+          <div class="kb-name">代码片段库</div>
+          <div class="kb-desc">内部 SDK 用法 + 常见问题样例，供代码生成 Agent 检索</div>
+        </div>
+      </div>
+      <div class="kb-tags">
+        <span class="kb-tag" style="background:#E6FFFB;color:var(--teal);">代码片段</span>
+        <span class="kb-tag green">已发布</span>
+        <span class="kb-tag">内部</span>
+        <span class="kb-tag">eng</span>
+      </div>
+      <div class="kb-stats">
+        <div class="kb-stat-item">文档<strong>5,420</strong></div>
+        <div class="kb-stat-item">向量<strong>32.8 万</strong></div>
+        <div class="kb-stat-item">索引<strong>1.4 GB</strong></div>
+        <div class="kb-stat-item">月检索<strong>96 万</strong></div>
+      </div>
+      <div class="kb-meta">
+        <span>来源：<b>GitLab Wiki / 内部 Confluence</b></span>
+        <span>Embedding：<b>bge-large-zh-v1.5</b></span>
+        <span>向量库：<b>Milvus</b></span>
+        <span>更新：<b>4 小时前</b></span>
+      </div>
+      <div class="kb-foot">
+        <span>赵磊 · 已发布 v4</span>
+        <span class="agent-cnt">被 2 个 Agent 使用</span>
+      </div>
+    </div>
+
+    <div class="kb-card" onclick="location.href='dataset-detail.html?code=kb_finance_qa'">
+      <div class="kb-head">
+        <div class="kb-icon" style="background:linear-gradient(135deg,#FFF1F0,#FFCCC7);color:var(--ai-red);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg></div>
+        <div class="kb-title">
+          <div class="kb-name">财报问答库</div>
+          <div class="kb-desc">近 8 季度财报 + 公开披露文件，财务问数 Agent 检索源</div>
+        </div>
+      </div>
+      <div class="kb-tags">
+        <span class="kb-tag red">业务知识</span>
+        <span class="kb-tag green">已发布</span>
+        <span class="kb-tag blue">内部</span>
+        <span class="kb-tag">finance</span>
+      </div>
+      <div class="kb-stats">
+        <div class="kb-stat-item">文档<strong>620</strong></div>
+        <div class="kb-stat-item">向量<strong>4.2 万</strong></div>
+        <div class="kb-stat-item">索引<strong>180 MB</strong></div>
+        <div class="kb-stat-item">月检索<strong>32 万</strong></div>
+      </div>
+      <div class="kb-meta">
+        <span>来源：<b>S3 / 投资者关系</b></span>
+        <span>Embedding：<b>text-embedding-3-large</b></span>
+        <span>向量库：<b>Milvus</b></span>
+        <span>更新：<b>3 天前</b></span>
+      </div>
+      <div class="kb-foot">
+        <span>张晓明 · 已发布 v2</span>
+        <span class="agent-cnt">被 1 个 Agent 使用</span>
+      </div>
+    </div>
+
+    <div class="kb-card" onclick="location.href='dataset-detail.html?code=kb_hr_policy'">
+      <div class="kb-head">
+        <div class="kb-icon" style="background:linear-gradient(135deg,#F0EDFF,#D6CFFF);color:var(--purple);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg></div>
+        <div class="kb-title">
+          <div class="kb-name">HR 政策与员工手册</div>
+          <div class="kb-desc">薪酬 / 假期 / 行为准则等内部规章，员工小助手 Agent 检索</div>
+        </div>
+      </div>
+      <div class="kb-tags">
+        <span class="kb-tag purple">内部规章</span>
+        <span class="kb-tag green">已发布</span>
+        <span class="kb-tag warn">PII 隔离</span>
+        <span class="kb-tag">hr</span>
+      </div>
+      <div class="kb-stats">
+        <div class="kb-stat-item">文档<strong>820</strong></div>
+        <div class="kb-stat-item">向量<strong>6.8 万</strong></div>
+        <div class="kb-stat-item">索引<strong>240 MB</strong></div>
+        <div class="kb-stat-item">月检索<strong>74 万</strong></div>
+      </div>
+      <div class="kb-meta">
+        <span>来源：<b>飞书 HR 空间</b></span>
+        <span>Embedding：<b>bge-large-zh-v1.5</b></span>
+        <span>向量库：<b>Milvus</b></span>
+        <span>更新：<b>昨天 14:00</b></span>
+      </div>
+      <div class="kb-foot">
+        <span>王雪 · 已发布 v3</span>
+        <span class="agent-cnt">被 1 个 Agent 使用</span>
+      </div>
+    </div>
+
+    <div class="kb-card" onclick="location.href='dataset-detail.html?code=kb_marketing'">
+      <div class="kb-head">
+        <div class="kb-icon" style="background:linear-gradient(135deg,#FFF7E6,#FFD699);color:var(--orange);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5l-7 4v6l7 4V5z"/><path d="M11 9l8-3v12l-8-3"/></svg></div>
+        <div class="kb-title">
+          <div class="kb-name">营销活动库</div>
+          <div class="kb-desc">历史营销活动方案 / 文案素材 / 复盘报告，营销策略 Agent 检索源</div>
+        </div>
+      </div>
+      <div class="kb-tags">
+        <span class="kb-tag warn">业务知识</span>
+        <span class="kb-tag" style="background:var(--primary-light);color:var(--primary);">构建中</span>
+        <span class="kb-tag blue">内部</span>
+        <span class="kb-tag">marketing</span>
+      </div>
+      <div class="kb-stats">
+        <div class="kb-stat-item">文档<strong>2,420</strong></div>
+        <div class="kb-stat-item">向量<strong>16.4 万</strong></div>
+        <div class="kb-stat-item">索引<strong>620 MB</strong></div>
+        <div class="kb-stat-item">月检索<strong>—</strong></div>
+      </div>
+      <div class="kb-meta">
+        <span>来源：<b>飞书 / 内部 Wiki</b></span>
+        <span>Embedding：<b>text-embedding-3-large</b></span>
+        <span>向量库：<b>Qdrant</b></span>
+        <span>更新：<b>构建中 (62%)</b></span>
+      </div>
+      <div class="kb-foot">
+        <span>陈晓 · 草稿 v0.5</span>
+        <span class="agent-cnt">尚未接入</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:6px;font-size:12px;color:var(--sub);text-align:center;">已展示 8 / 18 个知识库 · <a style="color:var(--primary);cursor:pointer;" onclick="showToast('完整列表演示','info')">查看全部</a></div>
+
+  <div style="margin-top:14px;padding:10px 14px;background:#FAFBFC;border:1px dashed var(--border);border-radius:6px;font-size:11px;color:var(--sub);text-align:center;">
+    💡 文件元数据由 <strong style="color:var(--ai-red);">Gravitino Fileset Catalog</strong> 提供；向量集合由 <strong style="color:#722ED1;">Vector Catalog</strong> 管理
+  </div>
+
+</main>
+
+  </div><!-- /.right-col -->
+</div><!-- /.body-wrap -->
+
+<!-- Cmd+K -->
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产..." oninput="renderCmdK()" />
+      <span class="cmdk-esc">ESC</span>
+    </div>
+    <div class="cmdk-filters">
+      <span class="cmdk-chip active" data-type="all" onclick="setCmdKFilter(this)">全部</span>
+      <span class="cmdk-chip" data-type="metric" onclick="setCmdKFilter(this)">指标</span>
+      <span class="cmdk-chip" data-type="table" onclick="setCmdKFilter(this)">库表</span>
+      <span class="cmdk-chip" data-type="report" onclick="setCmdKFilter(this)">报表</span>
+      <span class="cmdk-chip" data-type="agent" onclick="setCmdKFilter(this)">Agent</span>
+      <span class="cmdk-chip" data-type="tool" onclick="setCmdKFilter(this)">工具</span>
+      <span class="cmdk-chip" data-type="model" onclick="setCmdKFilter(this)">LLM</span>
+      <span class="cmdk-chip" data-type="prompt" onclick="setCmdKFilter(this)">Prompt</span>
+      <span class="cmdk-chip" data-type="kb" onclick="setCmdKFilter(this)">知识库</span>
+      <span class="cmdk-chip" data-type="vector" onclick="setCmdKFilter(this)">向量集合</span>
+      <span class="cmdk-chip" data-type="term" onclick="setCmdKFilter(this)">术语</span>
+      <span class="cmdk-chip" data-type="source" onclick="setCmdKFilter(this)">数据源</span>
+    </div>
+    <div class="cmdk-results" id="cmdkResults"></div>
+    <div class="cmdk-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> 选择</span><span><kbd>Enter</kbd> 打开</span><span><kbd>ESC</kbd> 关闭</span><span style="margin-left:auto;">Spark MDM</span></div>
+  </div>
+</div>
+
+<script>
+  window.__GLOBAL_INDEX = [
+    { type:'metric', code:'dau', name:'日活跃用户数', en:'dau', biz:'sport', owner:'张晓明', desc:'去重后日 UV', url:'metadata-asset-detail.html?code=dau' },
+    { type:'table', code:'hive_dwd_user_active_log', name:'HIVE.DWD.user_active_log', en:'用户活跃日志', biz:'sc', owner:'张晓明', desc:'明细层用户端上行为日志', url:'metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志' },
+    { type:'report', code:'game_core_daily', name:'游戏核心指标日报', en:'game_core_daily', biz:'sport', owner:'李明', desc:'每日核心指标日报', url:'metadata-report-detail.html?code=game_core_daily&name=游戏核心指标日报' },
+    { type:'source', code:'src_milvus_main', name:'Milvus 向量主库', en:'milvus_prod', biz:'-', owner:'AI 平台组', desc:'Vector Catalog', url:'metadata-source-detail.html?code=src_milvus_main' },
+    { type:'agent', code:'biz_qa_agent', name:'智能问数 Agent', en:'biz_qa_agent', biz:'recsys', owner:'王晨', desc:'RAG+SQL · 基座 GPT-4 Turbo · 生产 v1.4', url:'agent-detail.html?code=biz_qa_agent' },
+    { type:'agent', code:'cs_intent_agent', name:'客服意图 Agent', en:'cs_intent_agent', biz:'cservice', owner:'李雨', desc:'Function · 基座 Qwen2-72B · 生产 v2.0', url:'agent-detail.html?code=cs_intent_agent' },
+    { type:'agent', code:'rag_doc_agent', name:'RAG 文档问答 Agent', en:'rag_doc_agent', biz:'cservice', owner:'李雨', desc:'RAG · 基座 DeepSeek-V3 · 灰度 v0.9', url:'agent-detail.html?code=rag_doc_agent' },
+    { type:'tool', code:'call_metric_api', name:'call_metric_api 指标查询工具', en:'call_metric_api', biz:'platform', owner:'王晨', desc:'API · 被 6 个 Agent 引用', url:'tool.html?code=call_metric_api' },
+    { type:'tool', code:'sql_runner', name:'sql_runner SQL 执行工具', en:'sql_runner', biz:'platform', owner:'王晨', desc:'SQL · Trino 后端 · 脱敏', url:'tool.html?code=sql_runner' },
+    { type:'tool', code:'vector_search', name:'vector_search 向量检索工具', en:'vector_search', biz:'platform', owner:'李雨', desc:'内置 · Milvus 后端 top-k', url:'tool.html?code=vector_search' },
+    { type:'model', code:'gpt4_turbo', name:'GPT-4 Turbo（OpenAI）', en:'gpt-4-turbo', biz:'-', owner:'AI 平台组', desc:'LLM 接入 · 商用 · 上下文 128K', url:'model-detail.html?code=gpt4_turbo' },
+    { type:'model', code:'qwen2_72b', name:'Qwen2-72B-Instruct', en:'qwen2-72b', biz:'-', owner:'AI 平台组', desc:'LLM 接入 · 开源 · 内网部署', url:'model-detail.html?code=qwen2_72b' },
+    { type:'prompt', code:'pt_summary_v2', name:'文本摘要 Prompt v2', en:'pt_summary_v2', biz:'cservice', owner:'李雨', desc:'Claude/GPT-4 长文本摘要', url:'prompt-detail.html?code=pt_summary_v2' },
+    { type:'kb', code:'kb_cs_faq', name:'客服 FAQ KB', en:'customer_faq_kb', biz:'cservice', owner:'李雨', desc:'8.4k 文档 · bge-large-zh · Milvus', url:'dataset-detail.html?code=kb_cs_faq' },
+    { type:'kb', code:'kb_item_spec', name:'商品规格 KB', en:'item_spec_kb', biz:'shop', owner:'王晨', desc:'12.8k 文档 · text-embedding-3-large', url:'dataset-detail.html?code=kb_item_spec' },
+    { type:'kb', code:'kb_legal', name:'法务合规 KB', en:'legal_kb', biz:'legal', owner:'王芳', desc:'机密 · Qdrant 内网', url:'dataset-detail.html?code=kb_legal' },
+    { type:'kb', code:'kb_product_manual', name:'内部产品手册', en:'product_manual_kb', biz:'platform', owner:'陈晓', desc:'公开 · 全员可检索', url:'dataset-detail.html?code=kb_product_manual' },
+    { type:'vector', code:'vec_item_emb', name:'item_embedding 商品向量集合', en:'vec_item_embedding', biz:'recsys', owner:'王晨', desc:'Milvus · 128维 · cosine', url:'metadata-source-detail.html?code=src_milvus_main&collection=item_embedding' },
+    { type:'vector', code:'vec_doc_emb', name:'doc_embedding RAG 文档向量', en:'vec_doc_embedding', biz:'cservice', owner:'李雨', desc:'Milvus · 768维 · L2', url:'metadata-source-detail.html?code=src_milvus_main&collection=doc_embedding' },
+    { type:'term', code:'term_embedding', name:'Embedding 嵌入向量', en:'Embedding', biz:'AI', owner:'AI 治理小组', desc:'高维语义特征的低维稠密向量', url:'glossary.html?term=Embedding' }
+  ];
+
+  let _cmdkFilter='all', _cmdkFocus=0;
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');setTimeout(()=>document.getElementById('cmdkInput').focus(),30);renderCmdK();}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  function setCmdKFilter(el){document.querySelectorAll('.cmdk-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');_cmdkFilter=el.dataset.type;renderCmdK();}
+  function highlight(t,q){if(!q)return t;const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return t.replace(re,'<span class="hl">$1</span>');}
+  function typeName(t){return ({metric:'指标',table:'库表',report:'报表',term:'术语',source:'数据源',kb:'知识库',prompt:'Prompt',vector:'向量集合',agent:'Agent',tool:'工具',model:'LLM'})[t]||t;}
+  function typeIcon(t){return ({metric:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/></svg>',table:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/></svg>',report:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>',term:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V3z"/></svg>',source:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="4" rx="5" ry="2"/></svg>',kb:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5z"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>',prompt:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 10a1 1 0 01-1 1H5l-2 2V3a1 1 0 011-1h9a1 1 0 011 1z"/></svg>',vector:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="1.2"/><circle cx="12" cy="4" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>',agent:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="12" height="9" rx="1.5"/><circle cx="6" cy="8.5" r="0.9"/><circle cx="10" cy="8.5" r="0.9"/><path d="M8 1v3"/></svg>',tool:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9.5 4.5l3 3M3 13l5-5M11 2l3 3-2 2-3-3z"/></svg>',model:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h12v4H2zM2 9h12v4H2z"/></svg>'})[t]||'';}
+  function renderCmdK(){const q=document.getElementById('cmdkInput').value.trim().toLowerCase();let items=window.__GLOBAL_INDEX.slice();if(_cmdkFilter!=='all')items=items.filter(i=>i.type===_cmdkFilter);if(q)items=items.filter(i=>(i.name+' '+i.en+' '+(i.desc||'')+' '+(i.code||'')).toLowerCase().includes(q));else items=items.slice(0,8);_cmdkFocus=0;const root=document.getElementById('cmdkResults');if(items.length===0){root.innerHTML='<div class="cmdk-empty">没有找到匹配的资产</div>';return;}const groups={};items.forEach(i=>{(groups[i.type]=groups[i.type]||[]).push(i);});let html='';['metric','table','report','agent','tool','model','prompt','kb','vector','term','source'].forEach(t=>{if(!groups[t])return;html+='<div class="cmdk-group-title">'+typeName(t)+' ('+groups[t].length+')</div>';groups[t].forEach(i=>{html+='<div class="cmdk-item" onclick="cmdkOpen(\''+i.url+'\')" data-url="'+i.url+'"><div class="cmdk-item-icon '+i.type+'">'+typeIcon(i.type)+'</div><div class="cmdk-item-meta"><div class="cmdk-item-title">'+highlight(i.name,q);if(i.en&&i.en!==i.name)html+=' <span style="color:var(--sub);font-size:11px;">'+highlight(i.en,q)+'</span>';html+='</div><div class="cmdk-item-sub">'+(i.desc||'')+' · '+(i.owner||'')+'</div></div><span class="cmdk-item-type">'+typeName(i.type)+'</span></div>';});});root.innerHTML=html;const all=root.querySelectorAll('.cmdk-item');if(all[0])all[0].classList.add('focused');}
+  function cmdkOpen(url){closeCmdK();location.href=url;}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();return;}if(!document.getElementById('cmdkMask').classList.contains('show'))return;if(e.key==='Escape'){closeCmdK();return;}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const items=document.querySelectorAll('#cmdkResults .cmdk-item');if(!items.length)return;items[_cmdkFocus]?.classList.remove('focused');_cmdkFocus=(_cmdkFocus+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[_cmdkFocus].classList.add('focused');items[_cmdkFocus].scrollIntoView({block:'nearest'});}else if(e.key==='Enter'){const f=document.querySelector('#cmdkResults .cmdk-item.focused');if(f)cmdkOpen(f.dataset.url);}});
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{if(e.target.id==='cmdkMask')closeCmdK();});
+
+  function showToast(msg, type){
+    type = type || 'success';
+    let c = document.getElementById('toastContainer');
+    if (!c) { c = document.createElement('div'); c.id='toastContainer'; c.className='toast-container'; document.body.appendChild(c); }
+    const t = document.createElement('div'); t.className='toast '+type;
+    t.innerHTML = '<span>'+msg+'</span>';
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 2400);
+  }
+</script>
+</body>
+</html>
