@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · LLM 详情</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1677FF; --primary-light: #E6F0FF; --primary-hover: #0958D9;
+      --green: #00B42A; --green-light: #E8FFEA;
+      --red: #F53F3F; --red-light: #FFECE8;
+      --orange: #FF7D00; --orange-light: #FFF3E8;
+      --purple: #7B61FF; --purple-light: #F0EDFF;
+      --gray-light: #F7F8FA;
+      --header-h: 52px; --subbar-h: 44px; --sidebar-w: 220px;
+      --bg: #F5F7FA; --card: #FFFFFF; --border: #E8ECF0;
+      --text: #1D2129; --sub: #86909C;
+      --ai-purple: #7B61FF; --ai-purple-2: #5346B6;
+      --teal: #08979C; --teal-light: #E6FFFB;
+    }
+    body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; display: flex; flex-direction: column; min-height: 100vh; }
+    /* Sidebar 左侧导航 */
+    .subbar { height: var(--subbar-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w); position: sticky; top: var(--header-h); z-index: 10; }
+    .subbar-inner { padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar { width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); position: sticky; top: calc(var(--header-h) + var(--subbar-h)); height: calc(100vh - var(--header-h) - var(--subbar-h)); flex-shrink: 0; }
+    .nav-l1 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--purple); }
+    .nav-l1 svg { width: 16px; height: 16px; }
+    .nav-l2 { display: flex; align-items: center; padding: 9px 16px 9px 40px; font-size: 13px; color: var(--sub); position: relative; text-decoration: none; }
+    .nav-l2:hover { color: var(--text); background: var(--gray-light); }
+    .nav-l2.active { color: var(--teal); font-weight: 500; background: var(--teal-light); }
+    .nav-l2.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--teal); }
+    .body-wrap > .right-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+    .header { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: sticky; top: 0; z-index: 30; gap: 16px; }
+    .logo-wrap { display: flex; align-items: center; gap: 8px; }
+    .logo-name { font-size: 16px; font-weight: 700; }
+    .global-search { display: flex; align-items: center; width: 320px; height: 32px; background: var(--gray-light); border: 1px solid transparent; border-radius: 8px; padding: 0 10px; cursor: pointer; flex-shrink: 0; }
+    .global-search:hover { background: #fff; border-color: var(--border); }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .global-search .gs-kbd { font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: #fff; font-family: ui-monospace, monospace; color: var(--sub); }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; }
+    .header-tab { height: 100%; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: var(--sub); cursor: pointer; position: relative; border: none; background: none; transition: color .15s; text-decoration: none; }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2px; background: var(--primary); border-radius: 2px 2px 0 0; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .hdr-action { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 8px; border-radius: 4px; cursor: pointer; color: var(--sub); background: none; border: none; position: relative; }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-badge { position: absolute; top: 1px; right: 4px; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px; background: var(--red); color: #fff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; cursor: pointer; background: none; border: none; }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+    .crumbs { padding: 12px 24px 0; max-width: 1280px; margin: 0 auto; width: 100%; font-size: 12px; color: var(--sub); }
+    .crumbs a { color: var(--sub); text-decoration: none; }
+    .crumbs a:hover { color: var(--primary); }
+
+    .ai-hero { background: linear-gradient(135deg, #F0EDFF 0%, #EAF3FF 50%, #FFF3E8 100%); padding: 18px 24px 22px; }
+    .ai-hero-inner { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+    .hero-top { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .hero-icon { width: 56px; height: 56px; border-radius: 12px; background: linear-gradient(135deg,#F0EDFF,#FFF3E8); color: #7B61FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .hero-icon svg { width: 28px; height: 28px; }
+    .hero-meta { flex: 1; min-width: 280px; }
+    .hero-title { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .ai-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: linear-gradient(135deg,var(--ai-purple),var(--ai-purple-2)); color: #fff; font-weight: 500; }
+    .hero-sub { font-size: 12.5px; color: var(--sub); margin-top: 6px; display: flex; gap: 16px; flex-wrap: wrap; }
+    .hero-sub b { color: var(--text); }
+    .hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); white-space: nowrap; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-ai { background: linear-gradient(135deg,var(--ai-purple),var(--ai-purple-2)); border-color: var(--ai-purple); color: #fff; }
+    .btn-ai:hover { background: var(--ai-purple-2); color: #fff; border-color: var(--ai-purple-2); }
+    .btn svg { width: 14px; height: 14px; }
+
+    .ai-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .ai-stat { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+    .ai-stat-num { font-size: 18px; font-weight: 700; line-height: 1.2; }
+    .ai-stat-label { font-size: 11px; color: var(--sub); margin-top: 4px; }
+    .ai-stat-trend { font-size: 11px; color: var(--green); margin-top: 2px; }
+
+    .content { flex: 1; padding: 16px 24px 32px; max-width: 1280px; width: 100%; margin: 0 auto; }
+    .tabs { display: flex; gap: 4px; padding: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .tab { padding: 10px 16px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--sub); border-bottom: 2px solid transparent; }
+    .tab:hover { color: var(--primary); }
+    .tab.active { color: var(--ai-purple); border-bottom-color: var(--ai-purple); }
+
+    .tab-pane { display: none; flex-direction: column; gap: 16px; }
+    .tab-pane.active { display: flex; }
+
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
+    .panel-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .panel-title::before { content: ''; width: 3px; height: 14px; background: var(--ai-purple); border-radius: 2px; }
+    .panel-link { font-size: 12px; color: var(--primary); cursor: pointer; text-decoration: none; }
+    .panel-link:hover { text-decoration: underline; }
+
+    .kv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 24px; }
+    .kv-row { display: flex; gap: 8px; font-size: 13px; align-items: baseline; }
+    .kv-key { color: var(--sub); min-width: 110px; }
+    .kv-val { flex: 1; color: var(--text); }
+    .kv-val code { font-family: ui-monospace,monospace; background: var(--gray-light); padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+
+    .a-tag { font-size: 11px; padding: 1px 7px; border-radius: 3px; white-space: nowrap; display: inline-block; }
+    .a-tag.online { background: var(--green-light); color: var(--green); }
+    .a-tag.gray { background: var(--gray-light); color: var(--sub); }
+    .a-tag.warn { background: var(--orange-light); color: var(--orange); }
+    .a-tag.danger { background: var(--red-light); color: var(--red); }
+    .a-tag.purple { background: var(--purple-light); color: var(--purple); }
+    .a-tag.teal { background: var(--teal-light); color: var(--teal); }
+
+    .cap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+    .cap-card { padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
+    .cap-card .cap-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .cap-card .cap-bar { height: 6px; background: #F0F3F6; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+    .cap-card .cap-bar > i { display: block; height: 100%; background: linear-gradient(90deg,var(--ai-purple),var(--orange)); border-radius: 3px; }
+    .cap-card .cap-desc { font-size: 11px; color: var(--sub); margin-top: 4px; }
+
+    .config-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); align-items: baseline; }
+    .config-row:last-child { border-bottom: none; }
+    .config-key { color: var(--sub); font-size: 12.5px; }
+    .config-val { font-size: 13px; }
+    .config-val code { font-family: ui-monospace,monospace; background: var(--gray-light); padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+
+    .chart-box { padding: 16px 8px 8px; }
+    .chart-svg { width: 100%; height: 220px; display: block; }
+
+    .stat-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .mini-stat { padding: 12px 14px; background: var(--gray-light); border-radius: 8px; }
+    .mini-stat .ms-num { font-size: 18px; font-weight: 700; }
+    .mini-stat .ms-label { font-size: 11px; color: var(--sub); }
+
+    table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.tbl thead th { font-weight: 600; color: var(--sub); font-size: 11.5px; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; background: var(--gray-light); }
+    table.tbl tbody td { padding: 10px; border-bottom: 1px solid #F0F3F6; }
+    .progress-mini { height: 6px; background: #F0F3F6; border-radius: 3px; overflow: hidden; width: 100px; margin-top: 4px; }
+    .progress-mini > i { display: block; height: 100%; background: linear-gradient(90deg,var(--ai-purple),var(--orange)); border-radius: 3px; }
+
+    .chain-flow { display: flex; align-items: center; gap: 8px; padding: 8px; flex-wrap: wrap; }
+    .chain-node { padding: 8px 12px; border-radius: 8px; font-size: 12px; text-align: center; min-width: 110px; border: 1px solid; }
+    .chain-node.primary { background: var(--purple-light); border-color: var(--ai-purple); color: var(--ai-purple); font-weight: 600; }
+    .chain-node.fallback { background: var(--orange-light); border-color: var(--orange); color: var(--orange); }
+    .chain-node.bottom { background: var(--teal-light); border-color: var(--teal); color: var(--teal); }
+    .chain-node-sub { font-size: 10px; color: var(--sub); margin-top: 2px; font-family: ui-monospace,monospace; }
+    .chain-arrow svg { width: 18px; height: 18px; color: var(--sub); }
+
+    .timeline-row { display: grid; grid-template-columns: 100px 1fr auto; gap: 12px; padding: 10px 4px; border-bottom: 1px dashed var(--border); }
+    .timeline-row:last-child { border-bottom: none; }
+    .tl-time { font-family: ui-monospace,monospace; font-size: 11px; color: var(--sub); }
+    .tl-text { font-size: 12.5px; }
+    .tl-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 96px); }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search svg { width: 16px; height: 16px; color: var(--sub); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; background: transparent; }
+    .cmdk-esc { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--sub); font-family: ui-monospace,monospace; }
+    .cmdk-filters { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .cmdk-chip { padding: 3px 10px; font-size: 12px; border-radius: 12px; cursor: pointer; background: var(--gray-light); color: var(--sub); white-space: nowrap; border: 1px solid transparent; }
+    .cmdk-chip.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); font-weight: 500; }
+    .cmdk-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .cmdk-group-title { font-size: 11px; color: var(--sub); padding: 6px 16px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+    .cmdk-item:hover, .cmdk-item.focused { background: var(--primary-light); }
+    .cmdk-item-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cmdk-item-icon svg { width: 14px; height: 14px; }
+    .cmdk-item-icon.metric { background: var(--primary-light); color: var(--primary); }
+    .cmdk-item-icon.table { background: var(--purple-light); color: var(--purple); }
+    .cmdk-item-icon.report { background: var(--orange-light); color: var(--orange); }
+    .cmdk-item-icon.term { background: var(--green-light); color: var(--green); }
+    .cmdk-item-icon.source { background: #FFE7E7; color: var(--red); }
+    .cmdk-item-icon.model { background: linear-gradient(135deg,#F0EDFF,#FFF3E8); color: #7B61FF; }
+    .cmdk-item-icon.kb { background: #FFF1F0; color: #CF1322; }
+    .cmdk-item-icon.prompt { background: #FFF7E6; color: #FA8C16; }
+    .cmdk-item-icon.vector { background: #F9F0FF; color: #722ED1; }
+    .cmdk-item-icon.agent { background: #F0EDFF; color: #7B61FF; }
+    .cmdk-item-icon.tool { background: #E6FFFB; color: #08979C; }
+    .cmdk-item-meta { flex: 1; min-width: 0; }
+    .cmdk-item-title { font-size: 13px; }
+    .cmdk-item-title .hl { background: #FFF3CD; color: #663C00; padding: 0 1px; }
+    .cmdk-item-sub { font-size: 11px; color: var(--sub); }
+    .cmdk-item-type { font-size: 11px; color: var(--sub); padding: 1px 7px; border-radius: 3px; background: var(--gray-light); }
+    .cmdk-empty { padding: 40px 20px; text-align: center; color: var(--sub); }
+    .cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--gray-light); font-size: 11px; color: var(--sub); }
+    .cmdk-foot kbd { font-family: ui-monospace,monospace; padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+
+    .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 13px; pointer-events: auto; }
+    .toast.success { border-color: #A3E8B0; }
+    .toast.info { border-color: #ADC6FF; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+    <span class="gs-kbd">⌘K</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab" href="metadata-asset.html">数据资产</a>
+    <a class="header-tab active" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" onclick="location.href='metadata-request.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>工单</span><span class="hdr-badge">3</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn"><div class="user-avatar">张</div><span style="font-size:13px;font-weight:500;">张晓明</span></button>
+  </div>
+</header>
+
+<div class="subbar"><div class="subbar-inner"><div class="breadcrumb"><a href="ai-home.html">AI 资产</a><span class="sep">›</span><a href="model.html">LLM 接入</a><span class="sep">›</span><span class="current">GPT-4 Turbo</span></div></div></div>
+
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="nav-l1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>AI 资产</div>
+    <a class="nav-l2" href="ai-home.html">AI 资产首页</a>
+    <a class="nav-l2" href="agent.html">Agent 注册</a>
+    <a class="nav-l2" href="tool.html">Tool / Function</a>
+    <a class="nav-l2 active" href="model.html">LLM 接入</a>
+    <a class="nav-l2" href="llm-gateway.html">LLM 网关</a>
+    <a class="nav-l2" href="dataset.html">知识库 (RAG)</a>
+    <a class="nav-l2" href="prompt.html">Prompt 模板</a>
+    <a class="nav-l2" href="metadata-source.html?filter=vector">向量库</a>
+  </aside>
+
+  <div class="right-col">
+
+<div class="crumbs">
+  <a href="ai-home.html">AI 资产</a> / <a href="model.html">LLM 接入清单</a> / <span>GPT-4 Turbo</span>
+</div>
+
+<section class="ai-hero">
+  <div class="ai-hero-inner">
+    <div class="hero-top">
+      <div class="hero-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01"/></svg>
+      </div>
+      <div class="hero-meta">
+        <div class="hero-title">
+          GPT-4 Turbo
+          <span class="a-tag purple">商用</span>
+          <span class="a-tag online">在线</span>
+          <span class="ai-badge">Powered by 自研 LLM 注册中心</span>
+        </div>
+        <div class="hero-sub">
+          <span>Catalog: <code style="font-family:ui-monospace,monospace;background:#fff;padding:2px 6px;border-radius:3px;font-size:12px;">gravitino://llm/openai_gpt4_turbo</code></span>
+          <span>责任人: <b>平台管理员（王晨备份）</b></span>
+          <span>上下文: <b>128K</b></span>
+          <span>月消耗: <b style="color:var(--orange);">¥6.2 万</b></span>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn" onclick="showToast('已拷贝调用示例','success')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="8" height="9" rx="1"/><path d="M2 10V3a1 1 0 011-1h7"/></svg>
+          调用示例
+        </button>
+        <button class="btn" onclick="location.href='llm-gateway.html?code=gpt4_turbo'">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1v12M1 7h12"/></svg>
+          网关运行时
+        </button>
+        <button class="btn btn-ai" onclick="showToast('已打开接入配置','info')">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="2"/><path d="M7 1v2M7 11v2M1 7h2M11 7h2"/></svg>
+          编辑接入
+        </button>
+      </div>
+    </div>
+
+    <div class="ai-stats">
+      <div class="ai-stat">
+        <div class="ai-stat-num">1.2 亿</div>
+        <div class="ai-stat-label">累计调用次数</div>
+        <div class="ai-stat-trend">↑ 本月 +18%</div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-num">P50 1.1s</div>
+        <div class="ai-stat-label">平均延迟</div>
+        <div class="ai-stat-trend">达标</div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-num">P99 4.6s</div>
+        <div class="ai-stat-label">P99 延迟</div>
+        <div class="ai-stat-trend" style="color:var(--orange);">↑ 较上周 +0.4s</div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-num">8.4 亿 / 1.6 亿</div>
+        <div class="ai-stat-label">月 Token（输入 / 输出）</div>
+        <div class="ai-stat-trend" style="color:var(--ai-purple);">输入占比 84%</div>
+      </div>
+      <div class="ai-stat">
+        <div class="ai-stat-num">¥6.2 万</div>
+        <div class="ai-stat-label">当月成本</div>
+        <div class="ai-stat-trend" style="color:var(--red);">↑ 接近预算 78%</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main class="content">
+  <div class="tabs">
+    <div class="tab active" data-tab="overview" onclick="switchTab(this)">概览</div>
+    <div class="tab" data-tab="config" onclick="switchTab(this)">接入配置</div>
+    <div class="tab" data-tab="stats" onclick="switchTab(this)">调用统计</div>
+    <div class="tab" data-tab="cost" onclick="switchTab(this)">Token 成本</div>
+    <div class="tab" data-tab="fallback" onclick="switchTab(this)">降级与限流</div>
+  </div>
+
+  <div class="tab-pane active" id="pane-overview">
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">📖 模型描述</span></div>
+      <div style="font-size:13px;line-height:1.7;color:var(--text);">
+        OpenAI GPT-4 Turbo 是 OpenAI 提供的旗舰大语言模型，针对企业级应用进行了延迟与成本优化。本平台通过自研 LLM 网关接入 OpenAI 官方 API，统一进行限流、审计、脱敏与降级管理。模型上下文窗口 128K，支持函数调用（Function Calling）、JSON 模式、Vision 输入与流式输出。本接入主要服务于：智能问数 Agent（生产）、合规审核 Agent（兜底）、文本摘要批处理任务。
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🎯 能力雷达</span></div>
+      <div class="cap-grid">
+        <div class="cap-card">
+          <div class="cap-name">🧠 推理能力 <span class="a-tag purple">9.2 / 10</span></div>
+          <div class="cap-bar"><i style="width:92%;"></i></div>
+          <div class="cap-desc">逻辑推理、多步规划、CoT 表现优秀</div>
+        </div>
+        <div class="cap-card">
+          <div class="cap-name">💻 代码生成 <span class="a-tag purple">9.0 / 10</span></div>
+          <div class="cap-bar"><i style="width:90%;"></i></div>
+          <div class="cap-desc">SQL / Python / 函数调用稳定</div>
+        </div>
+        <div class="cap-card">
+          <div class="cap-name">👁 Vision <span class="a-tag warn">7.5 / 10</span></div>
+          <div class="cap-bar"><i style="width:75%;"></i></div>
+          <div class="cap-desc">图像识别、OCR、图表解读</div>
+        </div>
+        <div class="cap-card">
+          <div class="cap-name">🌐 中文 <span class="a-tag purple">8.6 / 10</span></div>
+          <div class="cap-bar"><i style="width:86%;"></i></div>
+          <div class="cap-desc">中文 NLU 与生成质量</div>
+        </div>
+        <div class="cap-card">
+          <div class="cap-name">📝 长文本 <span class="a-tag purple">9.0 / 10</span></div>
+          <div class="cap-bar"><i style="width:90%;"></i></div>
+          <div class="cap-desc">128K 上下文，长文摘要表现好</div>
+        </div>
+        <div class="cap-card">
+          <div class="cap-name">🛠 函数调用 <span class="a-tag purple">9.4 / 10</span></div>
+          <div class="cap-bar"><i style="width:94%;"></i></div>
+          <div class="cap-desc">Function Calling / Tool Use 稳定</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">📋 基础信息</span></div>
+      <div class="kv-grid">
+        <div class="kv-row"><span class="kv-key">供应商</span><span class="kv-val">OpenAI</span></div>
+        <div class="kv-row"><span class="kv-key">模型 ID</span><span class="kv-val"><code>gpt-4-turbo-2024-04-09</code></span></div>
+        <div class="kv-row"><span class="kv-key">上下文窗口</span><span class="kv-val">128,000 tokens</span></div>
+        <div class="kv-row"><span class="kv-key">最大输出</span><span class="kv-val">4,096 tokens</span></div>
+        <div class="kv-row"><span class="kv-key">训练知识截止</span><span class="kv-val">2023-12-31（Cutoff Date）</span></div>
+        <div class="kv-row"><span class="kv-key">类型</span><span class="kv-val"><span class="a-tag purple">商用 API</span></span></div>
+        <div class="kv-row"><span class="kv-key">能力</span><span class="kv-val">推理 · 代码 · Vision · Function Calling · JSON 模式 · 流式</span></div>
+        <div class="kv-row"><span class="kv-key">官方文档</span><span class="kv-val"><a class="panel-link" onclick="showToast('外链已脱敏','info')">platform.openai.com/docs/models/gpt-4-turbo →</a></span></div>
+        <div class="kv-row"><span class="kv-key">责任人</span><span class="kv-val">平台管理员（备份：王晨）</span></div>
+        <div class="kv-row"><span class="kv-key">接入时间</span><span class="kv-val">2025-08-14</span></div>
+        <div class="kv-row"><span class="kv-key">最后更新</span><span class="kv-val">今天 16:10（QPS 阈值调整）</span></div>
+        <div class="kv-row"><span class="kv-key">使用方</span><span class="kv-val">智能问数 Agent · 合规审核 Agent · 摘要任务（共 5 个调用方）</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-config">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">🔌 API 接入配置</span>
+        <a class="panel-link" onclick="showToast('已切换为编辑模式','info')">编辑</a>
+      </div>
+      <div>
+        <div class="config-row"><span class="config-key">API Endpoint</span><span class="config-val"><code>https://api.openai.com/v1/chat/completions</code></span></div>
+        <div class="config-row"><span class="config-key">代理网关</span><span class="config-val"><code>https://llm-gw.spark.internal/v1/proxy/openai</code> <span class="a-tag online">已启用</span></span></div>
+        <div class="config-row"><span class="config-key">区域 / Region</span><span class="config-val">East US（主） / West EU（灾备） · 自动路由</span></div>
+        <div class="config-row"><span class="config-key">API Key 引用</span><span class="config-val"><code>secret://kms/openai/prod_main</code> 当前值: <code>sk-proj-***xx9tF</code> <span class="a-tag gray">已脱敏 · KMS 托管</span></span></div>
+        <div class="config-row"><span class="config-key">鉴权方式</span><span class="config-val">Bearer Token (Header) · 同时启用 mTLS 客户端证书</span></div>
+        <div class="config-row"><span class="config-key">健康检查 URL</span><span class="config-val"><code>https://api.openai.com/v1/models/gpt-4-turbo</code> · 间隔 30s · 连续 3 次失败触发熔断</span></div>
+        <div class="config-row"><span class="config-key">超时</span><span class="config-val">连接 5s · 读取 30s · 流式空闲 10s</span></div>
+        <div class="config-row"><span class="config-key">重试策略</span><span class="config-val">指数退避 · 最多 3 次 · 仅对 5xx / 429 / 网络错误</span></div>
+        <div class="config-row"><span class="config-key">Trace 注入</span><span class="config-val">自动写入 <code>X-Spark-Trace-Id</code> · 所有调用链可在审计 Catalog 检索</span></div>
+        <div class="config-row"><span class="config-key">合规标签</span><span class="config-val"><span class="a-tag warn">境外服务</span> <span class="a-tag online">数据出境已审批</span> <span class="a-tag purple">Prompt 自动脱敏</span></span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🧪 在线 Playground</span></div>
+      <div style="font-size:12px;color:var(--sub);">通过网关代理直连 GPT-4 Turbo · 输入将自动脱敏 · 输出将自动审核</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
+        <div>
+          <div style="font-size:12px;color:var(--sub);margin-bottom:4px;">System Prompt</div>
+          <textarea style="width:100%;height:80px;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:ui-monospace,monospace;font-size:12px;" placeholder="你是 Spark 数据分析助手...">你是 Spark 数据分析助手，请基于上下文准确回答。</textarea>
+          <div style="font-size:12px;color:var(--sub);margin:8px 0 4px;">User Message</div>
+          <textarea style="width:100%;height:120px;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:ui-monospace,monospace;font-size:12px;" placeholder="过去 7 天 DAU 趋势？">过去 7 天 DAU 趋势？</textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-ai" onclick="showToast('已发起调用 · 已自动脱敏','success')">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 7l5 5 5-9"/></svg>
+              发起调用
+            </button>
+            <button class="btn" onclick="showToast('已比对 GPT-4 Turbo / Claude 3.5','info')">对比 LLM</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--sub);margin-bottom:4px;">响应预览（脱敏）</div>
+          <div style="height:240px;padding:10px;background:var(--gray-light);border-radius:6px;font-family:ui-monospace,monospace;font-size:11.5px;white-space:pre-wrap;line-height:1.6;color:#333;">{
+  "id": "chatcmpl-***",
+  "model": "gpt-4-turbo-2024-04-09",
+  "trace_id": "trc-2026-0521-***",
+  "usage": {
+    "prompt_tokens": 842,
+    "completion_tokens": 312,
+    "total_tokens": 1154
+  },
+  "latency_ms": 1240,
+  "choices": [{
+    "message": {
+      "role": "assistant",
+      "content": "近 7 天 DAU 平稳上升..."
+    }
+  }]
+}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-stats">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">📈 近 30 天 QPS 折线</span>
+        <span style="font-size:11px;color:var(--sub);">峰值 720 · 均值 412 · 当前 482</span>
+      </div>
+      <div class="chart-box">
+        <svg class="chart-svg" viewBox="0 0 720 220" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="qpsGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7B61FF" stop-opacity="0.32"/>
+              <stop offset="100%" stop-color="#7B61FF" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <line x1="40" y1="20"  x2="700" y2="20"  stroke="#F0F3F6" stroke-dasharray="2 4"/>
+          <line x1="40" y1="65"  x2="700" y2="65"  stroke="#F0F3F6" stroke-dasharray="2 4"/>
+          <line x1="40" y1="110" x2="700" y2="110" stroke="#F0F3F6" stroke-dasharray="2 4"/>
+          <line x1="40" y1="155" x2="700" y2="155" stroke="#F0F3F6" stroke-dasharray="2 4"/>
+          <line x1="40" y1="200" x2="700" y2="200" stroke="#E8ECF0"/>
+          <text x="36" y="24" text-anchor="end" font-size="10" fill="#86909C">800</text>
+          <text x="36" y="69" text-anchor="end" font-size="10" fill="#86909C">600</text>
+          <text x="36" y="114" text-anchor="end" font-size="10" fill="#86909C">400</text>
+          <text x="36" y="159" text-anchor="end" font-size="10" fill="#86909C">200</text>
+          <text x="36" y="204" text-anchor="end" font-size="10" fill="#86909C">0</text>
+          <path d="M40,160 L62,150 L84,140 L106,135 L128,128 L150,118 L172,108 L194,90 L216,82 L238,72 L260,90 L282,80 L304,68 L326,55 L348,68 L370,78 L392,62 L414,48 L436,40 L458,55 L480,62 L502,52 L524,38 L546,32 L568,42 L590,50 L612,40 L634,32 L656,42 L678,52 L700,60 L700,200 L40,200 Z" fill="url(#qpsGrad)"/>
+          <path d="M40,160 L62,150 L84,140 L106,135 L128,128 L150,118 L172,108 L194,90 L216,82 L238,72 L260,90 L282,80 L304,68 L326,55 L348,68 L370,78 L392,62 L414,48 L436,40 L458,55 L480,62 L502,52 L524,38 L546,32 L568,42 L590,50 L612,40 L634,32 L656,42 L678,52 L700,60" fill="none" stroke="#7B61FF" stroke-width="1.8"/>
+          <circle cx="546" cy="32" r="3" fill="#FF7D00"/>
+          <text x="546" y="22" text-anchor="middle" font-size="10" fill="#FF7D00">峰值 720</text>
+          <text x="40" y="216" font-size="10" fill="#86909C">04-22</text>
+          <text x="200" y="216" font-size="10" fill="#86909C">04-29</text>
+          <text x="370" y="216" font-size="10" fill="#86909C">05-06</text>
+          <text x="540" y="216" font-size="10" fill="#86909C">05-13</text>
+          <text x="690" y="216" font-size="10" fill="#86909C" text-anchor="end">05-21</text>
+        </svg>
+      </div>
+      <div class="stat-grid-3">
+        <div class="mini-stat"><div class="ms-num" style="color:var(--green);">99.82%</div><div class="ms-label">SLA / 可用性</div></div>
+        <div class="mini-stat"><div class="ms-num" style="color:var(--red);">0.18%</div><div class="ms-label">失败率（含 5xx / 超时）</div></div>
+        <div class="mini-stat"><div class="ms-num" style="color:var(--orange);">2.4%</div><div class="ms-label">触发降级率</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🏆 调用方 Top 5（哪些 Agent 在用）</span></div>
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>调用方</th>
+              <th>类型</th>
+              <th>30 天调用</th>
+              <th>占比</th>
+              <th>平均延迟</th>
+              <th>失败率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><strong>智能问数 Agent</strong><div style="font-size:11px;color:var(--sub);">王晨 · 生产 v1.4</div></td>
+              <td><span class="a-tag purple">Agent</span></td>
+              <td>4,820 万</td>
+              <td><div>52%</div><div class="progress-mini"><i style="width:100%;"></i></div></td>
+              <td>1.18s</td>
+              <td>0.12%</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><strong>合规审核 Agent（兜底用）</strong><div style="font-size:11px;color:var(--sub);">赵磊 · 灰度</div></td>
+              <td><span class="a-tag purple">Agent</span></td>
+              <td>1,820 万</td>
+              <td><div>20%</div><div class="progress-mini"><i style="width:38%;"></i></div></td>
+              <td>2.62s</td>
+              <td>0.21%</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><strong>文本摘要批处理</strong><div style="font-size:11px;color:var(--sub);">系统 · 离线 cron</div></td>
+              <td><span class="a-tag teal">任务</span></td>
+              <td>1,210 万</td>
+              <td><div>13%</div><div class="progress-mini"><i style="width:25%;"></i></div></td>
+              <td>3.42s</td>
+              <td>0.18%</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td><strong>RAG 文档问答 Agent（fallback）</strong><div style="font-size:11px;color:var(--sub);">李雨 · 灰度 20%</div></td>
+              <td><span class="a-tag purple">Agent</span></td>
+              <td>720 万</td>
+              <td><div>8%</div><div class="progress-mini"><i style="width:15%;"></i></div></td>
+              <td>1.64s</td>
+              <td>0.30%</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td><strong>客服意图 Agent（降级目标）</strong><div style="font-size:11px;color:var(--sub);">李雨 · 生产</div></td>
+              <td><span class="a-tag purple">Agent</span></td>
+              <td>620 万</td>
+              <td><div>7%</div><div class="progress-mini"><i style="width:13%;"></i></div></td>
+              <td>0.84s</td>
+              <td>0.14%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-cost">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">💰 近 30 天日成本（柱状）</span>
+        <span style="font-size:11px;color:var(--sub);">本月累计 ¥6.2 万 · 月预算 ¥8.0 万 · 已用 78%</span>
+      </div>
+      <div class="chart-box">
+        <svg class="chart-svg" viewBox="0 0 720 220" preserveAspectRatio="none">
+          <line x1="40" y1="20"  x2="700" y2="20"  stroke="#F0F3F6" stroke-dasharray="2 4"/>
+          <line x1="40" y1="65"  x2="700" y2="65"  stroke="#F0F3F6" stroke-dasharray="2 4"/>
+          <line x1="40" y1="110" x2="700" y2="110" stroke="#F0F3F6" stroke-dasharray="2 4"/>
+          <line x1="40" y1="155" x2="700" y2="155" stroke="#F0F3F6" stroke-dasharray="2 4"/>
+          <line x1="40" y1="200" x2="700" y2="200" stroke="#E8ECF0"/>
+          <text x="36" y="24" text-anchor="end" font-size="10" fill="#86909C">¥3000</text>
+          <text x="36" y="69" text-anchor="end" font-size="10" fill="#86909C">¥2250</text>
+          <text x="36" y="114" text-anchor="end" font-size="10" fill="#86909C">¥1500</text>
+          <text x="36" y="159" text-anchor="end" font-size="10" fill="#86909C">¥750</text>
+          <text x="36" y="204" text-anchor="end" font-size="10" fill="#86909C">¥0</text>
+          <g fill="#7B61FF">
+            <rect x="50"  y="142" width="14" height="58"/>
+            <rect x="72"  y="135" width="14" height="65"/>
+            <rect x="94"  y="128" width="14" height="72"/>
+            <rect x="116" y="120" width="14" height="80"/>
+            <rect x="138" y="118" width="14" height="82"/>
+            <rect x="160" y="125" width="14" height="75"/>
+            <rect x="182" y="110" width="14" height="90"/>
+            <rect x="204" y="98"  width="14" height="102"/>
+            <rect x="226" y="92"  width="14" height="108"/>
+            <rect x="248" y="105" width="14" height="95"/>
+            <rect x="270" y="115" width="14" height="85"/>
+            <rect x="292" y="100" width="14" height="100"/>
+            <rect x="314" y="80"  width="14" height="120"/>
+            <rect x="336" y="75"  width="14" height="125"/>
+            <rect x="358" y="92"  width="14" height="108"/>
+            <rect x="380" y="85"  width="14" height="115"/>
+            <rect x="402" y="68"  width="14" height="132"/>
+            <rect x="424" y="58"  width="14" height="142"/>
+            <rect x="446" y="72"  width="14" height="128"/>
+            <rect x="468" y="80"  width="14" height="120"/>
+            <rect x="490" y="65"  width="14" height="135"/>
+            <rect x="512" y="48"  width="14" height="152"/>
+            <rect x="534" y="38"  width="14" height="162" fill="#FF7D00"/>
+            <rect x="556" y="55"  width="14" height="145"/>
+            <rect x="578" y="62"  width="14" height="138"/>
+            <rect x="600" y="48"  width="14" height="152"/>
+            <rect x="622" y="55"  width="14" height="145"/>
+            <rect x="644" y="40"  width="14" height="160"/>
+            <rect x="666" y="50"  width="14" height="150"/>
+            <rect x="688" y="58"  width="14" height="142"/>
+          </g>
+          <line x1="40" y1="48" x2="700" y2="48" stroke="#FF7D00" stroke-dasharray="4 4" stroke-width="1"/>
+          <text x="700" y="44" text-anchor="end" font-size="10" fill="#FF7D00">日预算告警线 ¥2400</text>
+          <text x="40" y="216" font-size="10" fill="#86909C">04-22</text>
+          <text x="200" y="216" font-size="10" fill="#86909C">04-29</text>
+          <text x="370" y="216" font-size="10" fill="#86909C">05-06</text>
+          <text x="540" y="216" font-size="10" fill="#86909C">05-13</text>
+          <text x="690" y="216" font-size="10" fill="#86909C" text-anchor="end">05-21</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🧮 按 Agent / 部门拆分（当月）</span></div>
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>调用方 / 部门</th>
+              <th>输入 Token</th>
+              <th>输出 Token</th>
+              <th>成本</th>
+              <th>占比</th>
+              <th>预算（月）</th>
+              <th>已用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>智能问数 Agent</strong> · 数据中台</td>
+              <td>4.4 亿</td>
+              <td>0.88 亿</td>
+              <td>¥3.2 万</td>
+              <td>52%</td>
+              <td>¥4.0 万</td>
+              <td><div>80%</div><div class="progress-mini"><i style="width:80%;"></i></div></td>
+            </tr>
+            <tr>
+              <td><strong>合规审核 Agent</strong> · 风控</td>
+              <td>1.6 亿</td>
+              <td>0.32 亿</td>
+              <td>¥1.2 万</td>
+              <td>20%</td>
+              <td>¥1.5 万</td>
+              <td><div>80%</div><div class="progress-mini"><i style="width:80%;"></i></div></td>
+            </tr>
+            <tr>
+              <td><strong>文本摘要批处理</strong> · 内容运营</td>
+              <td>1.0 亿</td>
+              <td>0.20 亿</td>
+              <td>¥0.84 万</td>
+              <td>14%</td>
+              <td>¥1.2 万</td>
+              <td><div>70%</div><div class="progress-mini"><i style="width:70%;"></i></div></td>
+            </tr>
+            <tr>
+              <td><strong>RAG 文档问答 Agent</strong> · 客服</td>
+              <td>0.62 亿</td>
+              <td>0.12 亿</td>
+              <td>¥0.52 万</td>
+              <td>8%</td>
+              <td>¥0.8 万</td>
+              <td><div>65%</div><div class="progress-mini"><i style="width:65%;"></i></div></td>
+            </tr>
+            <tr>
+              <td><strong>客服意图 Agent</strong>（fallback） · 客服</td>
+              <td>0.78 亿</td>
+              <td>0.08 亿</td>
+              <td>¥0.42 万</td>
+              <td>6%</td>
+              <td>¥0.5 万</td>
+              <td><div>84%</div><div class="progress-mini"><i style="width:84%;"></i></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">⚠ 月度配额预警</span></div>
+      <div>
+        <div class="timeline-row">
+          <span class="tl-time">今天 14:20</span>
+          <div>
+            <div class="tl-text">月预算消耗已达 <strong>78%</strong>（¥6.2 万 / ¥8.0 万），按当前速率预计 <strong>05-26 触顶</strong></div>
+            <div class="tl-sub">建议：审批临时扩容预算 ¥2 万，或将摘要批处理切换至 DeepSeek-V3（成本 -85%）</div>
+          </div>
+          <span class="a-tag warn">即将触顶</span>
+        </div>
+        <div class="timeline-row">
+          <span class="tl-time">昨天 10:08</span>
+          <div>
+            <div class="tl-text">智能问数 Agent 单日消耗 <strong>¥1,620</strong>，超出日均 +28%</div>
+            <div class="tl-sub">疑因：周一报表生成高峰 · 已通知 Owner 王晨</div>
+          </div>
+          <span class="a-tag gray">已通知</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-fallback">
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🚦 限流策略</span><a class="panel-link" onclick="showToast('已打开策略编辑','info')">编辑</a></div>
+      <div class="kv-grid">
+        <div class="kv-row"><span class="kv-key">QPS 上限</span><span class="kv-val"><code>120</code> req/s（按租户聚合）</span></div>
+        <div class="kv-row"><span class="kv-key">并发上限</span><span class="kv-val"><code>240</code> 并发请求</span></div>
+        <div class="kv-row"><span class="kv-key">RPM 上限</span><span class="kv-val"><code>10,000</code> req/min</span></div>
+        <div class="kv-row"><span class="kv-key">TPM 上限</span><span class="kv-val"><code>200,000</code> tokens/min</span></div>
+        <div class="kv-row"><span class="kv-key">租户配额</span><span class="kv-val">单租户 30% TPM 软上限 · 自动加权</span></div>
+        <div class="kv-row"><span class="kv-key">突发缓冲</span><span class="kv-val">令牌桶 · 1.5× 持续 30s</span></div>
+        <div class="kv-row"><span class="kv-key">超额处理</span><span class="kv-val">优先排队 5s · 超过则 429 拒绝并触发降级链</span></div>
+        <div class="kv-row"><span class="kv-key">熔断阈值</span><span class="kv-val">5xx 连续 8 次 / 1 分钟错误率 &gt; 5% / P99 &gt; 8s</span></div>
+        <div class="kv-row"><span class="kv-key">熔断恢复</span><span class="kv-val">半开探测 60s · 探测请求 5 个全部成功后恢复</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">🔁 降级链路</span></div>
+      <div class="chain-flow">
+        <div>
+          <div class="chain-node primary">GPT-4 Turbo<div class="chain-node-sub">主路 · 当前模型</div></div>
+        </div>
+        <div class="chain-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div>
+          <div class="chain-node fallback">GPT-4o-mini<div class="chain-node-sub">备用 · 商用低价</div></div>
+        </div>
+        <div class="chain-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div>
+          <div class="chain-node bottom">Qwen2-72B<div class="chain-node-sub">兜底 · 自托管</div></div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--sub);padding:6px 8px;background:var(--gray-light);border-radius:6px;">
+        触发条件：5xx 错误 / 超时 30s / TPM 命中限流 / 主路熔断 · 切换延迟 &lt; 200ms · 用户无感知
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">⏱ 最近 7 天降级事件（共 21 条）</span><a class="panel-link" href="llm-gateway.html">前往网关 →</a></div>
+      <div>
+        <div class="timeline-row">
+          <span class="tl-time">今天 15:08</span>
+          <div>
+            <div class="tl-text"><strong>5xx 熔断</strong> · 上游连续返回 8 次 502，熔断 60s 后恢复</div>
+            <div class="tl-sub">期间智能问数 Agent 切到 GPT-4o-mini · 失败请求 0 · 平均延迟 +0.8s</div>
+          </div>
+          <span class="a-tag danger">熔断</span>
+        </div>
+        <div class="timeline-row">
+          <span class="tl-time">今天 12:31</span>
+          <div>
+            <div class="tl-text"><strong>单次超时</strong> · 合规审核 Agent 长 prompt 触发 30s 超时</div>
+            <div class="tl-sub">单条降级到 Claude 3.5 Sonnet · 总延迟 4.2s</div>
+          </div>
+          <span class="a-tag warn">单条降级</span>
+        </div>
+        <div class="timeline-row">
+          <span class="tl-time">昨天 18:42</span>
+          <div>
+            <div class="tl-text"><strong>TPM 限流</strong> · 日报生成高峰命中 95% TPM</div>
+            <div class="tl-sub">12 分钟内 1,840 次请求降级到 GPT-4o-mini · 自动恢复</div>
+          </div>
+          <span class="a-tag warn">限流降级</span>
+        </div>
+        <div class="timeline-row">
+          <span class="tl-time">昨天 09:15</span>
+          <div>
+            <div class="tl-text"><strong>区域故障</strong> · East US 区域可用性下降，自动切到 West EU</div>
+            <div class="tl-sub">影响 6 分钟 · 请求继续在 GPT-4 Turbo 上完成 · 0 次降级</div>
+          </div>
+          <span class="a-tag gray">区域切换</span>
+        </div>
+        <div class="timeline-row">
+          <span class="tl-time">2 天前 14:08</span>
+          <div>
+            <div class="tl-text"><strong>主动演练</strong> · 演练触发熔断 + 降级链路</div>
+            <div class="tl-sub">演练范围：智能问数 Agent · 切到 GPT-4o-mini 90s · 演练成功</div>
+          </div>
+          <span class="a-tag online">演练</span>
+        </div>
+        <div class="timeline-row">
+          <span class="tl-time">3 天前 11:24</span>
+          <div>
+            <div class="tl-text"><strong>OpenAI 区域抖动</strong> · 5xx 错误率短时升至 3.2%</div>
+            <div class="tl-sub">未触发熔断（阈值 5%） · 已自动放缓 RPM 限速 20s 自愈</div>
+          </div>
+          <span class="a-tag gray">观察</span>
+        </div>
+        <div class="timeline-row">
+          <span class="tl-time">4 天前 16:50</span>
+          <div>
+            <div class="tl-text"><strong>API Key 轮换</strong> · 月度自动轮换，旧 Key 保留 24h 兼容</div>
+            <div class="tl-sub">无业务影响 · KMS 已更新 secret://kms/openai/prod_main</div>
+          </div>
+          <span class="a-tag online">轮换</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+  </div><!-- /.right-col -->
+</div><!-- /.body-wrap -->
+
+<div class="cmdk-mask" id="cmdkMask">
+  <div class="cmdk-modal" onclick="event.stopPropagation()">
+    <div class="cmdk-search">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+      <input id="cmdkInput" type="text" placeholder="搜索资产..." oninput="renderCmdK()" />
+      <span class="cmdk-esc">ESC</span>
+    </div>
+    <div class="cmdk-filters">
+      <span class="cmdk-chip active" data-type="all" onclick="setCmdKFilter(this)">全部</span>
+      <span class="cmdk-chip" data-type="metric" onclick="setCmdKFilter(this)">指标</span>
+      <span class="cmdk-chip" data-type="table" onclick="setCmdKFilter(this)">库表</span>
+      <span class="cmdk-chip" data-type="report" onclick="setCmdKFilter(this)">报表</span>
+      <span class="cmdk-chip" data-type="agent" onclick="setCmdKFilter(this)">Agent</span>
+      <span class="cmdk-chip" data-type="tool" onclick="setCmdKFilter(this)">工具</span>
+      <span class="cmdk-chip" data-type="model" onclick="setCmdKFilter(this)">LLM</span>
+      <span class="cmdk-chip" data-type="prompt" onclick="setCmdKFilter(this)">Prompt</span>
+      <span class="cmdk-chip" data-type="kb" onclick="setCmdKFilter(this)">知识库</span>
+      <span class="cmdk-chip" data-type="vector" onclick="setCmdKFilter(this)">向量集合</span>
+      <span class="cmdk-chip" data-type="term" onclick="setCmdKFilter(this)">术语</span>
+      <span class="cmdk-chip" data-type="source" onclick="setCmdKFilter(this)">数据源</span>
+    </div>
+    <div class="cmdk-results" id="cmdkResults"></div>
+    <div class="cmdk-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> 选择</span><span><kbd>Enter</kbd> 打开</span><span><kbd>ESC</kbd> 关闭</span><span style="margin-left:auto;">Spark MDM</span></div>
+  </div>
+</div>
+
+<script>
+  function switchTab(el){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    el.classList.add('active');
+    const id = 'pane-'+el.dataset.tab;
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  window.__GLOBAL_INDEX = [
+    { type:'metric', code:'dau', name:'日活跃用户数', en:'dau', biz:'sport', owner:'张晓明', desc:'去重后日 UV', url:'metadata-asset-detail.html?code=dau' },
+    { type:'table', code:'hive_dwd_user_active_log', name:'HIVE.DWD.user_active_log', en:'用户活跃日志', biz:'sc', owner:'张晓明', desc:'明细层用户端上行为日志', url:'metadata-table-detail.html?code=hive_dwd_user_active_log&name=用户活跃日志' },
+    { type:'report', code:'game_core_daily', name:'游戏核心指标日报', en:'game_core_daily', biz:'sport', owner:'李明', desc:'每日核心指标日报', url:'metadata-report-detail.html?code=game_core_daily&name=游戏核心指标日报' },
+    { type:'source', code:'src_milvus_main', name:'Milvus 向量主库', en:'milvus_prod', biz:'-', owner:'AI 平台组', desc:'Vector Catalog', url:'metadata-source-detail.html?code=src_milvus_main' },
+    { type:'agent', code:'biz_qa_agent', name:'智能问数 Agent', en:'biz_qa_agent', biz:'data', owner:'王晨', desc:'RAG+SQL · 基座 GPT-4 Turbo · 生产 v1.4', url:'agent-detail.html?code=biz_qa_agent' },
+    { type:'agent', code:'cs_intent_agent', name:'客服意图 Agent', en:'cs_intent_agent', biz:'cservice', owner:'李雨', desc:'Function Agent · 基座 Qwen2-72B · 生产', url:'agent-detail.html?code=cs_intent_agent' },
+    { type:'agent', code:'rag_doc_agent', name:'RAG 文档问答 Agent', en:'rag_doc_agent', biz:'cservice', owner:'李雨', desc:'RAG · 基座 DeepSeek-V3 · 灰度 20%', url:'agent-detail.html?code=rag_doc_agent' },
+    { type:'tool', code:'call_metric_api', name:'call_metric_api 指标查询工具', en:'call_metric_api', biz:'data', owner:'王晨', desc:'API · 被 6 个 Agent 引用', url:'tool.html?code=call_metric_api' },
+    { type:'tool', code:'sql_runner', name:'sql_runner SQL 执行工具', en:'sql_runner', biz:'data', owner:'王晨', desc:'SQL · Trino 后端 · 已脱敏', url:'tool.html?code=sql_runner' },
+    { type:'model', code:'gpt4_turbo', name:'GPT-4 Turbo（OpenAI）', en:'gpt-4-turbo', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 128K', url:'model-detail.html?code=gpt4_turbo' },
+    { type:'model', code:'claude_35_sonnet', name:'Claude 3.5 Sonnet（Anthropic）', en:'claude-3-5-sonnet', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 200K', url:'model-detail.html?code=claude_35_sonnet' },
+    { type:'model', code:'qwen2_72b', name:'Qwen2-72B-Instruct（阿里云）', en:'qwen2-72b-instruct', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 32K', url:'model-detail.html?code=qwen2_72b' },
+    { type:'model', code:'deepseek_v3', name:'DeepSeek-V3（DeepSeek）', en:'deepseek-v3', biz:'-', owner:'平台管理员', desc:'LLM 接入 · 商用 · 上下文 128K', url:'model-detail.html?code=deepseek_v3' },
+    { type:'prompt', code:'pt_summary_v2', name:'文本摘要 Prompt v2', en:'pt_summary_v2', biz:'cservice', owner:'李雨', desc:'多 LLM 适配 · 长文本摘要', url:'prompt-detail.html?code=pt_summary_v2' },
+    { type:'kb', code:'kb_cs_main', name:'客服知识库（Customer Service KB）', en:'kb_customer_service', biz:'cservice', owner:'李雨', desc:'12.4 万 chunks · bge-m3 · top-k 6', url:'dataset-detail.html?code=kb_cs_main' },
+    { type:'vector', code:'vec_doc_emb', name:'doc_embedding RAG 文档向量', en:'vec_doc_embedding', biz:'cservice', owner:'李雨', desc:'Milvus · 768维 · L2', url:'metadata-source-detail.html?code=src_milvus_main&collection=doc_embedding' },
+    { type:'term', code:'term_embedding', name:'Embedding 嵌入向量', en:'Embedding', biz:'AI', owner:'AI 治理小组', desc:'高维语义特征的低维稠密向量', url:'glossary.html?term=Embedding' }
+  ];
+
+  let _cmdkFilter='all', _cmdkFocus=0;
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');setTimeout(()=>document.getElementById('cmdkInput').focus(),30);renderCmdK();}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  function setCmdKFilter(el){document.querySelectorAll('.cmdk-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');_cmdkFilter=el.dataset.type;renderCmdK();}
+  function highlight(t,q){if(!q)return t;const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return t.replace(re,'<span class="hl">$1</span>');}
+  function typeName(t){return ({metric:'指标',table:'库表',report:'报表',term:'术语',source:'数据源',model:'LLM',agent:'Agent',tool:'工具',prompt:'Prompt',kb:'知识库',vector:'向量集合'})[t]||t;}
+  function typeIcon(t){return ({metric:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2 12 6 8 9 11 14 5"/></svg>',table:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="3" rx="6" ry="2"/></svg>',report:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="6" width="3" height="8"/><rect x="11" y="3" width="3" height="11"/></svg>',term:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V3z"/></svg>',source:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="4" rx="5" ry="2"/></svg>',model:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h12v4H2zM2 9h12v4H2z"/></svg>',agent:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="12" height="9" rx="1.5"/><circle cx="6" cy="8.5" r="0.9"/><circle cx="10" cy="8.5" r="0.9"/><path d="M8 1v3"/></svg>',tool:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9.5 4.5l3 3M3 13l5-5M11 2l3 3-2 2-3-3z"/></svg>',kb:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5z"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>',prompt:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 10a1 1 0 01-1 1H5l-2 2V3a1 1 0 011-1h9a1 1 0 011 1z"/></svg>',vector:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="4" r="1.2"/><circle cx="12" cy="4" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="8" cy="8" r="1.2"/></svg>'})[t]||'';}
+  function renderCmdK(){const q=document.getElementById('cmdkInput').value.trim().toLowerCase();let items=window.__GLOBAL_INDEX.slice();if(_cmdkFilter!=='all')items=items.filter(i=>i.type===_cmdkFilter);if(q)items=items.filter(i=>(i.name+' '+i.en+' '+(i.desc||'')+' '+(i.code||'')).toLowerCase().includes(q));else items=items.slice(0,8);_cmdkFocus=0;const root=document.getElementById('cmdkResults');if(items.length===0){root.innerHTML='<div class="cmdk-empty">没有找到匹配的资产</div>';return;}const groups={};items.forEach(i=>{(groups[i.type]=groups[i.type]||[]).push(i);});let html='';['metric','table','report','agent','tool','model','prompt','kb','vector','term','source'].forEach(t=>{if(!groups[t])return;html+='<div class="cmdk-group-title">'+typeName(t)+' ('+groups[t].length+')</div>';groups[t].forEach(i=>{html+='<div class="cmdk-item" onclick="cmdkOpen(\''+i.url+'\')" data-url="'+i.url+'"><div class="cmdk-item-icon '+i.type+'">'+typeIcon(i.type)+'</div><div class="cmdk-item-meta"><div class="cmdk-item-title">'+highlight(i.name,q);if(i.en&&i.en!==i.name)html+=' <span style="color:var(--sub);font-size:11px;">'+highlight(i.en,q)+'</span>';html+='</div><div class="cmdk-item-sub">'+(i.desc||'')+' · '+(i.owner||'')+'</div></div><span class="cmdk-item-type">'+typeName(i.type)+'</span></div>';});});root.innerHTML=html;const all=root.querySelectorAll('.cmdk-item');if(all[0])all[0].classList.add('focused');}
+  function cmdkOpen(url){closeCmdK();location.href=url;}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();return;}if(!document.getElementById('cmdkMask').classList.contains('show'))return;if(e.key==='Escape'){closeCmdK();return;}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const items=document.querySelectorAll('#cmdkResults .cmdk-item');if(!items.length)return;items[_cmdkFocus]?.classList.remove('focused');_cmdkFocus=(_cmdkFocus+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[_cmdkFocus].classList.add('focused');items[_cmdkFocus].scrollIntoView({block:'nearest'});}else if(e.key==='Enter'){const f=document.querySelector('#cmdkResults .cmdk-item.focused');if(f)cmdkOpen(f.dataset.url);}});
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{if(e.target.id==='cmdkMask')closeCmdK();});
+
+  function showToast(msg, type){
+    type = type || 'success';
+    let c = document.getElementById('toastContainer');
+    if (!c) { c = document.createElement('div'); c.id='toastContainer'; c.className='toast-container'; document.body.appendChild(c); }
+    const t = document.createElement('div'); t.className='toast '+type;
+    t.innerHTML = '<span>'+msg+'</span>';
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 2400);
+  }
+</script>
+</body>
+</html>
