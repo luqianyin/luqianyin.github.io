@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · Prompt 详情</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1677FF; --primary-light: #E6F0FF;
+      --green: #00B42A; --green-light: #E8FFEA;
+      --red: #F53F3F; --red-light: #FFECE8;
+      --orange: #FF7D00; --orange-light: #FFF3E8;
+      --purple: #7B61FF; --purple-light: #F0EDFF;
+      --gray-light: #F7F8FA;
+      --sidebar-w: 220px; --header-h: 52px; --subbar-h: 44px;
+      --bg: #F5F7FA; --card: #FFFFFF; --border: #E8ECF0;
+      --text: #1D2129; --sub: #86909C;
+      --ai-teal: #08979C;
+    }
+    body { font-family: -apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; background: var(--bg); color: var(--text); font-size: 13px; display: flex; flex-direction: column; min-height: 100vh; }
+    .header { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; position: sticky; top: 0; z-index: 30; }
+    .logo-name { font-size: 16px; font-weight: 700; }
+    .global-search { display: flex; align-items: center; width: 280px; height: 32px; background: var(--gray-light); border-radius: 8px; padding: 0 10px; cursor: pointer; }
+    .global-search svg { width: 14px; height: 14px; color: var(--sub); }
+    .global-search .gs-text { flex: 1; font-size: 13px; color: var(--sub); padding: 0 8px; }
+    .header-nav { display: flex; align-items: center; height: 100%; gap: 4px; }
+    .header-tab { height: 100%; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: var(--sub); position: relative; text-decoration: none; }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2px; background: var(--primary); }
+    .header-right { margin-left: auto; display: flex; gap: 6px; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); }
+    .user-btn { display: flex; align-items: center; gap: 6px; padding: 4px 8px; cursor: pointer; background: none; border: none; }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+    .subbar { height: var(--subbar-h); background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 0 0 var(--sidebar-w); position: sticky; top: var(--header-h); z-index: 10; }
+    .subbar-inner { padding: 0 20px; width: 100%; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--sub); }
+    .breadcrumb a { color: var(--sub); text-decoration: none; cursor: pointer; }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+    .body-wrap { flex: 1; display: flex; align-items: flex-start; }
+    .sidebar { width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); position: sticky; top: calc(var(--header-h) + var(--subbar-h)); height: calc(100vh - var(--header-h) - var(--subbar-h)); }
+    .nav-l1 { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--purple); }
+    .nav-l1 svg { width: 16px; height: 16px; }
+    .nav-l2 { display: flex; align-items: center; padding: 9px 16px 9px 40px; font-size: 13px; color: var(--sub); position: relative; text-decoration: none; }
+    .nav-l2.active { color: var(--ai-teal); font-weight: 500; background: #E6FFFB; }
+    .nav-l2.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--ai-teal); }
+
+    .content { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+
+    .hero { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; display: flex; gap: 16px; align-items: flex-start; }
+    .pt-icon-big { width: 56px; height: 56px; border-radius: 12px; background: linear-gradient(135deg,var(--ai-teal),#006D75); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pt-icon-big svg { width: 24px; height: 24px; }
+    .hero-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .hero-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .hero-name { font-size: 18px; font-weight: 600; }
+    .hero-en { font-family: ui-monospace,monospace; color: var(--sub); background: var(--gray-light); padding: 2px 8px; border-radius: 4px; font-size: 13px; }
+    .hero-tag { display: inline-flex; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; background: #E6FFFB; color: var(--ai-teal); }
+    .hero-tag.green { background: var(--green-light); color: var(--green); }
+    .hero-rating { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; background: var(--orange-light); color: var(--orange); border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .hero-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--sub); }
+    .hero-meta .value { color: var(--text); }
+    .hero-meta .sep { color: #C2C7CF; }
+    .hero-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-ai-teal { background: linear-gradient(135deg,var(--ai-teal),#006D75); border-color: var(--ai-teal); color: #fff; }
+
+    .detail-tabs-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .detail-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--border); padding: 0 20px; overflow-x: auto; }
+    .detail-tab { height: 44px; padding: 0 14px; font-size: 13px; font-weight: 500; color: var(--sub); cursor: pointer; border: none; background: none; position: relative; white-space: nowrap; }
+    .detail-tab.active { color: var(--ai-teal); font-weight: 600; }
+    .detail-tab.active::after { content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 2px; background: var(--ai-teal); }
+    .detail-pane { display: none; padding: 16px 20px; }
+    .detail-pane.active { display: block; }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+    .info-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: start; font-size: 12px; }
+    .info-row .ir-label { color: var(--sub); }
+    .info-row .ir-value.mono { font-family: ui-monospace,monospace; }
+
+    /* Prompt 内容块 */
+    .pt-block { background: #1F2329; color: #C9D1D9; border-radius: 8px; padding: 16px; font-family: ui-monospace,monospace; font-size: 12px; line-height: 1.8; position: relative; white-space: pre-wrap; }
+    .pt-block .var { background: rgba(255,125,0,.2); color: #FFA957; padding: 1px 4px; border-radius: 3px; }
+    .pt-block .role { color: #79C0FF; font-weight: 600; }
+    .pt-block .comment { color: #8B949E; font-style: italic; }
+    .pt-copy { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,.1); color: #C9D1D9; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+
+    /* A/B 测试 */
+    .ab-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .ab-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .ab-card.win { border-color: #A3E8B0; background: #F8FFF9; }
+    .ab-card.lose { border-color: #FFC1B8; background: #FFFAFA; }
+    .ab-title { font-size: 14px; font-weight: 600; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .ab-title .ab-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+    .ab-title .ab-tag.win { background: var(--green-light); color: var(--green); }
+    .ab-title .ab-tag.lose { background: var(--red-light); color: var(--red); }
+    .ab-metric-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 6px 0; font-size: 12px; }
+    .ab-metric-row .ab-mv { font-family: ui-monospace,monospace; font-weight: 600; }
+    .ab-metric-row .ab-mv.up { color: var(--green); }
+    .ab-metric-row .ab-mv.down { color: var(--red); }
+
+    /* 评估打分 */
+    .rating-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .rating-card { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; text-align: center; }
+    .rating-card .rl { font-size: 11px; color: var(--sub); }
+    .rating-card .rv { font-size: 24px; font-weight: 700; color: var(--orange); margin-top: 4px; }
+    .rating-card .rsub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .data-table th { background: #FAFBFC; border-bottom: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; color: var(--sub); }
+    .data-table td { padding: 8px 12px; border-bottom: 1px solid #F0F3F6; }
+    .data-table .mono { font-family: ui-monospace,monospace; }
+
+    /* 版本时间线 */
+    .ver-row { display: grid; grid-template-columns: 100px 1fr 100px; gap: 12px; padding: 10px 12px; border-bottom: 1px solid #F0F3F6; align-items: center; }
+    .ver-tag { font-family: ui-monospace,monospace; font-weight: 600; color: var(--ai-teal); }
+    .ver-meta { font-size: 12px; }
+    .ver-meta .vm-title { font-weight: 500; }
+    .ver-meta .vm-sub { color: var(--sub); margin-top: 2px; font-size: 11px; }
+
+    .cmdk-mask { position: fixed; inset: 0; background: rgba(29,33,41,.45); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 80px 16px 16px; }
+    .cmdk-mask.show { display: flex; }
+    .cmdk-modal { width: 100%; max-width: 640px; background: #fff; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+    .cmdk-search { display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border); }
+    .cmdk-search input { flex: 1; height: 28px; border: none; outline: none; font-size: 14px; }
+    .cmdk-results { flex: 1; padding: 8px 0; }
+    .cmdk-item { padding: 8px 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <div class="global-search" onclick="openCmdK()">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>
+    <span class="gs-text">搜索指标 / 表 / 报表 / Agent / 工具 / LLM / 知识库 / 术语</span>
+  </div>
+  <nav class="header-nav">
+    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab" href="metadata-asset.html">数据资产</a>
+    <a class="header-tab active" href="ai-home.html">AI 资产</a>
+    <a class="header-tab" href="glossary.html">数据治理</a>
+    <a class="header-tab" href="metadata-request.html">权限与申请</a>
+  </nav>
+  <div class="header-right">
+    <div class="hdr-divider"></div>
+    <button class="user-btn"><div class="user-avatar">李</div><span style="font-size:13px;font-weight:500;">李雨</span></button>
+  </div>
+</header>
+
+<div class="subbar"><div class="subbar-inner"><div class="breadcrumb"><a href="ai-home.html">AI 资产</a><span class="sep">›</span><a href="prompt.html">Prompt 模板</a><span class="sep">›</span><span class="current" id="bc-current">pt_summary_v2</span></div></div></div>
+
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="nav-l1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>AI 资产</div>
+    <a class="nav-l2" href="ai-home.html">AI 资产首页</a>
+    <a class="nav-l2" href="agent.html">Agent 注册</a>
+    <a class="nav-l2" href="tool.html">Tool / Function</a>
+    <a class="nav-l2" href="model.html">LLM 接入</a>
+    <a class="nav-l2" href="llm-gateway.html">LLM 网关</a>
+    <a class="nav-l2" href="dataset.html">知识库 (RAG)</a>
+    <a class="nav-l2 active" href="prompt.html">Prompt 模板</a>
+    <a class="nav-l2" href="metadata-source.html?filter=vector">向量库</a>
+  </aside>
+
+  <main class="content">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="pt-icon-big">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>
+      </div>
+      <div class="hero-info">
+        <div class="hero-title-row">
+          <span class="hero-name" id="pt-name">文本摘要 Prompt v2</span>
+          <span class="hero-en" id="pt-en">pt_summary_v2</span>
+          <span class="hero-tag">摘要 · 文本生成</span>
+          <span class="hero-tag green">v2.1.0 · 已发布</span>
+          <span class="hero-rating">★ 4.6/5 · 人工评分</span>
+        </div>
+        <div class="hero-meta">
+          <span><span>适配模型：</span><span class="value">Claude 3.5 / 4 · GPT-4 / 4o · Qwen 2.5</span></span>
+          <span class="sep">·</span>
+          <span><span>负责人：</span><span class="value">李雨</span></span>
+          <span class="sep">·</span>
+          <span><span>调用量：</span><span class="value">4,020 PV/周</span></span>
+        </div>
+        <div class="hero-meta">
+          <span><span>平均 token：</span><span class="value">输入 1820 / 输出 380</span></span>
+          <span class="sep">·</span>
+          <span><span>P99 延迟：</span><span class="value">3.2s</span></span>
+          <span class="sep">·</span>
+          <span><span>更新：</span><span class="value">昨天 16:00</span></span>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn">▶ 调试运行</button>
+        <button class="btn btn-ai-teal">🆕 创建 v3 实验</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="detail-tabs-card">
+      <div class="detail-tabs">
+        <button class="detail-tab active" data-pane="overview" onclick="switchTab(this)">📋 概览</button>
+        <button class="detail-tab" data-pane="content" onclick="switchTab(this)">📝 Prompt 内容</button>
+        <button class="detail-tab" data-pane="vars" onclick="switchTab(this)">🔧 输入变量</button>
+        <button class="detail-tab" data-pane="ab" onclick="switchTab(this)">⚖ A/B 评估 <span style="background:var(--green-light);color:var(--green);font-size:11px;padding:1px 7px;border-radius:10px;">v2 胜出</span></button>
+        <button class="detail-tab" data-pane="version" onclick="switchTab(this)">🚀 版本 (5)</button>
+        <button class="detail-tab" data-pane="usage" onclick="switchTab(this)">📊 调用统计</button>
+        <button class="detail-tab" data-pane="rating" onclick="switchTab(this)">⭐ 评估打分</button>
+      </div>
+
+      <!-- 概览 -->
+      <div class="detail-pane active" id="pane-overview">
+        <div class="info-grid">
+          <div>
+            <div class="info-row"><span class="ir-label">Prompt 名</span><span class="ir-value">文本摘要 Prompt v2</span></div>
+            <div class="info-row"><span class="ir-label">英文标识</span><span class="ir-value mono">pt_summary_v2</span></div>
+            <div class="info-row"><span class="ir-label">版本</span><span class="ir-value mono">v2.1.0</span></div>
+            <div class="info-row"><span class="ir-label">类型</span><span class="ir-value">摘要 / 文本生成</span></div>
+            <div class="info-row"><span class="ir-label">用途</span><span class="ir-value">为长文本生成简明摘要，保留关键信息</span></div>
+            <div class="info-row"><span class="ir-label">业务线</span><span class="ir-value">cservice 客服 · shop 电商</span></div>
+          </div>
+          <div>
+            <div class="info-row"><span class="ir-label">适配模型</span><span class="ir-value">Claude 3.5/4 · GPT-4/4o · Qwen 2.5</span></div>
+            <div class="info-row"><span class="ir-label">默认模型</span><span class="ir-value mono">claude-sonnet-4-6</span></div>
+            <div class="info-row"><span class="ir-label">温度</span><span class="ir-value mono">0.3</span></div>
+            <div class="info-row"><span class="ir-label">max_tokens</span><span class="ir-value mono">800</span></div>
+            <div class="info-row"><span class="ir-label">输入变量数</span><span class="ir-value">3 个（{{language}}, {{length}}, {{text}}）</span></div>
+            <div class="info-row"><span class="ir-label">合规级别</span><span class="ir-value"><span style="background:#E6F0FF;color:#0958D9;padding:1px 6px;border-radius:3px;font-size:11px;">L2 内部</span></span></div>
+          </div>
+        </div>
+
+        <h4 style="font-size:13px;font-weight:600;margin:18px 0 8px;">⭐ 评估打分概览</h4>
+        <div class="rating-grid">
+          <div class="rating-card"><div class="rl">综合人工评分</div><div class="rv">4.6 / 5</div><div class="rsub">120 人参与评分</div></div>
+          <div class="rating-card"><div class="rl">事实准确性</div><div class="rv">4.7 / 5</div><div class="rsub">幻觉率 2.1%</div></div>
+          <div class="rating-card"><div class="rl">摘要简洁度</div><div class="rv">4.5 / 5</div><div class="rsub">压缩率 80%</div></div>
+          <div class="rating-card"><div class="rl">用户满意度</div><div class="rv">4.8 / 5</div><div class="rsub">线上反馈</div></div>
+        </div>
+      </div>
+
+      <!-- Prompt 内容 -->
+      <div class="detail-pane" id="pane-content">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span style="font-size:13px;font-weight:500;">Prompt 完整内容</span>
+          <span style="font-size:11px;color:var(--sub);background:var(--gray-light);padding:2px 8px;border-radius:3px;">v2.1.0 · 1820 tokens</span>
+          <button class="btn" style="margin-left:auto;height:28px;font-size:11px;">📋 复制</button>
+          <button class="btn" style="height:28px;font-size:11px;">▶ 在 Playground 调试</button>
+        </div>
+
+        <div class="pt-block">
+          <button class="pt-copy">复制</button>
+<span class="role">[System]</span>
+你是专业的文本摘要助手，擅长在保留核心信息的前提下大幅压缩文本长度。
+
+<span class="comment"># 任务规则</span>
+1. 摘要语言：<span class="var">{{language}}</span>（与原文一致或翻译）
+2. 摘要长度：<span class="var">{{length}}</span> 字以内
+3. 必须保留：关键人物、事件、数字、时间、地点
+4. 不得编造原文未提及的内容（防止幻觉）
+5. 如果原文为列表或步骤，摘要保持结构化
+
+<span class="comment"># 输出格式</span>
+直接输出摘要正文，不要前缀（如"摘要：""总结："），也不要后缀解释。
+
+<span class="role">[User]</span>
+请对以下文本进行摘要：
+
+---
+<span class="var">{{text}}</span>
+---
+        </div>
+
+        <div style="margin-top:14px;background:var(--gray-light);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;line-height:1.6;">
+          <strong>📝 编写建议（v2 设计文档）：</strong>
+          <ul style="margin-top:6px;margin-left:20px;color:var(--sub);">
+            <li>v2 相比 v1 强化了"防止幻觉"的指令</li>
+            <li>明确"保留数字 / 时间 / 地点"，避免摘要丢失关键信息</li>
+            <li>采用 [System] + [User] 双消息格式，对 Claude / GPT 系列均友好</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 输入变量 -->
+      <div class="detail-pane" id="pane-vars">
+        <table class="data-table">
+          <thead><tr><th>变量</th><th>类型</th><th>必填</th><th>默认值</th><th>取值范围</th><th>说明</th><th>示例</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mono"><span style="background:#FFF3E8;color:var(--orange);padding:1px 6px;border-radius:3px;">{{language}}</span></td>
+              <td>string</td>
+              <td><span style="color:var(--green);">是</span></td>
+              <td class="mono">"中文"</td>
+              <td>中文 / 英文 / 日文</td>
+              <td>摘要的输出语言</td>
+              <td class="mono">"中文"</td>
+            </tr>
+            <tr>
+              <td class="mono"><span style="background:#FFF3E8;color:var(--orange);padding:1px 6px;border-radius:3px;">{{length}}</span></td>
+              <td>int</td>
+              <td><span style="color:var(--green);">是</span></td>
+              <td class="mono">200</td>
+              <td>50 ~ 800</td>
+              <td>摘要的最大字数</td>
+              <td class="mono">200</td>
+            </tr>
+            <tr>
+              <td class="mono"><span style="background:#FFF3E8;color:var(--orange);padding:1px 6px;border-radius:3px;">{{text}}</span></td>
+              <td>string</td>
+              <td><span style="color:var(--green);">是</span></td>
+              <td>—</td>
+              <td>不超过 50K 字符</td>
+              <td>原始待摘要文本</td>
+              <td class="mono" style="color:var(--sub);">（长文本）</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4 style="font-size:13px;font-weight:600;margin:18px 0 8px;">🧪 测试用例（5 个 Golden Examples）</h4>
+        <table class="data-table">
+          <thead><tr><th>用例 ID</th><th>输入文本</th><th>{{language}}</th><th>{{length}}</th><th>预期摘要</th><th>实际通过</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">case_01</td><td style="color:var(--sub);">某产品发布会演讲稿（4500字）</td><td>中文</td><td>200</td><td style="color:var(--sub);">公司发布新品...</td><td><span style="color:var(--green);">✓</span></td></tr>
+            <tr><td class="mono">case_02</td><td style="color:var(--sub);">技术博客（2800字）</td><td>中文</td><td>150</td><td style="color:var(--sub);">本文介绍 RAG...</td><td><span style="color:var(--green);">✓</span></td></tr>
+            <tr><td class="mono">case_03</td><td style="color:var(--sub);">新闻报道（3200字）</td><td>中文</td><td>200</td><td style="color:var(--sub);">2026年5月20日...</td><td><span style="color:var(--green);">✓</span></td></tr>
+            <tr><td class="mono">case_04</td><td style="color:var(--sub);">英文论文摘要（abstract）</td><td>中文</td><td>300</td><td style="color:var(--sub);">本文研究...</td><td><span style="color:var(--green);">✓</span></td></tr>
+            <tr><td class="mono">case_05</td><td style="color:var(--sub);">用户评论汇总（5800字）</td><td>中文</td><td>250</td><td style="color:var(--sub);">用户对...</td><td><span style="color:var(--orange);">⚠ 部分</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- A/B 评估 -->
+      <div class="detail-pane" id="pane-ab">
+        <div style="background:linear-gradient(90deg,#E8FFEA,#E6FFFB);border:1px solid #A3E8B0;border-radius:8px;padding:10px 14px;font-size:12px;color:#1B5E20;margin-bottom:14px;">
+          ✅ <strong>A/B 测试已结束</strong>（2026-05-15 ~ 2026-05-20）— pt_summary_v2 显著胜出 v1，已切流 100%
+        </div>
+
+        <div class="ab-grid">
+          <div class="ab-card win">
+            <div class="ab-title">🅰 实验组 v2.1.0 <span class="ab-tag win">胜出</span></div>
+            <div class="ab-metric-row"><span>人工评分（120 人）</span><span class="ab-mv up">4.6 / 5</span></div>
+            <div class="ab-metric-row"><span>事实准确性</span><span class="ab-mv up">4.7</span></div>
+            <div class="ab-metric-row"><span>压缩率</span><span class="ab-mv">80%</span></div>
+            <div class="ab-metric-row"><span>幻觉率</span><span class="ab-mv up">2.1%</span></div>
+            <div class="ab-metric-row"><span>用户满意度</span><span class="ab-mv up">4.8</span></div>
+            <div class="ab-metric-row"><span>平均 token</span><span class="ab-mv">输入 1820 / 输出 380</span></div>
+            <div class="ab-metric-row"><span>P99 延迟</span><span class="ab-mv">3.2s</span></div>
+            <div class="ab-metric-row"><span>样本量</span><span class="ab-mv">5,200 次调用</span></div>
+          </div>
+
+          <div class="ab-card lose">
+            <div class="ab-title">🅱 对照组 v1.5.0 <span class="ab-tag lose">落败 -10%</span></div>
+            <div class="ab-metric-row"><span>人工评分</span><span class="ab-mv down">4.2 / 5</span></div>
+            <div class="ab-metric-row"><span>事实准确性</span><span class="ab-mv down">4.1</span></div>
+            <div class="ab-metric-row"><span>压缩率</span><span class="ab-mv">75%</span></div>
+            <div class="ab-metric-row"><span>幻觉率</span><span class="ab-mv down">5.8%</span></div>
+            <div class="ab-metric-row"><span>用户满意度</span><span class="ab-mv down">4.3</span></div>
+            <div class="ab-metric-row"><span>平均 token</span><span class="ab-mv">输入 1480 / 输出 420</span></div>
+            <div class="ab-metric-row"><span>P99 延迟</span><span class="ab-mv">2.8s</span></div>
+            <div class="ab-metric-row"><span>样本量</span><span class="ab-mv">5,200 次调用</span></div>
+          </div>
+        </div>
+
+        <h4 style="font-size:13px;font-weight:600;margin:18px 0 8px;">📊 LLM-as-Judge 自动评分对比</h4>
+        <table class="data-table">
+          <thead><tr><th>评估维度</th><th>v2.1.0 (实验)</th><th>v1.5.0 (对照)</th><th>差异</th><th>显著性</th><th>结论</th></tr></thead>
+          <tbody>
+            <tr><td>事实准确性 (Faithfulness)</td><td>4.7</td><td>4.1</td><td><strong style="color:var(--green);">+0.6</strong></td><td>p &lt; 0.001</td><td><span style="color:var(--green);">显著胜出</span></td></tr>
+            <tr><td>简洁度 (Conciseness)</td><td>4.5</td><td>4.0</td><td><strong style="color:var(--green);">+0.5</strong></td><td>p &lt; 0.001</td><td><span style="color:var(--green);">显著胜出</span></td></tr>
+            <tr><td>语义相关性 (Relevance)</td><td>4.7</td><td>4.4</td><td><strong style="color:var(--green);">+0.3</strong></td><td>p = 0.012</td><td><span style="color:var(--green);">显著胜出</span></td></tr>
+            <tr><td>语言流畅度 (Fluency)</td><td>4.8</td><td>4.7</td><td>+0.1</td><td>p = 0.18</td><td><span style="color:var(--sub);">不显著</span></td></tr>
+            <tr><td>结构清晰度</td><td>4.4</td><td>4.0</td><td><strong style="color:var(--green);">+0.4</strong></td><td>p &lt; 0.01</td><td><span style="color:var(--green);">显著胜出</span></td></tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:14px;font-size:12px;background:var(--gray-light);border:1px solid var(--border);border-radius:8px;padding:10px 14px;line-height:1.7;">
+          <strong>📝 实验结论：</strong>v2.1.0 在事实准确性 / 简洁度 / 语义相关性上显著优于 v1.5.0（p &lt; 0.05）。<strong>已批准</strong>切流 100% 至 v2.1.0，v1.5.0 已下线归档。
+        </div>
+      </div>
+
+      <!-- 版本 -->
+      <div class="detail-pane" id="pane-version">
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <div class="ver-row" style="background:rgba(8,151,156,.04);">
+            <span class="ver-tag">v2.1.0</span>
+            <div class="ver-meta">
+              <div class="vm-title">优化"防止幻觉"指令措辞</div>
+              <div class="vm-sub">李雨 · 当前生产版本 · A/B 胜出 v1.5</div>
+            </div>
+            <span style="font-size:11px;color:var(--sub);text-align:right;">昨天 16:00</span>
+          </div>
+          <div class="ver-row">
+            <span class="ver-tag">v2.0.0</span>
+            <div class="ver-meta">
+              <div class="vm-title">大版本：调整为 [System]+[User] 双消息格式</div>
+              <div class="vm-sub">李雨 · 兼容 Claude / GPT 双家</div>
+            </div>
+            <span style="font-size:11px;color:var(--sub);text-align:right;">5 天前</span>
+          </div>
+          <div class="ver-row">
+            <span class="ver-tag" style="color:var(--sub);">v1.5.0</span>
+            <div class="ver-meta">
+              <div class="vm-title">[已废弃] 原始 v1 系列最终版</div>
+              <div class="vm-sub">李雨 · 单 prompt 模式 · A/B 落败</div>
+            </div>
+            <span style="font-size:11px;color:var(--sub);text-align:right;">已下线</span>
+          </div>
+          <div class="ver-row">
+            <span class="ver-tag" style="color:var(--sub);">v1.4.0</span>
+            <div class="ver-meta">
+              <div class="vm-title">[已废弃] 修复中英混合摘要问题</div>
+              <div class="vm-sub">李雨</div>
+            </div>
+            <span style="font-size:11px;color:var(--sub);text-align:right;">已下线</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 调用统计 -->
+      <div class="detail-pane" id="pane-usage">
+        <div class="rating-grid">
+          <div class="rating-card"><div class="rl">本周调用</div><div class="rv" style="color:var(--ai-teal);">4,020</div><div class="rsub">↑ +35% 较 v1</div></div>
+          <div class="rating-card"><div class="rl">总成本（本周）</div><div class="rv" style="color:var(--ai-teal);">¥ 184</div><div class="rsub">¥ 0.046 / 次</div></div>
+          <div class="rating-card"><div class="rl">P99 延迟</div><div class="rv" style="color:var(--ai-teal);">3.2s</div><div class="rsub">SLA &lt; 5s ✓</div></div>
+          <div class="rating-card"><div class="rl">成功率</div><div class="rv" style="color:var(--green);">99.6%</div><div class="rsub">仅 16 次失败</div></div>
+        </div>
+
+        <h4 style="font-size:13px;font-weight:600;margin:18px 0 8px;">🤖 调用模型分布</h4>
+        <table class="data-table">
+          <thead><tr><th>模型</th><th>调用次数</th><th>占比</th><th>平均延迟</th><th>评分</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">claude-sonnet-4-6</td><td>2,840</td><td>70.6%</td><td>2.8s</td><td>4.7 / 5</td></tr>
+            <tr><td class="mono">gpt-4o</td><td>820</td><td>20.4%</td><td>3.5s</td><td>4.5 / 5</td></tr>
+            <tr><td class="mono">qwen2.5-72b</td><td>360</td><td>9.0%</td><td>4.1s</td><td>4.4 / 5</td></tr>
+          </tbody>
+        </table>
+
+        <h4 style="font-size:13px;font-weight:600;margin:18px 0 8px;">📞 调用方应用</h4>
+        <table class="data-table">
+          <thead><tr><th>应用</th><th>调用次数</th><th>占比</th><th>负责人</th></tr></thead>
+          <tbody>
+            <tr><td>客服日报自动生成</td><td>1,840</td><td>45.8%</td><td>李雨</td></tr>
+            <tr><td>商品描述生成</td><td>1,120</td><td>27.9%</td><td>赵磊</td></tr>
+            <tr><td>知识库摘要</td><td>620</td><td>15.4%</td><td>李雨</td></tr>
+            <tr><td>API 公开调用</td><td>440</td><td>10.9%</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 评估打分 -->
+      <div class="detail-pane" id="pane-rating">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span style="font-size:13px;font-weight:500;">评估打分明细（120 人参与）</span>
+          <button class="btn" style="margin-left:auto;height:28px;font-size:11px;">📥 导出评分报告</button>
+        </div>
+        <div class="rating-grid" style="grid-template-columns:repeat(5, 1fr);">
+          <div class="rating-card"><div class="rl">★★★★★</div><div class="rv" style="font-size:18px;color:var(--green);">82 人</div><div class="rsub">68%</div></div>
+          <div class="rating-card"><div class="rl">★★★★</div><div class="rv" style="font-size:18px;color:var(--green);">28 人</div><div class="rsub">23%</div></div>
+          <div class="rating-card"><div class="rl">★★★</div><div class="rv" style="font-size:18px;color:var(--orange);">8 人</div><div class="rsub">7%</div></div>
+          <div class="rating-card"><div class="rl">★★</div><div class="rv" style="font-size:18px;color:var(--red);">2 人</div><div class="rsub">2%</div></div>
+          <div class="rating-card"><div class="rl">★</div><div class="rv" style="font-size:18px;color:var(--red);">0 人</div><div class="rsub">0%</div></div>
+        </div>
+
+        <h4 style="font-size:13px;font-weight:600;margin:18px 0 8px;">📝 用户反馈（最近 8 条）</h4>
+        <table class="data-table">
+          <thead><tr><th>评分</th><th>用户</th><th>反馈</th><th>时间</th></tr></thead>
+          <tbody>
+            <tr><td>★★★★★</td><td>陈小姐</td><td>摘要非常准确，保留了所有关键数字</td><td>今天 10:24</td></tr>
+            <tr><td>★★★★★</td><td>王经理</td><td>压缩比合理，比 v1 提升明显</td><td>今天 09:18</td></tr>
+            <tr><td>★★★★</td><td>李工</td><td>很好用，希望支持自定义重点关键词</td><td>昨天 16:42</td></tr>
+            <tr><td>★★★★★</td><td>赵主管</td><td>事实准确，没有发现幻觉</td><td>昨天 14:08</td></tr>
+            <tr><td>★★★</td><td>用户A</td><td>对超长文本（&gt;30K）效果略差</td><td>2 天前</td></tr>
+            <tr><td>★★★★★</td><td>张小哥</td><td>客服日报自动化省了 2 小时/天</td><td>2 天前</td></tr>
+            <tr><td>★★</td><td>用户B</td><td>对话体内容摘要丢失了一些口语化细节</td><td>3 天前</td></tr>
+            <tr><td>★★★★★</td><td>孙老师</td><td>结构化输出很清晰</td><td>3 天前</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="cmdk-mask" id="cmdkMask"><div class="cmdk-modal" onclick="event.stopPropagation()"><div class="cmdk-search"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg><input id="cmdkInput" type="text" placeholder="搜索资产..." /></div><div class="cmdk-results"><div class="cmdk-item">演示版 — 请回到首页使用完整 Cmd+K</div></div></div></div>
+
+<script>
+  const PROMPTS = {
+    pt_summary_v2: { name:'文本摘要 Prompt v2', en:'pt_summary_v2' },
+    pt_review_check: { name:'内容合规审核 Prompt', en:'pt_review_check' },
+    pt_kb_qa_rag: { name:'RAG 知识库问答 Prompt', en:'pt_kb_qa_rag' }
+  };
+  const _code = new URLSearchParams(location.search).get('code') || 'pt_summary_v2';
+  const _pt = PROMPTS[_code] || PROMPTS.pt_summary_v2;
+  document.getElementById('pt-name').textContent = _pt.name;
+  document.getElementById('pt-en').textContent = _pt.en;
+  document.getElementById('bc-current').textContent = _pt.en;
+  document.title = 'Spark · ' + _pt.name;
+
+  function switchTab(btn){
+    document.querySelectorAll('.detail-tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.detail-pane').forEach(p=>p.classList.remove('active'));
+    document.getElementById('pane-'+btn.dataset.pane).classList.add('active');
+  }
+  function openCmdK(){document.getElementById('cmdkMask').classList.add('show');}
+  function closeCmdK(){document.getElementById('cmdkMask').classList.remove('show');}
+  document.addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmdK();}else if(e.key==='Escape'){closeCmdK();}});
+  document.getElementById('cmdkMask').addEventListener('click',(e)=>{if(e.target.id==='cmdkMask')closeCmdK();});
+</script>
+</body>
+</html>
