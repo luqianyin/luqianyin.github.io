@@ -736,7 +736,7 @@
     <span class="gs-kbd">⌘K</span>
   </div>
   <nav class="header-nav">
-    <a class="header-tab" href="home.html">资产首页</a>
+    <a class="header-tab" href="index.html">资产首页</a>
     <a class="header-tab active" href="metadata-report.html">数据资产</a>
     <a class="header-tab" href="ai-home.html">AI 资产</a>
     <a class="header-tab" href="glossary.html">数据治理</a>
@@ -793,7 +793,7 @@
         <svg class="chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 5 7 10 12 5"/></svg>
       </div>
       <div class="nav-l1-children">
-        <a class="nav-l2" href="home.html">资产概览</a>
+        <a class="nav-l2" href="index.html">资产概览</a>
         <a class="nav-l2" href="metadata-asset.html">指标管理</a>
         <a class="nav-l2" href="metadata-table.html">库表管理</a>
         <a class="nav-l2 active" href="metadata-report.html">报表管理</a>
@@ -1471,7 +1471,7 @@
     // 指标变化后同步更新血缘 tab 的指标下拉
     if (typeof populateMetricSelect === 'function') populateMetricSelect();
   }
-  // 指标库（与 home.html 共享）：选定后自动填充其它字段
+  // 指标库（与 index.html 共享）：选定后自动填充其它字段
   const METRIC_LIB = [
     { code:'dau',          cn:'日活跃用户数',  type:'derived', field:'dau',                fieldType:'BIGINT',     source:'dwd.user_active_log',     remark:'COUNT(DISTINCT user_id) WHERE 有效行为' },
     { code:'mau',          cn:'月活跃用户数',  type:'compose', field:'mau',                fieldType:'BIGINT',     source:'dws.user_active_m',       remark:'30 日去重活跃用户' },
