@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 公司产品</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #1677FF;
+      --primary-light:#E6F0FF;
+      --primary-hover:#0958D9;
+      --sidebar-w:    220px;
+      --header-h:     52px;
+      --subbar-h:     44px;
+      --bg:           #F5F7FA;
+      --card:         #FFFFFF;
+      --border:       #E8ECF0;
+      --text:         #1D2129;
+      --sub:          #86909C;
+      --link:         #1677FF;
+    }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+
+    /* ══════════════ TOP HEADER ══════════════ */
+    .header {
+      height: var(--header-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; flex-shrink: 0;
+      position: relative; z-index: 20;
+    }
+    .logo-wrap {
+      display: flex; align-items: center; gap: 8px;
+      min-width: var(--sidebar-w); padding-right: 16px;
+      border-right: 1px solid var(--border);
+    }
+    .logo-name {
+      font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: .3px;
+    }
+    .header-nav {
+      display: flex; align-items: center; height: 100%; margin-left: 20px; gap: 4px;
+    }
+    .header-tab {
+      height: 100%; display: flex; align-items: center; padding: 0 18px;
+      font-size: 14px; font-weight: 500; color: var(--sub);
+      cursor: pointer; position: relative; border: none; background: none;
+      transition: color .15s;
+    }
+    .header-tab:hover { color: var(--primary); }
+    .header-tab.active { color: var(--primary); font-weight: 600; }
+    .header-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+      height: 2px; background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .header-right {
+      margin-left: auto; display: flex; align-items: center; gap: 6px;
+    }
+    .hdr-action {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 4px 8px; border-radius: 4px; cursor: pointer;
+      color: var(--sub); background: none; border: none; transition: color .15s;
+    }
+    .hdr-action:hover { color: var(--primary); }
+    .hdr-action svg { width: 18px; height: 18px; }
+    .hdr-action span { font-size: 11px; line-height: 1; }
+    .hdr-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 6px; cursor: pointer;
+      background: none; border: none; color: var(--text);
+    }
+    .user-btn:hover { background: var(--bg); }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+
+    /* ══════════════ SUB-HEADER ══════════════ */
+    .subbar {
+      height: var(--subbar-h); background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 0 0 var(--sidebar-w);
+      flex-shrink: 0; z-index: 10;
+    }
+    .subbar-inner {
+      display: flex; align-items: center; gap: 14px; padding: 0 20px;
+    }
+    .breadcrumb {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 13px; color: var(--sub);
+    }
+    .breadcrumb a { color: var(--sub); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb .sep { color: #C2C7CF; }
+    .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+    /* ══════════════ BODY = SIDEBAR + CONTENT ══════════════ */
+    .body-wrap { flex: 1; display: flex; overflow: hidden; }
+
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: #fff; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto; height: 100%;
+    }
+    .nav-group { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .nav-group:last-child { border-bottom: none; }
+    .nav-l1 {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; user-select: none;
+      transition: background .12s;
+    }
+    .nav-l1:hover { background: var(--primary-light); }
+    .nav-l1 .l1-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-l1 .chevron {
+      margin-left: auto; width: 14px; height: 14px;
+      transition: transform .2s; flex-shrink: 0;
+    }
+    .nav-l1.open .chevron { transform: rotate(180deg); }
+    .nav-l2-list { overflow: hidden; }
+    .nav-l2 {
+      display: flex; align-items: center;
+      padding: 9px 16px 9px 40px; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+      transition: background .12s, color .12s;
+    }
+    .nav-l2:hover { background: var(--bg); color: var(--text); }
+    .nav-l2.active {
+      color: var(--primary); font-weight: 500;
+      background: var(--primary-light);
+    }
+    .nav-l2.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+
+    .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+    /* ══════════════ FILTER BOX ══════════════ */
+    .filter-box {
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 16px; margin-bottom: 14px;
+    }
+    .filter-row {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .filter-item { display: flex; align-items: center; gap: 6px; }
+    .filter-lbl {
+      color: var(--sub); font-size: 12px; white-space: nowrap;
+    }
+    .filter-input {
+      height: 32px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; font-size: 13px; color: var(--text);
+      padding: 0 10px; outline: none; width: 320px;
+      transition: border-color .15s;
+    }
+    .filter-input::placeholder { color: #C2C7CF; }
+    .filter-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.08); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 0 16px; height: 32px; border-radius: 5px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid transparent; transition: all .15s; white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-default { background: #fff; color: var(--text); border-color: var(--border); }
+    .btn-default:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ══════════════ MULTI-SELECT DROPDOWN ══════════════ */
+    .ms-wrap { position: relative; }
+    .ms-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 32px; min-width: 150px; max-width: 240px;
+      padding: 0 10px; border-radius: 5px;
+      border: 1px solid var(--border); background: #fff;
+      font-size: 13px; color: var(--text); cursor: pointer;
+      transition: border-color .15s;
+    }
+    .ms-btn:hover { border-color: var(--primary); }
+    .ms-btn.active { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,.08); }
+    .ms-btn .ms-text {
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      text-align: left;
+    }
+    .ms-btn .ms-text.placeholder { color: #C2C7CF; }
+    .ms-btn .ms-caret {
+      width: 12px; height: 12px; color: var(--sub); flex-shrink: 0;
+      transition: transform .2s;
+    }
+    .ms-btn.active .ms-caret { transform: rotate(180deg); }
+    .ms-dropdown {
+      display: none; position: absolute; top: calc(100% + 6px); left: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.1); z-index: 200;
+      min-width: 180px; padding: 4px 0;
+      max-height: 280px; overflow-y: auto;
+    }
+    .ms-dropdown.open { display: block; }
+    .ms-all {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px; font-size: 13px; color: var(--text);
+      cursor: pointer; user-select: none;
+      border-bottom: 1px solid var(--border); font-weight: 500;
+    }
+    .ms-all:hover { background: var(--primary-light); }
+    .ms-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px; font-size: 13px; color: var(--text);
+      cursor: pointer; user-select: none; transition: background .1s;
+    }
+    .ms-item:hover { background: var(--primary-light); }
+    .ms-all input[type=checkbox],
+    .ms-item input[type=checkbox] { accent-color: var(--primary); width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* ══════════════ RESULT INFO BAR ══════════════ */
+    .result-info-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .result-count { font-size: 13px; color: var(--sub); }
+    .result-count strong { color: var(--text); }
+
+    /* ══════════════ TABLE ══════════════ */
+    .table-card {
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      overflow: hidden;
+    }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    thead tr { background: #FAFBFC; }
+    th {
+      text-align: left; padding: 11px 14px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    td {
+      padding: 11px 14px; border-bottom: 1px solid var(--border);
+      vertical-align: middle; font-size: 13px; color: var(--text);
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #F7F9FD; }
+
+    .mono { font-family: monospace; font-size: 12px; color: var(--sub); }
+    .empty-cell { color: #C2C7CF; }
+
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 3px;
+      font-size: 12px; font-weight: 500;
+    }
+    .tag-online   { background: #F0F9EB; color: #389E0D; }
+    .tag-offline  { background: #F5F7FA; color: #4E5969; }
+    .tag-ios      { background: #E6F0FF; color: #1677FF; }
+    .tag-android  { background: #F0F9EB; color: #389E0D; }
+    .tag-dept-sc  { background: #FFF7E6; color: #D48806; }
+    .tag-dept-pk  { background: #F9F0FF; color: #722ED1; }
+
+    /* Sortable */
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { background: #F0F5FF; }
+    th.sortable::after { content: ' ↕'; font-size: 10px; color: var(--sub); opacity: .4; font-weight: 400; }
+    th.sort-asc::after  { content: ' ↑'; color: var(--primary); opacity: 1; }
+    th.sort-desc::after { content: ' ↓'; color: var(--primary); opacity: 1; }
+
+    /* Pagination */
+    .pagination {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 12px 16px; border-top: 1px solid var(--border); gap: 8px;
+    }
+    .page-info { color: var(--sub); font-size: 12px; margin-right: 4px; }
+    .page-btn {
+      min-width: 30px; height: 30px; border-radius: 4px;
+      border: 1px solid var(--border); background: #fff; color: var(--sub);
+      font-size: 12px; cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; padding: 0 8px;
+      transition: all .12s;
+    }
+    .page-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    .page-btn.disabled { opacity: .4; pointer-events: none; }
+    .page-size-select {
+      height: 30px; border: 1px solid var(--border); border-radius: 4px;
+      background: #fff; font-size: 12px; padding: 0 8px; color: var(--text); outline: none;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: var(--sub);
+    }
+    .empty-state svg { width: 56px; height: 56px; margin: 0 auto 12px; display: block; opacity: .35; }
+    .empty-state p { font-size: 13px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ TOP HEADER ══════════════ -->
+<header class="header">
+  <div class="logo-wrap">
+    <span class="logo-name">Spark</span>
+  </div>
+
+  <nav class="header-nav">
+    <button class="header-tab">AB测试</button>
+    <button class="header-tab active">管理</button>
+  </nav>
+
+  <div class="header-right">
+    <button class="hdr-action" title="反馈">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+      <span>反馈</span>
+    </button>
+    <button class="hdr-action" title="消息" style="position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </svg>
+      <span>消息</span>
+      <span style="position:absolute;top:2px;right:6px;width:8px;height:8px;background:#FF4D4F;border-radius:50%;border:1.5px solid #fff;"></span>
+    </button>
+    <button class="hdr-action" title="帮助">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/>
+      </svg>
+      <span>帮助</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn" title="个人中心">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张三</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════ SUB-BAR ══════════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <nav class="breadcrumb">
+      <a href="#">AB测试</a>
+      <span class="sep"> / </span>
+      <span class="current">公司产品</span>
+    </nav>
+  </div>
+</div>
+
+<!-- ══════════════ BODY ══════════════ -->
+<div class="body-wrap">
+
+  <!-- ──── Sidebar ──── -->
+  <aside class="sidebar">
+
+    <div class="nav-group">
+      <div class="nav-l1 open" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        AB测试
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:block;">
+        <div class="nav-l2 active">公司产品</div>
+        <div class="nav-l2">产品信息</div>
+        <div class="nav-l2">远程配置</div>
+        <div class="nav-l2">用户群配置</div>
+        <div class="nav-l2">实验管理</div>
+        <div class="nav-l2">用户群标签管理</div>
+        <div class="nav-l2">指标管理</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-l1" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        风控模块
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:none;">
+        <div class="nav-l2" onclick="location.href='risk-version-status.html'">版本状态</div>
+        <div class="nav-l2" onclick="location.href='risk-requests.html'">风险请求</div>
+        <div class="nav-l2" onclick="location.href='risk-blacklist.html'">黑名单库</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-l1" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        实验/用户群查询
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:none;">
+        <div class="nav-l2">实验用户查询</div>
+        <div class="nav-l2">用户群/参数下发查询</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ──── Content ──── -->
+  <main class="content">
+
+    <!-- 筛选条件 -->
+    <div class="filter-box">
+      <div class="filter-row">
+        <div class="filter-item">
+          <input class="filter-input" id="searchInput" type="text" placeholder="搜索产品ID / 产品名 / 包名 / 业务线" />
+        </div>
+
+        <div class="filter-item">
+          <span class="filter-lbl">部门</span>
+          <div class="ms-wrap" data-key="dept">
+            <button class="ms-btn" onclick="toggleMs(this, event)">
+              <span class="ms-text">全部</span>
+              <svg class="ms-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="ms-dropdown">
+              <label class="ms-all"><input type="checkbox" checked onchange="msToggleAll(this)"> 全选</label>
+              <label class="ms-item"><input type="checkbox" value="SC" checked onchange="msItemChange(this)"> SC</label>
+              <label class="ms-item"><input type="checkbox" value="对战" checked onchange="msItemChange(this)"> 对战</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-item">
+          <span class="filter-lbl">类型</span>
+          <div class="ms-wrap" data-key="type">
+            <button class="ms-btn" onclick="toggleMs(this, event)">
+              <span class="ms-text">全部</span>
+              <svg class="ms-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="ms-dropdown">
+              <label class="ms-all"><input type="checkbox" checked onchange="msToggleAll(this)"> 全选</label>
+              <label class="ms-item"><input type="checkbox" value="SC游戏" checked onchange="msItemChange(this)"> SC游戏</label>
+              <label class="ms-item"><input type="checkbox" value="SC-品牌线" checked onchange="msItemChange(this)"> SC-品牌线</label>
+              <label class="ms-item"><input type="checkbox" value="新框架" checked onchange="msItemChange(this)"> 新框架</label>
+              <label class="ms-item"><input type="checkbox" value="对战游戏" checked onchange="msItemChange(this)"> 对战游戏</label>
+              <label class="ms-item"><input type="checkbox" value="工具类" checked onchange="msItemChange(this)"> 工具类</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-item">
+          <span class="filter-lbl">商店状态</span>
+          <div class="ms-wrap" data-key="status">
+            <button class="ms-btn" onclick="toggleMs(this, event)">
+              <span class="ms-text">全部</span>
+              <svg class="ms-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="ms-dropdown">
+              <label class="ms-all"><input type="checkbox" checked onchange="msToggleAll(this)"> 全选</label>
+              <label class="ms-item"><input type="checkbox" value="在线" checked onchange="msItemChange(this)"> 在线</label>
+              <label class="ms-item"><input type="checkbox" value="下架" checked onchange="msItemChange(this)"> 下架</label>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-default" onclick="resetFilters()">重置</button>
+      </div>
+    </div>
+
+    <!-- 结果区 -->
+    <div class="result-info-bar">
+      <span class="result-count">共 <strong id="totalCount">0</strong> 条记录</span>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table id="productTable">
+          <thead>
+            <tr>
+              <th data-col="id" class="sortable">产品ID</th>
+              <th data-col="name" class="sortable">产品名</th>
+              <th data-col="pkg" class="sortable">包名</th>
+              <th data-col="os" class="sortable">系统</th>
+              <th data-col="dept" class="sortable">部门</th>
+              <th data-col="type" class="sortable">类型</th>
+              <th data-col="status" class="sortable">商店状态</th>
+              <th data-col="line" class="sortable">业务线</th>
+              <th data-col="createdAt" class="sortable">创建时间</th>
+            </tr>
+          </thead>
+          <tbody id="productTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <span class="page-info" id="pageInfo">共 0 条</span>
+        <div style="display:flex;align-items:center;gap:4px;" id="pagerBtns"></div>
+        <div style="display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin-left:8px;">
+          每页
+          <select class="page-size-select" id="pageSize" onchange="onPageSizeChange()">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+          条
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+</div><!-- /body-wrap -->
+
+<script>
+  /* ── Sidebar nav toggle ── */
+  function toggleNav(el) {
+    el.classList.toggle('open');
+    var list = el.nextElementSibling;
+    list.style.display = el.classList.contains('open') ? 'block' : 'none';
+  }
+
+  /* ════════════════════════
+     Mock Data
+  ════════════════════════ */
+  var OS_LIST = ['苹果', '安卓', ''];
+  var DEPTS = ['SC', '对战'];
+  var TYPES = ['SC游戏', 'SC-品牌线', '新框架', '对战游戏', '工具类'];
+  var STATUSES = ['在线', '下架'];
+  var LINES = ['', '-', '品牌线1', '品牌线2', '品牌线3'];
+
+  var PRODUCTS = [
+    { id: '9007', name: 'Polaris Game',     pkg: 'com.spark.polaris',     os: '苹果', dept: 'SC',   type: 'SC游戏',     status: '在线', line: '品牌线1', createdAt: 1709251200000 },
+    { id: '9008', name: 'StarRacer',        pkg: 'com.spark.starracer',   os: '安卓', dept: 'SC',   type: 'SC游戏',     status: '在线', line: '品牌线1', createdAt: 1714521600000 },
+    { id: '9009', name: 'MythicWorld',      pkg: 'com.spark.mythic',      os: '苹果', dept: 'SC',   type: 'SC-品牌线',  status: '在线', line: '品牌线2', createdAt: 1717286400000 },
+    { id: '9010', name: 'ZenRun',           pkg: 'com.spark.zenrun',      os: '安卓', dept: 'SC',   type: 'SC游戏',     status: '下架', line: '品牌线2', createdAt: 1719964800000 },
+    { id: '9011', name: 'Arena Clash',      pkg: 'com.pk.arenaclash',     os: '苹果', dept: '对战', type: '对战游戏',   status: '在线', line: '-',       createdAt: 1701331200000 },
+    { id: '9012', name: 'Sky Warriors',     pkg: 'com.pk.skywarriors',    os: '安卓', dept: '对战', type: '对战游戏',   status: '在线', line: '-',       createdAt: 1706745600000 },
+    { id: '9013', name: 'Battle Royale X',  pkg: 'com.pk.brx',            os: '苹果', dept: '对战', type: '对战游戏',   status: '下架', line: '品牌线3', createdAt: 1696118400000 },
+    { id: '9014', name: 'PK Framework',     pkg: 'com.pk.framework',      os: '',     dept: '对战', type: '新框架',     status: '在线', line: '',        createdAt: 1722556800000 },
+    { id: '9015', name: 'SC Toolkit',       pkg: 'com.spark.toolkit',     os: '',     dept: 'SC',   type: '工具类',     status: '在线', line: '',        createdAt: 1693440000000 },
+    { id: '9016', name: 'Brand Hub',        pkg: 'com.spark.brandhub',    os: '苹果', dept: 'SC',   type: 'SC-品牌线',  status: '在线', line: '品牌线1', createdAt: 1725148800000 },
+    { id: '9017', name: 'NeoQuest',         pkg: 'com.spark.neoquest',    os: '安卓', dept: 'SC',   type: 'SC游戏',     status: '在线', line: '品牌线2', createdAt: 1727827200000 },
+    { id: '9018', name: 'Frontier Arena',   pkg: 'com.pk.frontier',       os: '苹果', dept: '对战', type: '对战游戏',   status: '在线', line: '-',       createdAt: 1730505600000 },
+    { id: '9019', name: 'Hyper Tournament', pkg: 'com.pk.hyperT',         os: '安卓', dept: '对战', type: '对战游戏',   status: '下架', line: '-',       createdAt: 1733097600000 },
+    { id: '9020', name: 'Pocket Saga',      pkg: 'com.spark.psaga',       os: '苹果', dept: 'SC',   type: 'SC游戏',     status: '在线', line: '品牌线3', createdAt: 1735776000000 },
+    { id: '9021', name: 'GalaxyForge',      pkg: 'com.spark.galaxyforge', os: '安卓', dept: 'SC',   type: 'SC-品牌线',  status: '下架', line: '品牌线2', createdAt: 1738454400000 },
+    { id: '9022', name: 'PK SDK',           pkg: 'com.pk.sdk',            os: '',     dept: '对战', type: '新框架',     status: '在线', line: '',        createdAt: 1741132800000 },
+    { id: '9023', name: 'Star Sage',        pkg: 'com.spark.starsage',    os: '苹果', dept: 'SC',   type: 'SC游戏',     status: '在线', line: '品牌线1', createdAt: 1743724800000 },
+    { id: '9024', name: 'Lane Master',      pkg: 'com.pk.lanemaster',     os: '安卓', dept: '对战', type: '对战游戏',   status: '在线', line: '-',       createdAt: 1746403200000 },
+    { id: '9025', name: 'SparkAnalytics',   pkg: 'com.spark.analytics',   os: '',     dept: 'SC',   type: '工具类',     status: '在线', line: '',        createdAt: 1749081600000 },
+    { id: '9026', name: 'Champion Clash',   pkg: 'com.pk.champion',       os: '苹果', dept: '对战', type: '对战游戏',   status: '下架', line: '品牌线3', createdAt: 1751673600000 },
+    { id: '9027', name: 'Brandify',         pkg: 'com.spark.brandify',    os: '安卓', dept: 'SC',   type: 'SC-品牌线',  status: '在线', line: '品牌线2', createdAt: 1754352000000 },
+    { id: '9028', name: 'Quick Match',      pkg: 'com.pk.quickmatch',     os: '苹果', dept: '对战', type: '对战游戏',   status: '在线', line: '-',       createdAt: 1757030400000 },
+    { id: '9029', name: 'Polaris Lite',     pkg: 'com.spark.polarislite', os: '安卓', dept: 'SC',   type: 'SC游戏',     status: '在线', line: '品牌线1', createdAt: 1759622400000 }
+  ];
+
+  /* ════════════════════════
+     State
+  ════════════════════════ */
+  var state = {
+    search: '',
+    dept: DEPTS.slice(),
+    type: TYPES.slice(),
+    status: STATUSES.slice(),
+    sortCol: null,
+    sortDir: 'asc',
+    page: 1,
+    pageSize: 20
+  };
+
+  /* ════════════════════════
+     Multi-select dropdown
+  ════════════════════════ */
+  function toggleMs(btn, event) {
+    if (event) event.stopPropagation();
+    var wrap = btn.parentElement;
+    var dd = wrap.querySelector('.ms-dropdown');
+    var isOpen = dd.classList.contains('open');
+    closeAllMs();
+    if (!isOpen) {
+      dd.classList.add('open');
+      btn.classList.add('active');
+    }
+  }
+
+  function closeAllMs() {
+    document.querySelectorAll('.ms-dropdown').forEach(function(d) { d.classList.remove('open'); });
+    document.querySelectorAll('.ms-btn').forEach(function(b) { b.classList.remove('active'); });
+  }
+
+  function msToggleAll(cb) {
+    var dd = cb.closest('.ms-dropdown');
+    dd.querySelectorAll('.ms-item input[type=checkbox]').forEach(function(i) { i.checked = cb.checked; });
+    syncMsState(dd);
+  }
+
+  function msItemChange(cb) {
+    var dd = cb.closest('.ms-dropdown');
+    var items = dd.querySelectorAll('.ms-item input[type=checkbox]');
+    var allCb = dd.querySelector('.ms-all input[type=checkbox]');
+    var checkedCount = 0;
+    items.forEach(function(i) { if (i.checked) checkedCount++; });
+    allCb.checked = checkedCount === items.length;
+    allCb.indeterminate = checkedCount > 0 && checkedCount < items.length;
+    syncMsState(dd);
+  }
+
+  function syncMsState(dd) {
+    var wrap = dd.closest('.ms-wrap');
+    var key = wrap.getAttribute('data-key');
+    var values = [];
+    dd.querySelectorAll('.ms-item input[type=checkbox]').forEach(function(i) {
+      if (i.checked) values.push(i.value);
+    });
+    state[key] = values;
+
+    var totalItems = dd.querySelectorAll('.ms-item input[type=checkbox]').length;
+    var btnText = wrap.querySelector('.ms-text');
+    if (values.length === 0) {
+      btnText.textContent = '请选择';
+      btnText.classList.add('placeholder');
+    } else if (values.length === totalItems) {
+      btnText.textContent = '全部';
+      btnText.classList.remove('placeholder');
+    } else if (values.length <= 2) {
+      btnText.textContent = values.join('、');
+      btnText.classList.remove('placeholder');
+    } else {
+      btnText.textContent = values.slice(0, 2).join('、') + ' 等 ' + values.length + ' 项';
+      btnText.classList.remove('placeholder');
+    }
+
+    state.page = 1;
+    render();
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.ms-wrap')) closeAllMs();
+  });
+
+  /* ════════════════════════
+     Search
+  ════════════════════════ */
+  document.getElementById('searchInput').addEventListener('input', function(e) {
+    state.search = e.target.value.trim().toLowerCase();
+    state.page = 1;
+    render();
+  });
+
+  /* ════════════════════════
+     Reset
+  ════════════════════════ */
+  function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    state.search = '';
+    state.dept = DEPTS.slice();
+    state.type = TYPES.slice();
+    state.status = STATUSES.slice();
+    state.page = 1;
+
+    document.querySelectorAll('.ms-wrap').forEach(function(wrap) {
+      var dd = wrap.querySelector('.ms-dropdown');
+      dd.querySelectorAll('input[type=checkbox]').forEach(function(i) {
+        i.checked = true; i.indeterminate = false;
+      });
+      var btnText = wrap.querySelector('.ms-text');
+      btnText.textContent = '全部';
+      btnText.classList.remove('placeholder');
+    });
+
+    render();
+  }
+
+  /* ════════════════════════
+     Filter + Sort + Paginate
+  ════════════════════════ */
+  function filterRows() {
+    var s = state.search;
+    return PRODUCTS.filter(function(p) {
+      if (state.dept.indexOf(p.dept) === -1) return false;
+      if (state.type.indexOf(p.type) === -1) return false;
+      if (state.status.indexOf(p.status) === -1) return false;
+      if (s) {
+        var hay = (p.id + ' ' + p.name + ' ' + p.pkg + ' ' + (p.line || '')).toLowerCase();
+        if (hay.indexOf(s) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function sortRows(rows) {
+    if (!state.sortCol) return rows;
+    var col = state.sortCol;
+    var dir = state.sortDir === 'asc' ? 1 : -1;
+    return rows.slice().sort(function(a, b) {
+      var av = a[col], bv = b[col];
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      av = (av == null ? '' : String(av));
+      bv = (bv == null ? '' : String(bv));
+      return av.localeCompare(bv, 'zh-CN') * dir;
+    });
+  }
+
+  function formatTime(ts) {
+    var d = new Date(ts);
+    var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+      + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  function osCell(os) {
+    if (!os) return '<span class="empty-cell">—</span>';
+    var cls = os === '苹果' ? 'tag tag-ios' : 'tag tag-android';
+    return '<span class="' + cls + '">' + os + '</span>';
+  }
+
+  function deptCell(d) {
+    var cls = d === 'SC' ? 'tag tag-dept-sc' : 'tag tag-dept-pk';
+    return '<span class="' + cls + '">' + d + '</span>';
+  }
+
+  function statusCell(s) {
+    var cls = s === '在线' ? 'tag tag-online' : 'tag tag-offline';
+    return '<span class="' + cls + '">' + s + '</span>';
+  }
+
+  function lineCell(l) {
+    if (l === '' || l == null) return '<span class="empty-cell">（空）</span>';
+    if (l === '-') return '<span class="empty-cell">-</span>';
+    return l;
+  }
+
+  function render() {
+    var rows = sortRows(filterRows());
+    var total = rows.length;
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('pageInfo').textContent = '共 ' + total + ' 条';
+
+    var pageSize = state.pageSize;
+    var totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (state.page > totalPages) state.page = totalPages;
+    var start = (state.page - 1) * pageSize;
+    var pageRows = rows.slice(start, start + pageSize);
+
+    var tbody = document.getElementById('productTbody');
+    if (pageRows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+        + '<p>没有匹配的产品<br/>请尝试调整筛选条件</p>'
+        + '</div></td></tr>';
+    } else {
+      tbody.innerHTML = pageRows.map(function(p) {
+        return '<tr>'
+          + '<td><span class="mono">' + p.id + '</span></td>'
+          + '<td><strong>' + p.name + '</strong></td>'
+          + '<td><span class="mono">' + p.pkg + '</span></td>'
+          + '<td>' + osCell(p.os) + '</td>'
+          + '<td>' + deptCell(p.dept) + '</td>'
+          + '<td>' + p.type + '</td>'
+          + '<td>' + statusCell(p.status) + '</td>'
+          + '<td>' + lineCell(p.line) + '</td>'
+          + '<td><span class="mono">' + formatTime(p.createdAt) + '</span></td>'
+          + '</tr>';
+      }).join('');
+    }
+
+    renderPager(totalPages);
+  }
+
+  function renderPager(totalPages) {
+    var pager = document.getElementById('pagerBtns');
+    var cur = state.page;
+    var html = '';
+    html += '<button class="page-btn ' + (cur === 1 ? 'disabled' : '') + '" onclick="gotoPage(' + (cur - 1) + ')">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="15 18 9 12 15 6"/></svg>'
+      + '</button>';
+
+    var pages = [];
+    if (totalPages <= 7) {
+      for (var i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (cur > 4) pages.push('...');
+      var s = Math.max(2, cur - 1), e = Math.min(totalPages - 1, cur + 1);
+      for (var j = s; j <= e; j++) pages.push(j);
+      if (cur < totalPages - 3) pages.push('...');
+      pages.push(totalPages);
+    }
+    pages.forEach(function(p) {
+      if (p === '...') html += '<button class="page-btn disabled">...</button>';
+      else html += '<button class="page-btn ' + (p === cur ? 'active' : '') + '" onclick="gotoPage(' + p + ')">' + p + '</button>';
+    });
+
+    html += '<button class="page-btn ' + (cur === totalPages ? 'disabled' : '') + '" onclick="gotoPage(' + (cur + 1) + ')">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="9 18 15 12 9 6"/></svg>'
+      + '</button>';
+    pager.innerHTML = html;
+  }
+
+  function gotoPage(p) {
+    state.page = p;
+    render();
+  }
+
+  function onPageSizeChange() {
+    state.pageSize = parseInt(document.getElementById('pageSize').value, 10);
+    state.page = 1;
+    render();
+  }
+
+  /* ════════════════════════
+     Sort
+  ════════════════════════ */
+  document.querySelectorAll('#productTable thead th.sortable').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var col = th.getAttribute('data-col');
+      if (state.sortCol === col) {
+        state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.sortCol = col;
+        state.sortDir = 'asc';
+      }
+      document.querySelectorAll('#productTable thead th').forEach(function(h) {
+        h.classList.remove('sort-asc', 'sort-desc');
+      });
+      th.classList.add(state.sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      render();
+    });
+  });
+
+  /* ── init ── */
+  render();
+</script>
+
+</body>
+</html>
