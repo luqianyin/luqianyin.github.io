@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 风险请求</title>
+  <link rel="stylesheet" href="risk-common.css" />
+</head>
+<body>
+
+<!-- ══════════════ TOP HEADER ══════════════ -->
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <nav class="header-nav">
+    <button class="header-tab">AB测试</button>
+    <button class="header-tab active">管理</button>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" title="反馈">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span>反馈</span>
+    </button>
+    <button class="hdr-action" title="消息" style="position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span>消息</span>
+      <span style="position:absolute;top:2px;right:6px;width:8px;height:8px;background:#FF4D4F;border-radius:50%;border:1.5px solid #fff;"></span>
+    </button>
+    <button class="hdr-action" title="帮助">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+      <span>帮助</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn" title="个人中心">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张三</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════ SUB-BAR ══════════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <nav class="breadcrumb">
+      <a href="#">风控模块</a>
+      <span class="sep"> / </span>
+      <span class="current">风险请求</span>
+    </nav>
+  </div>
+</div>
+
+<!-- ══════════════ BODY ══════════════ -->
+<div class="body-wrap">
+
+  <!-- ──── Sidebar ──── -->
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l1" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        AB测试
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:none;">
+        <div class="nav-l2" onclick="location.href='index.html'">公司产品</div>
+        <div class="nav-l2">产品信息</div>
+        <div class="nav-l2">远程配置</div>
+        <div class="nav-l2">用户群配置</div>
+        <div class="nav-l2">实验管理</div>
+        <div class="nav-l2">用户群标签管理</div>
+        <div class="nav-l2">指标管理</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-l1 open" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        风控模块
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:block;">
+        <div class="nav-l2" onclick="location.href='risk-version-status.html'">版本状态</div>
+        <div class="nav-l2 active">风险请求</div>
+        <div class="nav-l2" onclick="location.href='risk-blacklist.html'">黑名单库</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-l1" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        实验/用户群查询
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:none;">
+        <div class="nav-l2">实验用户查询</div>
+        <div class="nav-l2">用户群/参数下发查询</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ──── Content ──── -->
+  <main class="content">
+
+    <!-- Tabs + 产品筛选 -->
+    <div class="tab-card">
+      <div class="tab-bar">
+        <div class="tabs">
+          <button class="tab active" data-tab="latest" onclick="switchTab('latest')">最新拦截记录</button>
+          <button class="tab" data-tab="history" onclick="switchTab('history')">历史拦截记录</button>
+        </div>
+        <div class="tab-extra">
+          <span class="tab-extra-lbl">产品 <span style="color:#FF4D4F;">*</span></span>
+          <select class="single-select" id="productSelect" onchange="onProductChange()">
+            <option value="" disabled selected hidden>请选择产品</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ TAB: 最新拦截记录 ══════════ -->
+    <div id="tab-latest">
+      <div class="filter-box">
+        <div class="filter-row">
+          <div class="filter-item">
+            <input class="filter-input" id="latestSearch" type="text" placeholder="搜索版本 / IFA / ipv4" style="width:360px;" />
+          </div>
+          <button class="btn btn-default" onclick="resetLatestFilters()">重置</button>
+          <button class="btn btn-primary" id="batchBlacklistBtn" disabled onclick="openBatchConfirm()">
+            批量加入黑名单 <span id="batchCount" style="margin-left:4px;">(0)</span>
+          </button>
+        </div>
+        <div class="filter-desc">
+          当用户在最新版本处于审核中状态时请求远程配置，则认为是一次风险请求，需自动收集 IFA/ipv4 信息，最多收集 50 个用户信息。
+        </div>
+      </div>
+
+      <div class="result-info-bar">
+        <span class="result-count">共 <strong id="latestTotal">0</strong> 条记录</span>
+      </div>
+
+      <div class="table-card">
+        <div class="table-scroll">
+          <table id="latestTable">
+            <thead>
+              <tr>
+                <th style="width:42px;text-align:center;padding-right:6px;">
+                  <input type="checkbox" id="selectAllCb" onchange="onSelectAll(this)" />
+                </th>
+                <th data-col="latestVersion" class="sortable">最新版本</th>
+                <th data-col="reqVersion" class="sortable">请求版本</th>
+                <th data-col="ifa" class="sortable">IFA</th>
+                <th data-col="ipv4" class="sortable">ipv4</th>
+                <th data-col="isp" class="sortable">ip运营商</th>
+                <th data-col="ipDetail" class="sortable">ip详细信息</th>
+                <th data-col="country" class="sortable">国家</th>
+                <th data-col="device" class="sortable">机型</th>
+                <th data-col="osVer" class="sortable">系统版本</th>
+                <th data-col="blockTime" class="sortable">拦截时间</th>
+                <th data-col="blacklistTime" class="sortable">加入黑名单时间</th>
+                <th style="text-align:center;width:120px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="latestTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <span class="page-info" id="latestPageInfo">共 0 条</span>
+          <div style="display:flex;align-items:center;gap:4px;" id="latestPager"></div>
+          <div style="display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin-left:8px;">
+            每页
+            <select class="page-size-select" id="latestPageSize" onchange="onLatestPageSize()">
+              <option value="10">10</option><option value="20" selected>20</option><option value="50">50</option>
+            </select>
+            条
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ TAB: 历史拦截记录 ══════════ -->
+    <div id="tab-history" style="display:none;">
+      <div class="filter-box">
+        <div class="filter-row">
+          <div class="filter-item">
+            <input class="filter-input" id="historySearch" type="text" placeholder="搜索 UUID / IFA / ipv4 / 国家 / 语言 / 渠道 / 机型 / 系统版本" style="width:520px;" />
+          </div>
+          <button class="btn btn-default" onclick="resetHistoryFilters()">重置</button>
+        </div>
+        <div class="filter-desc">
+          所有历史版本收集过的风险请求用户数据将会在这里显示。
+        </div>
+      </div>
+
+      <div class="result-info-bar">
+        <span class="result-count">共 <strong id="historyTotal">0</strong> 条记录</span>
+      </div>
+
+      <div class="table-card">
+        <div class="table-scroll">
+          <table id="historyTable">
+            <thead>
+              <tr>
+                <th data-col="latestVersion" class="sortable">最新版本</th>
+                <th data-col="reqVersion" class="sortable">请求版本</th>
+                <th data-col="uuid" class="sortable">UUID</th>
+                <th data-col="ifa" class="sortable">IFA</th>
+                <th data-col="ipv4" class="sortable">ipv4</th>
+                <th data-col="isp" class="sortable">ip运营商</th>
+                <th data-col="ipDetail" class="sortable">ip详细信息</th>
+                <th data-col="country" class="sortable">国家</th>
+                <th data-col="lang" class="sortable">语言</th>
+                <th data-col="channel" class="sortable">渠道</th>
+                <th data-col="installDays" class="sortable">安装天数</th>
+                <th data-col="network" class="sortable">网络类型</th>
+                <th data-col="device" class="sortable">机型</th>
+                <th data-col="osVer" class="sortable">系统版本</th>
+                <th data-col="blockTime" class="sortable">拦截时间</th>
+                <th style="text-align:center;width:120px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="historyTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <span class="page-info" id="historyPageInfo">共 0 条</span>
+          <div style="display:flex;align-items:center;gap:4px;" id="historyPager"></div>
+          <div style="display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin-left:8px;">
+            每页
+            <select class="page-size-select" id="historyPageSize" onchange="onHistoryPageSize()">
+              <option value="10">10</option><option value="20" selected>20</option><option value="50">50</option>
+            </select>
+            条
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════ CONFIRM MODAL ══════════════ -->
+<div class="modal-mask" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <div class="modal-hd-text">
+        <div class="modal-hd-title" id="confirmTitle">加入黑名单确认</div>
+        <div class="modal-hd-sub" id="confirmSub">操作后该用户标识将进入黑名单库</div>
+      </div>
+      <button class="modal-x" onclick="closeConfirm()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="f-info">
+        加入黑名单后，匹配该标识的用户将无法获取所有产品的远程配置，请确认后再操作。
+      </div>
+      <div id="confirmSingleBox">
+        <div class="f-field" style="margin-top:14px;">
+          <label class="f-label">IFA</label>
+          <input class="f-ctrl" id="confirmIfa" type="text" disabled />
+        </div>
+        <div class="f-field">
+          <label class="f-label">ipv4</label>
+          <input class="f-ctrl" id="confirmIpv4" type="text" disabled />
+        </div>
+      </div>
+      <div id="confirmBatchBox" style="display:none;">
+        <div class="f-field" style="margin-top:14px;">
+          <label class="f-label">选中数量</label>
+          <input class="f-ctrl" id="confirmBatchCount" type="text" disabled />
+        </div>
+        <div class="f-field">
+          <label class="f-label">IFA 列表（最多展示前 10 个）</label>
+          <textarea class="f-ctrl ta" id="confirmBatchList" disabled style="height:auto;min-height:90px;padding:8px 10px;font-family:monospace;font-size:12px;"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-default" onclick="closeConfirm()">取消</button>
+      <button class="btn btn-primary" onclick="doConfirm()">确认加入</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div class="toast" id="toast">
+  <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+  <div class="toast-body">
+    <div class="toast-title" id="toastTitle">操作成功</div>
+    <div class="toast-desc" id="toastDesc">—</div>
+  </div>
+</div>
+
+<script src="risk-common.js"></script>
+<script>
+  /* ════════════════════════
+     Tabs
+  ════════════════════════ */
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(function(t) {
+      t.classList.toggle('active', t.getAttribute('data-tab') === name);
+    });
+    document.getElementById('tab-latest').style.display  = (name === 'latest')  ? 'block' : 'none';
+    document.getElementById('tab-history').style.display = (name === 'history') ? 'block' : 'none';
+    localStorage.setItem('riskRequestsLastTab', name);
+  }
+
+  /* ════════════════════════
+     Mock helpers
+  ════════════════════════ */
+  var PRODUCT_OPTIONS = [
+    { id: '9007', name: 'Polaris Game' },
+    { id: '9008', name: 'StarRacer' },
+    { id: '9009', name: 'MythicWorld' },
+    { id: '9010', name: 'ZenRun' },
+    { id: '9011', name: 'Arena Clash' },
+    { id: '9012', name: 'Sky Warriors' },
+    { id: '9013', name: 'Battle Royale X' },
+    { id: '9014', name: 'PK Framework' },
+    { id: '9015', name: 'SC Toolkit' },
+    { id: '9016', name: 'Brand Hub' },
+    { id: '9017', name: 'NeoQuest' },
+    { id: '9018', name: 'Frontier Arena' },
+    { id: '9019', name: 'Hyper Tournament' },
+    { id: '9020', name: 'Pocket Saga' }
+  ];
+
+  function populateProductSelect() {
+    var sel = document.getElementById('productSelect');
+    PRODUCT_OPTIONS.forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.id + '-' + p.name;
+      sel.appendChild(opt);
+    });
+  }
+  populateProductSelect();
+
+  var COUNTRIES = ['中国', '美国', '日本', '韩国', '英国', '德国', '印度', '巴西'];
+  var LANGS = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'de-DE', 'pt-BR'];
+  var CHANNELS = ['AppStore', 'GooglePlay', '官网', 'TapTap', '小米', 'OPPO'];
+  var NETWORKS = ['WiFi', '4G', '5G', '蜂窝'];
+  var DEVICES = ['iPhone 15 Pro', 'iPhone 14', 'Xiaomi 14', 'Huawei Mate60', 'Galaxy S24', 'Pixel 8', 'OPPO Find X7', 'OnePlus 12'];
+  var OS_VERS = ['iOS 17.4', 'iOS 17.2', 'iOS 16.5', 'Android 14', 'Android 13', 'Android 12', 'HarmonyOS 4.0'];
+  var ISPS = ['中国电信', '中国移动', '中国联通', 'Verizon', 'AT&T', 'NTT', 'KDDI', 'Deutsche Telekom'];
+  var IP_DETAILS = ['广东深圳', '北京海淀', '上海浦东', '加州洛杉矶', '东京港区', '首尔江南', '伦敦市', '柏林米特'];
+  var VERSIONS = ['102', '103', '88', '201', '305', '410', '512', '76', '999', '15', '234', '56', '330', '271'];
+
+  function randIfa() {
+    var parts = [];
+    for (var i = 0; i < 4; i++) {
+      var hex = ''; var len = i === 0 ? 8 : (i === 3 ? 12 : 4);
+      for (var j = 0; j < len; j++) hex += Math.floor(Math.random() * 16).toString(16);
+      parts.push(hex);
+    }
+    return parts.join('-').toUpperCase();
+  }
+  function randUuid() {
+    return 'uuid-' + Math.random().toString(36).substr(2, 8) + '-' + Math.random().toString(36).substr(2, 6);
+  }
+  function randIp() {
+    return [
+      Math.floor(Math.random() * 223) + 1,
+      Math.floor(Math.random() * 256),
+      Math.floor(Math.random() * 256),
+      Math.floor(Math.random() * 256)
+    ].join('.');
+  }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function pickTime(daysBack) {
+    var now = Date.now();
+    return now - Math.floor(Math.random() * daysBack * 86400000);
+  }
+
+  function genLatest(n) {
+    var arr = [];
+    for (var i = 0; i < n; i++) {
+      var blockTime = pickTime(7);
+      var hasBlacklist = Math.random() > 0.5;
+      arr.push({
+        productId:     pick(PRODUCT_OPTIONS).id,
+        latestVersion: pick(VERSIONS),
+        reqVersion:    pick(VERSIONS),
+        ifa:           randIfa(),
+        ipv4:          randIp(),
+        isp:           pick(ISPS),
+        ipDetail:      pick(IP_DETAILS),
+        country:       pick(COUNTRIES),
+        device:        pick(DEVICES),
+        osVer:         pick(OS_VERS),
+        blockTime:     blockTime,
+        blacklistTime: hasBlacklist ? blockTime + Math.floor(Math.random() * 86400000) : null
+      });
+    }
+    return arr;
+  }
+
+  function genHistory(n) {
+    var arr = [];
+    for (var i = 0; i < n; i++) {
+      arr.push({
+        productId:     pick(PRODUCT_OPTIONS).id,
+        latestVersion: pick(VERSIONS),
+        reqVersion:    pick(VERSIONS),
+        uuid:          randUuid(),
+        ifa:           randIfa(),
+        ipv4:          randIp(),
+        isp:           pick(ISPS),
+        ipDetail:      pick(IP_DETAILS),
+        country:       pick(COUNTRIES),
+        lang:          pick(LANGS),
+        channel:       pick(CHANNELS),
+        installDays:   Math.floor(Math.random() * 365),
+        network:       pick(NETWORKS),
+        device:        pick(DEVICES),
+        osVer:         pick(OS_VERS),
+        blockTime:     pickTime(180)
+      });
+    }
+    return arr;
+  }
+
+  var LATEST  = genLatest(80);
+  var HISTORY = genHistory(180);
+
+  /* ════════════════════════
+     Shared product filter (applies to both tabs)
+  ════════════════════════ */
+  var productFilter = ''; // '' = all products
+
+  function onProductChange() {
+    productFilter = document.getElementById('productSelect').value;
+    latestState.page = 1;
+    latestState.selected = {};
+    historyState.page = 1;
+    renderLatest();
+    renderHistory();
+  }
+
+  /* ════════════════════════
+     最新拦截记录
+  ════════════════════════ */
+  var latestState = { search: '', sortCol: null, sortDir: 'asc', page: 1, pageSize: 20, selected: {} };
+
+  function emptyNoProduct(colspan) {
+    return '<tr><td colspan="' + colspan + '"><div class="empty-state">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 16h6"/></svg>'
+      + '<p>请先在上方选择产品<br/>选中产品后将展示该产品的风险请求数据</p>'
+      + '</div></td></tr>';
+  }
+
+  function filterLatest() {
+    if (!productFilter) return [];
+    var s = latestState.search;
+    return LATEST.filter(function(r) {
+      if (r.productId !== productFilter) return false;
+      if (!s) return true;
+      var hay = (r.latestVersion + ' ' + r.reqVersion + ' ' + r.ifa + ' ' + r.ipv4).toLowerCase();
+      return hay.indexOf(s) !== -1;
+    });
+  }
+
+  function latestRow(r, idx) {
+    var alreadyIn = r.blacklistTime != null;
+    var checked = !!latestState.selected[r.ifa];
+    var cbHtml = alreadyIn
+      ? '<input type="checkbox" disabled title="已加入黑名单" />'
+      : '<input type="checkbox" data-ifa="' + r.ifa + '"' + (checked ? ' checked' : '') + ' onchange="onRowSelect(this)" />';
+    return '<tr>'
+      + '<td style="text-align:center;padding-right:6px;">' + cbHtml + '</td>'
+      + '<td><span class="mono">' + r.latestVersion + '</span></td>'
+      + '<td><span class="mono">' + r.reqVersion + '</span></td>'
+      + '<td><span class="mono">' + r.ifa + '</span></td>'
+      + '<td><span class="mono">' + r.ipv4 + '</span></td>'
+      + '<td>' + r.isp + '</td>'
+      + '<td>' + r.ipDetail + '</td>'
+      + '<td>' + r.country + '</td>'
+      + '<td>' + r.device + '</td>'
+      + '<td><span class="mono">' + r.osVer + '</span></td>'
+      + '<td><span class="mono">' + formatTime(r.blockTime) + '</span></td>'
+      + '<td>' + (r.blacklistTime != null ? '<span class="mono">' + formatTime(r.blacklistTime) + '</span>' : '<span class="empty-cell">—</span>') + '</td>'
+      + '<td style="text-align:center;">'
+      +   (r.blacklistTime != null
+            ? '<button class="inline-btn" disabled>已加入</button>'
+            : '<button class="inline-btn danger" onclick="addToBlacklist(\'latest\', ' + idx + ')">加入黑名单</button>')
+      + '</td>'
+      + '</tr>';
+  }
+
+  function renderLatest() {
+    var hasProduct = !!productFilter;
+    var rows = hasProduct ? sortRows(filterLatest(), latestState) : [];
+    var total = rows.length;
+    document.getElementById('latestTotal').textContent = total;
+    document.getElementById('latestPageInfo').textContent = '共 ' + total + ' 条';
+    var totalPages = Math.max(1, Math.ceil(total / latestState.pageSize));
+    if (latestState.page > totalPages) latestState.page = totalPages;
+    var start = (latestState.page - 1) * latestState.pageSize;
+    var pageRows = rows.slice(start, start + latestState.pageSize);
+
+    var tbody = document.getElementById('latestTbody');
+    if (!hasProduct) tbody.innerHTML = emptyNoProduct(13);
+    else if (pageRows.length === 0) tbody.innerHTML = emptyRow(13);
+    else tbody.innerHTML = pageRows.map(function(r) { return latestRow(r, LATEST.indexOf(r)); }).join('');
+    renderPager('latestPager', latestState.page, totalPages, function(p) { latestState.page = p; renderLatest(); });
+
+    syncSelectAllUI(pageRows);
+    updateBatchUI();
+  }
+
+  /* ── Selection helpers ── */
+  function onRowSelect(cb) {
+    var ifa = cb.getAttribute('data-ifa');
+    if (cb.checked) latestState.selected[ifa] = true;
+    else delete latestState.selected[ifa];
+    syncSelectAllUI();
+    updateBatchUI();
+  }
+
+  function onSelectAll(cb) {
+    var rows = filterLatest();
+    var start = (latestState.page - 1) * latestState.pageSize;
+    var pageRows = sortRows(rows, latestState).slice(start, start + latestState.pageSize);
+    pageRows.forEach(function(r) {
+      if (r.blacklistTime != null) return;
+      if (cb.checked) latestState.selected[r.ifa] = true;
+      else delete latestState.selected[r.ifa];
+    });
+    renderLatest();
+  }
+
+  function syncSelectAllUI(pageRows) {
+    var cb = document.getElementById('selectAllCb');
+    if (!cb) return;
+    if (!productFilter) {
+      cb.checked = false; cb.indeterminate = false; cb.disabled = true;
+      return;
+    }
+    cb.disabled = false;
+    if (!pageRows) {
+      var rows = filterLatest();
+      var start = (latestState.page - 1) * latestState.pageSize;
+      pageRows = sortRows(rows, latestState).slice(start, start + latestState.pageSize);
+    }
+    var actionable = pageRows.filter(function(r) { return r.blacklistTime == null; });
+    if (actionable.length === 0) { cb.checked = false; cb.indeterminate = false; return; }
+    var checkedCount = actionable.filter(function(r) { return latestState.selected[r.ifa]; }).length;
+    cb.checked = checkedCount === actionable.length;
+    cb.indeterminate = checkedCount > 0 && checkedCount < actionable.length;
+  }
+
+  function updateBatchUI() {
+    var keys = Object.keys(latestState.selected);
+    var btn = document.getElementById('batchBlacklistBtn');
+    var cnt = document.getElementById('batchCount');
+    btn.disabled = keys.length === 0;
+    cnt.textContent = '(' + keys.length + ')';
+  }
+
+  function onLatestPageSize() {
+    latestState.pageSize = parseInt(document.getElementById('latestPageSize').value, 10);
+    latestState.page = 1; renderLatest();
+  }
+
+  document.getElementById('latestSearch').addEventListener('input', function(e) {
+    latestState.search = e.target.value.trim().toLowerCase();
+    latestState.page = 1; renderLatest();
+  });
+
+  function resetLatestFilters() {
+    document.getElementById('latestSearch').value = '';
+    latestState.search = ''; latestState.page = 1; renderLatest();
+  }
+
+  document.querySelectorAll('#latestTable thead th.sortable').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var col = th.getAttribute('data-col');
+      if (latestState.sortCol === col) latestState.sortDir = latestState.sortDir === 'asc' ? 'desc' : 'asc';
+      else { latestState.sortCol = col; latestState.sortDir = 'asc'; }
+      document.querySelectorAll('#latestTable thead th').forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+      th.classList.add(latestState.sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      renderLatest();
+    });
+  });
+
+  /* ════════════════════════
+     历史拦截记录
+  ════════════════════════ */
+  var historyState = { search: '', sortCol: null, sortDir: 'asc', page: 1, pageSize: 20 };
+
+  function filterHistory() {
+    if (!productFilter) return [];
+    var s = historyState.search;
+    return HISTORY.filter(function(r) {
+      if (r.productId !== productFilter) return false;
+      if (!s) return true;
+      var hay = (r.uuid + ' ' + r.ifa + ' ' + r.ipv4 + ' ' + r.country + ' '
+               + r.lang + ' ' + r.channel + ' ' + r.device + ' ' + r.osVer).toLowerCase();
+      return hay.indexOf(s) !== -1;
+    });
+  }
+
+  function historyRow(r, idx) {
+    return '<tr>'
+      + '<td><span class="mono">' + r.latestVersion + '</span></td>'
+      + '<td><span class="mono">' + r.reqVersion + '</span></td>'
+      + '<td><span class="mono">' + r.uuid + '</span></td>'
+      + '<td><span class="mono">' + r.ifa + '</span></td>'
+      + '<td><span class="mono">' + r.ipv4 + '</span></td>'
+      + '<td>' + r.isp + '</td>'
+      + '<td>' + r.ipDetail + '</td>'
+      + '<td>' + r.country + '</td>'
+      + '<td><span class="mono">' + r.lang + '</span></td>'
+      + '<td>' + r.channel + '</td>'
+      + '<td><span class="mono">' + r.installDays + '</span></td>'
+      + '<td>' + r.network + '</td>'
+      + '<td>' + r.device + '</td>'
+      + '<td><span class="mono">' + r.osVer + '</span></td>'
+      + '<td><span class="mono">' + formatTime(r.blockTime) + '</span></td>'
+      + '<td style="text-align:center;">'
+      +   '<button class="inline-btn danger" onclick="addToBlacklist(\'history\', ' + idx + ')">加入黑名单</button>'
+      + '</td>'
+      + '</tr>';
+  }
+
+  function renderHistory() {
+    var hasProduct = !!productFilter;
+    var rows = hasProduct ? sortRows(filterHistory(), historyState) : [];
+    var total = rows.length;
+    document.getElementById('historyTotal').textContent = total;
+    document.getElementById('historyPageInfo').textContent = '共 ' + total + ' 条';
+    var totalPages = Math.max(1, Math.ceil(total / historyState.pageSize));
+    if (historyState.page > totalPages) historyState.page = totalPages;
+    var start = (historyState.page - 1) * historyState.pageSize;
+    var pageRows = rows.slice(start, start + historyState.pageSize);
+
+    var tbody = document.getElementById('historyTbody');
+    if (!hasProduct) tbody.innerHTML = emptyNoProduct(16);
+    else if (pageRows.length === 0) tbody.innerHTML = emptyRow(16);
+    else tbody.innerHTML = pageRows.map(function(r) { return historyRow(r, HISTORY.indexOf(r)); }).join('');
+    renderPager('historyPager', historyState.page, totalPages, function(p) { historyState.page = p; renderHistory(); });
+  }
+
+  function onHistoryPageSize() {
+    historyState.pageSize = parseInt(document.getElementById('historyPageSize').value, 10);
+    historyState.page = 1; renderHistory();
+  }
+
+  document.getElementById('historySearch').addEventListener('input', function(e) {
+    historyState.search = e.target.value.trim().toLowerCase();
+    historyState.page = 1; renderHistory();
+  });
+
+  function resetHistoryFilters() {
+    document.getElementById('historySearch').value = '';
+    historyState.search = ''; historyState.page = 1; renderHistory();
+  }
+
+  document.querySelectorAll('#historyTable thead th.sortable').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var col = th.getAttribute('data-col');
+      if (historyState.sortCol === col) historyState.sortDir = historyState.sortDir === 'asc' ? 'desc' : 'asc';
+      else { historyState.sortCol = col; historyState.sortDir = 'asc'; }
+      document.querySelectorAll('#historyTable thead th').forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+      th.classList.add(historyState.sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      renderHistory();
+    });
+  });
+
+  /* ════════════════════════
+     Action: 加入黑名单（二次确认）
+  ════════════════════════ */
+  var pendingBlacklist = null; // { mode: 'single'|'batch', which, idx?, ifas? }
+
+  function addToBlacklist(which, idx) {
+    var arr = which === 'latest' ? LATEST : HISTORY;
+    var r = arr[idx];
+    if (!r) return;
+    pendingBlacklist = { mode: 'single', which: which, idx: idx };
+    document.getElementById('confirmTitle').textContent = '加入黑名单确认';
+    document.getElementById('confirmSub').textContent = '操作后该用户标识将进入黑名单库';
+    document.getElementById('confirmSingleBox').style.display = '';
+    document.getElementById('confirmBatchBox').style.display = 'none';
+    document.getElementById('confirmIfa').value = r.ifa;
+    document.getElementById('confirmIpv4').value = r.ipv4;
+    document.getElementById('confirmModal').classList.add('open');
+  }
+
+  function openBatchConfirm() {
+    var ifas = Object.keys(latestState.selected);
+    if (ifas.length === 0) return;
+    pendingBlacklist = { mode: 'batch', which: 'latest', ifas: ifas };
+    document.getElementById('confirmTitle').textContent = '批量加入黑名单确认';
+    document.getElementById('confirmSub').textContent = '操作后选中用户标识将批量进入黑名单库';
+    document.getElementById('confirmSingleBox').style.display = 'none';
+    document.getElementById('confirmBatchBox').style.display = '';
+    document.getElementById('confirmBatchCount').value = ifas.length + ' 个用户';
+    var preview = ifas.slice(0, 10).join('\n');
+    if (ifas.length > 10) preview += '\n…（共 ' + ifas.length + ' 条，已省略 ' + (ifas.length - 10) + ' 条）';
+    document.getElementById('confirmBatchList').value = preview;
+    document.getElementById('confirmModal').classList.add('open');
+  }
+
+  function closeConfirm() {
+    document.getElementById('confirmModal').classList.remove('open');
+    pendingBlacklist = null;
+  }
+
+  function doConfirm() {
+    if (!pendingBlacklist) { closeConfirm(); return; }
+    var p = pendingBlacklist;
+    if (p.mode === 'single') {
+      var arr = p.which === 'latest' ? LATEST : HISTORY;
+      var r = arr[p.idx];
+      if (!r) { closeConfirm(); return; }
+      if (p.which === 'latest') {
+        r.blacklistTime = Date.now();
+        delete latestState.selected[r.ifa];
+        renderLatest();
+      } else {
+        renderHistory();
+      }
+      closeConfirm();
+      showToast('已加入黑名单', 'IFA ' + r.ifa.slice(0, 8) + '… 已加入黑名单库');
+    } else {
+      var now = Date.now();
+      var count = 0;
+      p.ifas.forEach(function(ifa) {
+        LATEST.forEach(function(r) {
+          if (r.ifa === ifa && r.blacklistTime == null) {
+            r.blacklistTime = now;
+            count++;
+          }
+        });
+      });
+      latestState.selected = {};
+      renderLatest();
+      closeConfirm();
+      showToast('批量加入成功', '已将 ' + count + ' 个用户加入黑名单库');
+    }
+  }
+
+  /* ════════════════════════
+     URL 参数：?productId=xxx&tab=latest|history
+  ════════════════════════ */
+  (function applyUrlParams() {
+    var params = new URLSearchParams(location.search);
+    var pid = params.get('productId');
+    var tab = params.get('tab');
+    if (pid) {
+      var sel = document.getElementById('productSelect');
+      var match = Array.from(sel.options).some(function(o) { return o.value === pid; });
+      if (match) {
+        sel.value = pid;
+        productFilter = pid;
+      }
+    }
+    if (tab) {
+      switchTab(tab);
+    } else {
+      var lastTab = localStorage.getItem('riskRequestsLastTab');
+      if (lastTab) switchTab(lastTab);
+    }
+  })();
+
+  /* ── Init ── */
+  renderLatest();
+  renderHistory();
+</script>
+</body>
+</html>
