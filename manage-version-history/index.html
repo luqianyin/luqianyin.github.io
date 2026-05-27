@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark · 操作记录</title>
+  <link rel="stylesheet" href="risk-common.css" />
+  <style>
+    /* 仅本页面用到的小补丁 —— 与 risk-common.css 风格保持一致 */
+    .cell-clip {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      max-width: 260px;
+      font-family: 'SF Mono', Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #1F2329;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+    .cell-clip.empty { color: #C2C7CF; font-style: italic; font-family: inherit; }
+
+    .diff-pane {
+      display: flex;
+      gap: 12px;
+    }
+    .diff-col {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .diff-col .diff-hd {
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--sub);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .diff-col.before .diff-hd { color: #CF1322; background: #FFF1F0; border-bottom-color: #FFCCC7; }
+    .diff-col.after  .diff-hd { color: #389E0D; background: #F0F9EB; border-bottom-color: #B7EB8F; }
+    .diff-col pre {
+      margin: 0;
+      padding: 12px;
+      font-family: 'SF Mono', Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.65;
+      color: #1F2329;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 360px;
+      overflow-y: auto;
+      background: #FAFBFC;
+    }
+    .diff-col pre.empty { color: #C2C7CF; font-style: italic; }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px 24px;
+      margin-bottom: 16px;
+    }
+    .meta-grid .meta-k { font-size: 12px; color: var(--sub); margin-bottom: 2px; }
+    .meta-grid .meta-v { font-size: 13px; color: var(--text); font-weight: 500; }
+    .meta-grid .meta-v.mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; font-weight: 400; }
+
+    /* 操作项 tag 颜色 */
+    .tag-act-create { background: #E6F0FF; color: #1677FF; }
+    .tag-act-edit   { background: #FFF7E6; color: #D48806; }
+    .tag-act-delete { background: #FFF1F0; color: #CF1322; }
+
+    /* 功能 tag 颜色 */
+    .tag-fn-rc      { background: #E6F0FF; color: #1677FF; }
+    .tag-fn-ug      { background: #F0F9EB; color: #389E0D; }
+    .tag-fn-exp     { background: #F9F0FF; color: #722ED1; }
+    .tag-fn-ugt     { background: #FFF7E6; color: #D48806; }
+    .tag-fn-metric  { background: #FCFFE6; color: #7CB305; }
+    .tag-fn-vs      { background: #E6FFFB; color: #08979C; }
+    .tag-fn-req     { background: #FFF0F6; color: #C41D7F; }
+    .tag-fn-bl      { background: #FFF1F0; color: #CF1322; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ TOP HEADER ══════════════ -->
+<header class="header">
+  <div class="logo-wrap"><span class="logo-name">Spark</span></div>
+  <nav class="header-nav">
+    <button class="header-tab">AB测试</button>
+    <button class="header-tab active">管理</button>
+  </nav>
+  <div class="header-right">
+    <button class="hdr-action" title="反馈">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span>反馈</span>
+    </button>
+    <button class="hdr-action" title="消息" style="position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span>消息</span>
+      <span style="position:absolute;top:2px;right:6px;width:8px;height:8px;background:#FF4D4F;border-radius:50%;border:1.5px solid #fff;"></span>
+    </button>
+    <button class="hdr-action" title="帮助">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+      <span>帮助</span>
+    </button>
+    <div class="hdr-divider"></div>
+    <button class="user-btn" title="个人中心">
+      <div class="user-avatar">张</div>
+      <span class="user-name">张三</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════ SUB-BAR ══════════════ -->
+<div class="subbar">
+  <div class="subbar-inner">
+    <nav class="breadcrumb">
+      <a href="#">管理</a>
+      <span class="sep"> / </span>
+      <span class="current">操作记录</span>
+    </nav>
+  </div>
+</div>
+
+<!-- ══════════════ BODY ══════════════ -->
+<div class="body-wrap">
+
+  <!-- ──── Sidebar ──── -->
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-l1" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        AB测试
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:none;">
+        <div class="nav-l2" onclick="location.href='company-products.html'">公司产品</div>
+        <div class="nav-l2">产品信息</div>
+        <div class="nav-l2">远程配置</div>
+        <div class="nav-l2">用户群配置</div>
+        <div class="nav-l2">实验管理</div>
+        <div class="nav-l2">用户群标签管理</div>
+        <div class="nav-l2">指标管理</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-l1" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        风控模块
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:none;">
+        <div class="nav-l2" onclick="location.href='risk-version-status.html'">版本状态</div>
+        <div class="nav-l2" onclick="location.href='risk-requests.html'">风险请求</div>
+        <div class="nav-l2" onclick="location.href='risk-blacklist.html'">黑名单库</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-l1" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        实验/用户群查询
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:none;">
+        <div class="nav-l2">实验用户查询</div>
+        <div class="nav-l2">用户群/参数下发查询</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-l1 open" onclick="toggleNav(this)">
+        <svg class="l1-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>
+        管理
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="nav-l2-list" style="display:block;">
+        <div class="nav-l2 active">操作记录</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ──── Content ──── -->
+  <main class="content">
+
+    <div class="filter-box">
+      <div class="filter-row" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div class="filter-item">
+            <input class="filter-input" id="searchInput" type="text"
+                   placeholder="搜索 功能 / 用户名 / 对象ID / 操作对象 / 操作前后内容" style="width:420px;" />
+          </div>
+
+          <div class="filter-item">
+            <span class="filter-lbl">产品</span>
+            <div class="ms-wrap" data-key="products">
+              <button class="ms-btn" onclick="toggleMs(this, event)">
+                <span class="ms-text">全部</span>
+                <svg class="ms-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="ms-dropdown" id="msProducts">
+                <label class="ms-all"><input type="checkbox" checked onchange="msToggleAll(this)" /><span>全选</span></label>
+                <!-- 产品列表由脚本注入 -->
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-item">
+            <span class="filter-lbl">功能</span>
+            <div class="ms-wrap" data-key="features">
+              <button class="ms-btn" onclick="toggleMs(this, event)">
+                <span class="ms-text">全部</span>
+                <svg class="ms-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="ms-dropdown">
+                <label class="ms-all"><input type="checkbox" checked onchange="msToggleAll(this)" /><span>全选</span></label>
+                <label class="ms-item"><input type="checkbox" value="远程配置" checked onchange="msItemChange(this)" /><span>远程配置</span></label>
+                <label class="ms-item"><input type="checkbox" value="用户群配置" checked onchange="msItemChange(this)" /><span>用户群配置</span></label>
+                <label class="ms-item"><input type="checkbox" value="实验管理" checked onchange="msItemChange(this)" /><span>实验管理</span></label>
+                <label class="ms-item"><input type="checkbox" value="用户群标签组" checked onchange="msItemChange(this)" /><span>用户群标签组</span></label>
+                <label class="ms-item"><input type="checkbox" value="指标管理" checked onchange="msItemChange(this)" /><span>指标管理</span></label>
+                <label class="ms-item"><input type="checkbox" value="版本状态" checked onchange="msItemChange(this)" /><span>版本状态</span></label>
+                <label class="ms-item"><input type="checkbox" value="风险请求" checked onchange="msItemChange(this)" /><span>风险请求</span></label>
+                <label class="ms-item"><input type="checkbox" value="黑名单库" checked onchange="msItemChange(this)" /><span>黑名单库</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-item">
+            <span class="filter-lbl">操作项</span>
+            <div class="ms-wrap" data-key="actions">
+              <button class="ms-btn" onclick="toggleMs(this, event)">
+                <span class="ms-text">全部</span>
+                <svg class="ms-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="ms-dropdown">
+                <label class="ms-all"><input type="checkbox" checked onchange="msToggleAll(this)" /><span>全选</span></label>
+                <label class="ms-item"><input type="checkbox" value="新增" checked onchange="msItemChange(this)" /><span>新增</span></label>
+                <label class="ms-item"><input type="checkbox" value="编辑" checked onchange="msItemChange(this)" /><span>编辑</span></label>
+                <label class="ms-item"><input type="checkbox" value="删除" checked onchange="msItemChange(this)" /><span>删除</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-item">
+            <span class="filter-lbl">状态</span>
+            <div class="ms-wrap" data-key="statuses">
+              <button class="ms-btn" onclick="toggleMs(this, event)">
+                <span class="ms-text">全部</span>
+                <svg class="ms-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="ms-dropdown">
+                <label class="ms-all"><input type="checkbox" checked onchange="msToggleAll(this)" /><span>全选</span></label>
+                <label class="ms-item"><input type="checkbox" value="成功" checked onchange="msItemChange(this)" /><span>成功</span></label>
+                <label class="ms-item"><input type="checkbox" value="失败" checked onchange="msItemChange(this)" /><span>失败</span></label>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-default" onclick="resetFilters()">重置</button>
+        </div>
+        <button class="btn btn-primary" onclick="exportCsv()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出
+        </button>
+      </div>
+      <div class="filter-desc">
+        汇总各业务模块的用户操作记录，包含远程配置、用户群配置、实验管理、用户群标签组、指标管理、版本状态、风险请求、黑名单库的所有变更。
+      </div>
+    </div>
+
+    <div class="result-info-bar">
+      <span class="result-count">共 <strong id="totalCount">0</strong> 条记录</span>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table id="logTable">
+          <thead>
+            <tr>
+              <th data-col="productId"   class="sortable" style="width:92px;">产品id</th>
+              <th data-col="productName" class="sortable" style="width:120px;">产品名称</th>
+              <th data-col="feature"   class="sortable" style="width:110px;">功能</th>
+              <th data-col="user"      class="sortable" style="width:96px;">用户名</th>
+              <th data-col="objectId"   class="sortable" style="min-width:200px;">对象ID</th>
+              <th data-col="objectType" class="sortable" style="width:120px;">操作对象</th>
+              <th data-col="action"    class="sortable" style="width:86px;text-align:center;">操作项</th>
+              <th style="min-width:240px;">操作前内容</th>
+              <th style="min-width:240px;">操作后内容</th>
+              <th data-col="status"    class="sortable" style="width:86px;text-align:center;">状态</th>
+              <th data-col="time"      class="sortable" style="width:160px;">操作时间</th>
+              <th style="text-align:center;width:96px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="logTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <span class="page-info" id="pageInfo">共 0 条</span>
+        <div style="display:flex;align-items:center;gap:4px;" id="pagerBtns"></div>
+        <div style="display:flex;align-items:center;gap:6px;color:var(--sub);font-size:12px;margin-left:8px;">
+          每页
+          <select class="page-size-select" id="pageSize" onchange="onPageSizeChange()">
+            <option value="10">10</option><option value="20" selected>20</option><option value="50">50</option>
+          </select>
+          条
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════ DETAIL MODAL ══════════════ -->
+<div class="modal-mask" id="detailModal">
+  <div class="modal-box" style="width:880px;max-width:96vw;">
+    <div class="modal-hd">
+      <div class="modal-hd-text">
+        <div class="modal-hd-title">操作详情</div>
+        <div class="modal-hd-sub" id="detailSubtitle">—</div>
+      </div>
+      <button class="modal-x" onclick="closeDetail()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="meta-grid">
+        <div>
+          <div class="meta-k">产品</div>
+          <div class="meta-v" id="dProduct">—</div>
+        </div>
+        <div>
+          <div class="meta-k">功能</div>
+          <div class="meta-v" id="dFeature">—</div>
+        </div>
+        <div>
+          <div class="meta-k">操作项</div>
+          <div class="meta-v" id="dAction">—</div>
+        </div>
+        <div>
+          <div class="meta-k">用户名</div>
+          <div class="meta-v" id="dUser">—</div>
+        </div>
+        <div>
+          <div class="meta-k">操作时间</div>
+          <div class="meta-v mono" id="dTime">—</div>
+        </div>
+        <div>
+          <div class="meta-k">对象ID</div>
+          <div class="meta-v mono" id="dObjectId">—</div>
+        </div>
+        <div>
+          <div class="meta-k">操作对象</div>
+          <div class="meta-v" id="dObjectType">—</div>
+        </div>
+        <div>
+          <div class="meta-k">操作状态</div>
+          <div class="meta-v" id="dStatus">—</div>
+        </div>
+      </div>
+
+      <div class="diff-pane">
+        <div class="diff-col before">
+          <div class="diff-hd">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            操作前
+          </div>
+          <pre id="dBefore">—</pre>
+        </div>
+        <div class="diff-col after">
+          <div class="diff-hd">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            操作后
+          </div>
+          <pre id="dAfter">—</pre>
+        </div>
+      </div>
+
+      <div id="dFailBox" style="display:none;margin-top:14px;">
+        <div class="f-info" style="background:#FFF1F0;border-color:#FFCCC7;color:#CF1322;">
+          <strong>失败原因：</strong><span id="dFailReason">—</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-default" onclick="closeDetail()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div class="toast" id="toast">
+  <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+  <div class="toast-body">
+    <div class="toast-title" id="toastTitle">操作成功</div>
+    <div class="toast-desc" id="toastDesc">—</div>
+  </div>
+</div>
+
+<script src="risk-common.js"></script>
+<script>
+  /* ════════════════════════
+     功能 / 操作项 / 状态 元数据
+  ════════════════════════ */
+  var FEATURE_META = {
+    '远程配置':     { cls: 'tag-fn-rc' },
+    '用户群配置':   { cls: 'tag-fn-ug' },
+    '实验管理':     { cls: 'tag-fn-exp' },
+    '用户群标签组': { cls: 'tag-fn-ugt' },
+    '指标管理':     { cls: 'tag-fn-metric' },
+    '版本状态':     { cls: 'tag-fn-vs' },
+    '风险请求':     { cls: 'tag-fn-req' },
+    '黑名单库':     { cls: 'tag-fn-bl' }
+  };
+  var ACTION_META = {
+    '新增': { cls: 'tag-act-create' },
+    '编辑': { cls: 'tag-act-edit' },
+    '删除': { cls: 'tag-act-delete' }
+  };
+  var STATUS_META = {
+    '成功': { cls: 'tag-online' },
+    '失败': { cls: 'tag-danger' }
+  };
+
+  /* ════════════════════════
+     Mock data —— 60 条操作日志
+  ════════════════════════ */
+  var USERS = ['张三', '李四', '王五', '赵六', '陈七', '林八', '周九', '吴十'];
+
+  var PRODUCTS = [
+    { id: '9007', name: 'Spark新闻' },
+    { id: '9008', name: 'Spark阅读' },
+    { id: '9009', name: 'Spark视频' },
+    { id: '9010', name: 'Spark音乐' },
+    { id: '9011', name: 'Spark购物' },
+    { id: '9012', name: 'Spark支付' },
+    { id: '9013', name: 'Spark社区' },
+    { id: '9014', name: 'Spark直播' },
+    { id: '9015', name: 'Spark教育' },
+    { id: '9016', name: 'Spark健身' },
+    { id: '9017', name: 'Spark旅行' }
+  ];
+  var PRODUCT_NAME_BY_ID = {};
+  PRODUCTS.forEach(function(p) { PRODUCT_NAME_BY_ID[p.id] = p.name; });
+
+  function jsonStr(obj) { return JSON.stringify(obj, null, 2); }
+
+  // 操作模板生成器：根据功能 + 操作项给出合理的 objectType / objectId / before / after
+  var SAMPLES = [
+    // 远程配置
+    { feature: '远程配置', action: '编辑', objectType: '参数字段',   objectId: 'home_banner_v2',
+      before: jsonStr({ enabled: true,  image: 'cdn://banner/v1.png', title: '夏日特惠' }),
+      after:  jsonStr({ enabled: true,  image: 'cdn://banner/v2.png', title: '盛夏狂欢节' }) },
+    { feature: '远程配置', action: '新增', objectType: '参数字段',   objectId: 'checkout_button_color',
+      before: '',
+      after:  jsonStr({ enabled: true, value: '#FF4D4F', segment: 'all' }) },
+    { feature: '远程配置', action: '编辑', objectType: '参数下发值', objectId: 'splash_screen_duration_ms',
+      before: jsonStr({ value: 1500 }),
+      after:  jsonStr({ value: 2000 }) },
+    { feature: '远程配置', action: '删除', objectType: '参数字段',   objectId: 'legacy_promo_2024_q3',
+      before: jsonStr({ enabled: false, expiredAt: '2024-09-30' }),
+      after:  '' },
+    { feature: '远程配置', action: '编辑', objectType: '参数描述',   objectId: 'feed_refresh_interval',
+      before: jsonStr({ desc: '信息流自动刷新间隔（秒）' }),
+      after:  jsonStr({ desc: '信息流自动刷新间隔（秒），仅作用于前台' }) },
+
+    // 用户群配置
+    { feature: '用户群配置', action: '新增', objectType: '用户群',     objectId: '1001',
+      before: '',
+      after:  jsonStr({ name: '高价值用户Q2', rule: { ltv: '>=500', last_login: '<=7d', region: ['CN','JP'] } }) },
+    { feature: '用户群配置', action: '编辑', objectType: '用户群描述', objectId: '1002',
+      before: jsonStr({ desc: '注册后7天内的新用户' }),
+      after:  jsonStr({ desc: '注册后14天内的新用户（口径调整）' }) },
+    { feature: '用户群配置', action: '删除', objectType: '用户群',     objectId: '1003',
+      before: jsonStr({ name: '内测Alpha', size: 42 }),
+      after:  '' },
+    { feature: '用户群配置', action: '编辑', objectType: '目标设备',   objectId: '1004',
+      before: jsonStr({ devices: ['iOS', 'Android'] }),
+      after:  jsonStr({ devices: ['iOS', 'Android', 'HarmonyOS'] }) },
+
+    // 实验管理
+    { feature: '实验管理', action: '新增', objectType: '实验名称',     objectId: '1001',
+      before: '',
+      after:  jsonStr({ name: '首页Banner实验V3', traffic: { A: 50, B: 50 }, status: 'draft' }) },
+    { feature: '实验管理', action: '编辑', objectType: '实验分组',     objectId: '1002',
+      before: jsonStr({ groups: [{ key: 'A', traffic: 50 }, { key: 'B', traffic: 50 }] }),
+      after:  jsonStr({ groups: [{ key: 'A', traffic: 30 }, { key: 'B', traffic: 70 }] }) },
+    { feature: '实验管理', action: '编辑', objectType: '实验描述',     objectId: '1003',
+      before: jsonStr({ desc: '新用户首次启动引导优化实验' }),
+      after:  jsonStr({ desc: '新用户首次启动引导优化实验（已停止 · 指标显著负向）' }) },
+    { feature: '实验管理', action: '删除', objectType: '实验名称',     objectId: '1004',
+      before: jsonStr({ name: '旧版A测试', status: 'archived' }),
+      after:  '' },
+    { feature: '实验管理', action: '编辑', objectType: '实验版本名称', objectId: '1005',
+      before: jsonStr({ versionName: 'pricing_v4_draft' }),
+      after:  jsonStr({ versionName: 'pricing_v4_2026q2_launch' }) },
+
+    // 用户群标签组
+    { feature: '用户群标签组', action: '新增', objectType: '标签名称', objectId: '1001',
+      before: '',
+      after:  jsonStr({ name: '生活方式', tags: ['健身', '美食', '旅行', '宠物'] }) },
+    { feature: '用户群标签组', action: '编辑', objectType: '标签类型', objectId: '1002',
+      before: jsonStr({ type: '枚举型', values: ['iOS', 'Android'] }),
+      after:  jsonStr({ type: '多值枚举', values: ['iOS', 'Android', 'HarmonyOS', '小程序'] }) },
+    { feature: '用户群标签组', action: '删除', objectType: '标签名称', objectId: '1003',
+      before: jsonStr({ name: '旧版用户标签', tags: ['VIP1', 'VIP2'] }),
+      after:  '' },
+
+    // 指标管理
+    { feature: '指标管理', action: '新增', objectType: '指标名称', objectId: 'metric_dau_login',
+      before: '',
+      after:  jsonStr({ name: '登录DAU', type: 'count', event: 'user_login', aggregation: 'distinct_user' }) },
+    { feature: '指标管理', action: '编辑', objectType: '指标公式', objectId: 'metric_purchase_rate',
+      before: jsonStr({ formula: 'paid_users / dau' }),
+      after:  jsonStr({ formula: 'paid_users / active_users', filter: 'is_new_user = false' }) },
+    { feature: '指标管理', action: '删除', objectType: '指标名称', objectId: 'metric_old_retention_d1',
+      before: jsonStr({ name: '次日留存(旧)', deprecated: true }),
+      after:  '' },
+    { feature: '指标管理', action: '编辑', objectType: '指标定义', objectId: 'metric_arpu',
+      before: jsonStr({ formula: 'revenue / dau', currency: 'CNY' }),
+      after:  jsonStr({ formula: 'revenue / dau', currency: 'USD' }) },
+
+    // 版本状态
+    { feature: '版本状态', action: '编辑', objectType: '版本风控状态', objectId: '9010-410', productId: '9010',
+      before: jsonStr({ riskControl: false }),
+      after:  jsonStr({ riskControl: true,  enabledBy: 'system' }) },
+    { feature: '版本状态', action: '编辑', objectType: '版本风控状态', objectId: '9016-76', productId: '9016',
+      before: jsonStr({ riskControl: true }),
+      after:  jsonStr({ riskControl: false, reason: '版本已下线' }) },
+    { feature: '版本状态', action: '新增', objectType: '版本风控状态', objectId: '9017-102', productId: '9017',
+      before: '',
+      after:  jsonStr({ riskControl: true, autoEnable: true, threshold: 0.85 }) },
+
+    // 风险请求
+    { feature: '风险请求', action: '编辑', objectType: '风险请求处理', objectId: 'REQ-20260520-A8F3',
+      before: jsonStr({ status: 'pending', risk_score: 0.92 }),
+      after:  jsonStr({ status: 'confirmed_block', risk_score: 0.92, action: '加入黑名单' }) },
+    { feature: '风险请求', action: '编辑', objectType: '风险请求处理', objectId: 'REQ-20260518-C214',
+      before: jsonStr({ status: 'pending', risk_score: 0.78 }),
+      after:  jsonStr({ status: 'whitelist', risk_score: 0.78, note: '人工复核通过' }) },
+    { feature: '风险请求', action: '删除', objectType: '风险请求处理', objectId: 'REQ-20260401-DEAD',
+      before: jsonStr({ status: 'archived', risk_score: 0.55 }),
+      after:  '' },
+
+    // 黑名单库
+    { feature: '黑名单库', action: '新增', objectType: 'IFA',  objectId: 'CA41F9BC-5FE0-004B-D0A398DAEBC7',
+      before: '',
+      after:  jsonStr({ metric: 'IFA', identifier: 'CA41F9BC-5FE0-004B-D0A398DAEBC7', source: '手动加入' }) },
+    { feature: '黑名单库', action: '删除', objectType: 'IFA',  objectId: '3AE1704D-E133-EDEF-54A45F7DA4E6',
+      before: jsonStr({ metric: 'IFA', identifier: '3AE1704D-E133-EDEF-54A45F7DA4E6' }),
+      after:  '' },
+    { feature: '黑名单库', action: '新增', objectType: 'ipv4', objectId: '203.0.113.42',
+      before: '',
+      after:  jsonStr({ metric: 'ipv4', identifier: '203.0.113.42', source: '自动入库' }) }
+  ];
+
+  var FAIL_REASONS = [
+    '配置项校验失败：参数 traffic 之和不等于 100',
+    '权限不足：当前账号无该产品的写权限',
+    '远程服务超时（5000ms）',
+    '并发冲突：该配置项已被其他用户更新，请刷新后重试',
+    '依赖检查失败：所引用的用户群已被删除',
+    '配置项命名冲突，已存在同名记录'
+  ];
+
+  var DATA = [];
+  (function build() {
+    // 主体复制 SAMPLES 两遍并加入一些随机失败 / 时间扰动
+    var seed = 0;
+    function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    var now = Date.parse('2026-05-27T10:30:00');
+
+    for (var round = 0; round < 2; round++) {
+      SAMPLES.forEach(function(s, i) {
+        var failChance = round === 1 ? 0.18 : 0.08;
+        var isFail = rnd() < failChance;
+
+        // 「版本状态」类样本显式指定了 productId，沿用以保持一致；其他随机分配
+        var product;
+        if (s.productId && PRODUCT_NAME_BY_ID[s.productId]) {
+          product = { id: s.productId, name: PRODUCT_NAME_BY_ID[s.productId] };
+        } else {
+          product = PRODUCTS[Math.floor(rnd() * PRODUCTS.length)];
+        }
+
+        DATA.push({
+          productId:   product.id,
+          productName: product.name,
+          feature:    s.feature,
+          action:     s.action,
+          objectType: s.objectType,
+          objectId:   s.objectId,
+          before:     s.before,
+          after:      isFail ? '' : s.after,
+          status:     isFail ? '失败' : '成功',
+          user:       USERS[Math.floor(rnd() * USERS.length)],
+          time:       now - Math.floor(rnd() * 60 * 86400000),
+          failReason: isFail ? FAIL_REASONS[Math.floor(rnd() * FAIL_REASONS.length)] : ''
+        });
+      });
+    }
+    // 按时间倒序
+    DATA.sort(function(a, b) { return b.time - a.time; });
+  })();
+
+  /* ════════════════════════
+     状态 & 渲染
+  ════════════════════════ */
+  var ALL_FEATURES = Object.keys(FEATURE_META);
+  var ALL_ACTIONS  = ['新增', '编辑', '删除'];
+  var ALL_STATUSES = ['成功', '失败'];
+  var ALL_PRODUCT_IDS = PRODUCTS.map(function(p) { return p.id; });
+
+  // 注入产品多选项（label 同时显示 id + 名称，value 用 id）
+  (function injectProductOptions() {
+    var dd = document.getElementById('msProducts');
+    var html = '';
+    PRODUCTS.forEach(function(p) {
+      html += '<label class="ms-item">'
+            + '<input type="checkbox" value="' + p.id + '" checked onchange="msItemChange(this)" />'
+            + '<span><span class="mono" style="color:var(--sub);margin-right:6px;">' + p.id + '</span>' + p.name + '</span>'
+            + '</label>';
+    });
+    dd.insertAdjacentHTML('beforeend', html);
+  })();
+
+  var state = {
+    search: '',
+    products: ALL_PRODUCT_IDS.slice(),
+    features: ALL_FEATURES.slice(),
+    actions:  ALL_ACTIONS.slice(),
+    statuses: ALL_STATUSES.slice(),
+    sortCol:  'time',
+    sortDir:  'desc',
+    page: 1,
+    pageSize: 20
+  };
+
+  function filterRows() {
+    var s = state.search;
+    return DATA.filter(function(r) {
+      if (state.products.indexOf(r.productId) === -1) return false;
+      if (state.features.indexOf(r.feature) === -1) return false;
+      if (state.actions.indexOf(r.action) === -1) return false;
+      if (state.statuses.indexOf(r.status) === -1) return false;
+      if (!s) return true;
+      var hay = (r.productId + ' ' + r.productName + ' ' + r.feature + ' ' + r.user
+               + ' ' + r.objectId + ' ' + r.objectType + ' ' + r.action
+               + ' ' + r.before + ' ' + r.after).toLowerCase();
+      return hay.indexOf(s) !== -1;
+    });
+  }
+
+  function esc(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function clipCell(text) {
+    if (text == null || text === '') return '<div class="cell-clip empty">—</div>';
+    return '<div class="cell-clip">' + esc(text) + '</div>';
+  }
+
+  function rowHtml(r, idx) {
+    var fm = FEATURE_META[r.feature] || { cls: '' };
+    var am = ACTION_META[r.action]   || { cls: '' };
+    var sm = STATUS_META[r.status]   || { cls: '' };
+
+    return '<tr>'
+      + '<td><span class="mono">' + r.productId + '</span></td>'
+      + '<td>' + r.productName + '</td>'
+      + '<td><span class="tag ' + fm.cls + '">' + r.feature + '</span></td>'
+      + '<td>' + r.user + '</td>'
+      + '<td><span class="mono">' + esc(r.objectId) + '</span></td>'
+      + '<td>' + esc(r.objectType) + '</td>'
+      + '<td style="text-align:center;"><span class="tag ' + am.cls + '">' + r.action + '</span></td>'
+      + '<td>' + clipCell(r.before) + '</td>'
+      + '<td>' + clipCell(r.after)  + '</td>'
+      + '<td style="text-align:center;"><span class="tag ' + sm.cls + '">' + r.status + '</span></td>'
+      + '<td><span class="mono">' + formatTime(r.time) + '</span></td>'
+      + '<td style="text-align:center;">'
+      +   '<button class="inline-btn" onclick="openDetail(' + idx + ')">查看详情</button>'
+      + '</td>'
+      + '</tr>';
+  }
+
+  function render() {
+    var rows = sortRows(filterRows(), state);
+    var total = rows.length;
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('pageInfo').textContent = '共 ' + total + ' 条';
+
+    var totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+    if (state.page > totalPages) state.page = totalPages;
+
+    var start = (state.page - 1) * state.pageSize;
+    var pageRows = rows.slice(start, start + state.pageSize);
+
+    var tbody = document.getElementById('logTbody');
+    if (pageRows.length === 0) tbody.innerHTML = emptyRow(12);
+    else tbody.innerHTML = pageRows.map(function(r) { return rowHtml(r, DATA.indexOf(r)); }).join('');
+
+    renderPager('pagerBtns', state.page, totalPages, function(p) { state.page = p; render(); });
+  }
+
+  function onPageSizeChange() {
+    state.pageSize = parseInt(document.getElementById('pageSize').value, 10);
+    state.page = 1; render();
+  }
+
+  document.getElementById('searchInput').addEventListener('input', function(e) {
+    state.search = e.target.value.trim().toLowerCase();
+    state.page = 1; render();
+  });
+
+  function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    state.search = '';
+    state.products = ALL_PRODUCT_IDS.slice();
+    state.features = ALL_FEATURES.slice();
+    state.actions  = ALL_ACTIONS.slice();
+    state.statuses = ALL_STATUSES.slice();
+    resetAllMs();
+    state.page = 1;
+    render();
+  }
+
+  /* ════════════════════════
+     详情 Modal
+  ════════════════════════ */
+  function openDetail(idx) {
+    var r = DATA[idx];
+    if (!r) return;
+    var fm = FEATURE_META[r.feature] || { cls: '' };
+    var am = ACTION_META[r.action]   || { cls: '' };
+    var sm = STATUS_META[r.status]   || { cls: '' };
+
+    document.getElementById('detailSubtitle').textContent =
+      r.productId + ' · ' + r.productName + ' · ' + r.feature + ' · ' + r.action
+      + ' · ' + r.objectType + ' · ' + r.objectId;
+
+    document.getElementById('dProduct').innerHTML =
+      '<span class="mono" style="color:var(--sub);margin-right:8px;">' + r.productId + '</span>' + r.productName;
+    document.getElementById('dFeature').innerHTML =
+      '<span class="tag ' + fm.cls + '">' + r.feature + '</span>';
+    document.getElementById('dAction').innerHTML  =
+      '<span class="tag ' + am.cls + '">' + r.action + '</span>';
+    document.getElementById('dStatus').innerHTML  =
+      '<span class="tag ' + sm.cls + '">' + r.status + '</span>';
+    document.getElementById('dUser').textContent  = r.user;
+    document.getElementById('dTime').textContent  = formatTime(r.time);
+    document.getElementById('dObjectId').textContent   = r.objectId;
+    document.getElementById('dObjectType').textContent = r.objectType;
+
+    var beforeEl = document.getElementById('dBefore');
+    var afterEl  = document.getElementById('dAfter');
+    if (!r.before) { beforeEl.textContent = '（无 / 新增前为空）'; beforeEl.classList.add('empty'); }
+    else { beforeEl.textContent = r.before; beforeEl.classList.remove('empty'); }
+    if (!r.after)  { afterEl.textContent  = '（无 / 删除后为空）'; afterEl.classList.add('empty'); }
+    else { afterEl.textContent  = r.after;  afterEl.classList.remove('empty'); }
+
+    var failBox = document.getElementById('dFailBox');
+    if (r.status === '失败' && r.failReason) {
+      failBox.style.display = '';
+      document.getElementById('dFailReason').textContent = r.failReason;
+    } else {
+      failBox.style.display = 'none';
+    }
+
+    document.getElementById('detailModal').classList.add('open');
+  }
+
+  function closeDetail() {
+    document.getElementById('detailModal').classList.remove('open');
+  }
+
+  /* ════════════════════════
+     导出（mock）
+  ════════════════════════ */
+  function exportCsv() {
+    var rows = sortRows(filterRows(), state);
+    showToast('导出成功', '已导出 ' + rows.length + ' 条操作记录');
+  }
+
+  /* ════════════════════════
+     列排序绑定
+  ════════════════════════ */
+  document.querySelectorAll('#logTable thead th.sortable').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var col = th.getAttribute('data-col');
+      if (state.sortCol === col) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      else { state.sortCol = col; state.sortDir = 'asc'; }
+      document.querySelectorAll('#logTable thead th').forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+      th.classList.add(state.sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      render();
+    });
+  });
+
+  // 默认按时间倒序
+  (function initSortIndicator() {
+    var th = document.querySelector('#logTable thead th[data-col="time"]');
+    if (th) th.classList.add('sort-desc');
+  })();
+
+  render();
+</script>
+</body>
+</html>
