@@ -1,4 +1,3 @@
-      
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -308,6 +307,48 @@
     .tl-dot { width: 8px; height: 8px; border-radius: 50%; }
 
     /* 右侧累计进组用户量图表 */
+    /* 业务结论（直接结束 / 结束并铺开 后展示） */
+    .biz-conclusion {
+      border-top: 1px solid var(--border);
+      padding: 14px 20px 16px;
+      background: #FAFBFC;
+    }
+    .biz-conclusion-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 12px;
+    }
+    .biz-conclusion-header svg { flex-shrink: 0; }
+    .biz-conclusion-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .biz-conclusion-source {
+      font-size: 11px; color: var(--primary);
+      background: #EEF5FF; padding: 1px 8px; border-radius: 10px;
+    }
+    .biz-conclusion-time { font-size: 12px; color: var(--sub); margin-left: auto; }
+    .biz-conclusion-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px 18px;
+    }
+    .biz-conclusion-item { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .biz-conclusion-item.full { grid-column: 1 / -1; }
+    .biz-conclusion-label { font-size: 11px; color: var(--sub); }
+    .biz-conclusion-value {
+      font-size: 13px; color: var(--text); font-weight: 500;
+      word-break: break-word;
+    }
+    .biz-conclusion-value.muted { color: var(--sub); font-weight: 400; }
+    .biz-conclusion-value.text {
+      font-weight: 400; line-height: 1.6; white-space: pre-wrap;
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 10px; min-height: 36px;
+    }
+    .biz-conclusion-dir-tag {
+      display: inline-flex; align-items: center; padding: 2px 10px;
+      border-radius: 4px; font-size: 12px; font-weight: 500;
+    }
+    .biz-conclusion-dir-tag.positive { background: #E8FFEA; color: #00B42A; border: 1px solid #A3E8B0; }
+    .biz-conclusion-dir-tag.negative { background: #FFECE8; color: #F53F3F; border: 1px solid #FFC1B8; }
+    .biz-conclusion-dir-tag.neutral  { background: #F5F5F5; color: #86909C; border: 1px solid #E0E0E0; }
+
     .overview-right {
       flex: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
     }
@@ -345,6 +386,25 @@
       margin-left: 4px; background: var(--primary-light); color: var(--primary);
       font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 10px;
     }
+
+    /* metrics tab 内联日期筛选器（仅多组对比/详细对比可见） */
+    .metrics-date-filter {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 0;
+    }
+    .metrics-date-label {
+      font-size: 12px; color: var(--sub); margin-right: 2px;
+    }
+    .metrics-date-fixed {
+      display: inline-flex; align-items: center;
+      height: 28px; padding: 0 10px;
+      border: 1px solid var(--border); border-radius: 5px;
+      background: var(--gray-light);
+      font-size: 12px; color: var(--sub); cursor: not-allowed;
+      user-select: none;
+    }
+    .metrics-date-sep { font-size: 12px; color: var(--sub); }
 
     /* ══════════════════════════════════════════════
        METRICS TABLE
@@ -1200,6 +1260,34 @@
           </div>
         </div>
       </div>
+
+      <!-- 业务结论（操作"直接结束"或"结束并铺开"并确认后展示） -->
+      <div class="biz-conclusion" id="bizConclusion" style="display:none;">
+        <div class="biz-conclusion-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span class="biz-conclusion-title">业务结论</span>
+          <span class="biz-conclusion-source" id="bizConclusionSource"></span>
+          <span class="biz-conclusion-time" id="bizConclusionTime"></span>
+        </div>
+        <div class="biz-conclusion-grid">
+          <div class="biz-conclusion-item">
+            <div class="biz-conclusion-label">铺开版本</div>
+            <div class="biz-conclusion-value" id="bizRolloutVersion">—</div>
+          </div>
+          <div class="biz-conclusion-item">
+            <div class="biz-conclusion-label">铺开至用户群</div>
+            <div class="biz-conclusion-value" id="bizRolloutUG">—</div>
+          </div>
+          <div class="biz-conclusion-item">
+            <div class="biz-conclusion-label">实验结论方向</div>
+            <div class="biz-conclusion-value" id="bizConclusionDir">—</div>
+          </div>
+          <div class="biz-conclusion-item full">
+            <div class="biz-conclusion-label">实验结论（选填）</div>
+            <div class="biz-conclusion-value text" id="bizConclusionText">—</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ══ 2. METRICS RESULT CARD ══ -->
@@ -1233,6 +1321,14 @@
         <button class="tab-item" onclick="switchMetricsTab(this,'multi')">多组对比</button>
         <button class="tab-item active" onclick="switchMetricsTab(this,'detail')">详细对比</button>
         <button class="tab-item" onclick="switchMetricsTab(this,'homo')">同质性检验</button>
+        <div class="metrics-date-filter" id="metricsDateFilter">
+          <span class="metrics-date-label">数据日期</span>
+          <span class="metrics-date-fixed" title="开始日期固定为实验开始日期">2024-02-20</span>
+          <span class="metrics-date-sep">→</span>
+          <input type="date" class="date-input" id="metricsEndDate"
+                 value="2024-03-10" min="2024-02-21" max="2024-03-10"
+                 onchange="onMetricsDateChange()">
+        </div>
       </div>
       <!-- Multi-group pane -->
       <div id="metricsMultiPane" style="display:none;">
@@ -1874,9 +1970,85 @@
     document.getElementById('metricsMultiPane').style.display  = pane === 'multi'  ? '' : 'none';
     document.getElementById('metricsDetailPane').style.display = pane === 'detail' ? '' : 'none';
     document.getElementById('metricsHomoPane').style.display   = pane === 'homo'   ? '' : 'none';
+    // 同质性检验 tab 不联动日期筛选器
+    var dateFilter = document.getElementById('metricsDateFilter');
+    if (dateFilter) dateFilter.style.display = pane === 'homo' ? 'none' : 'flex';
   }
   function updateGroupLabels() {
     // placeholder: in a real implementation, this would reload table data based on selected groups
+  }
+
+  /* ══════════════════════
+     METRICS DATE FILTER → 联动多组对比 / 详细对比
+  ══════════════════════ */
+  // 指标行顺序（与 multi/detail 表格中的 tbody tr 顺序一一对应）
+  var METRIC_ROW_ORDER = ['duration', 'videos', 'retention', 'adctr'];
+  // 各指标的显示精度与单位
+  var METRIC_FMT = {
+    duration:  { dec: 1, suffix: ''  },
+    videos:    { dec: 1, suffix: ''  },
+    retention: { dec: 1, suffix: '%' },
+    adctr:     { dec: 2, suffix: '%' }
+  };
+
+  function _setDiffSpan(span, diff) {
+    if (!span) return;
+    span.textContent = (diff > 0 ? '+' : '') + diff.toFixed(1) + '%';
+    span.className = diff > 0 ? 'diff-positive' : (diff < 0 ? 'diff-negative' : 'diff-neutral');
+  }
+
+  function onMetricsDateChange() {
+    var endDate = document.getElementById('metricsEndDate').value;
+    if (!endDate) return;
+    // 防御性约束：开始日期固定，所选结束日期必须晚于开始日期
+    if (endDate <= '2024-02-20') {
+      document.getElementById('metricsEndDate').value = '2024-02-21';
+      endDate = '2024-02-21';
+    }
+
+    var multiRows  = document.querySelectorAll('#metricsMultiPane tbody tr');
+    var detailRows = document.querySelectorAll('#metricsDetailPane tbody tr');
+
+    METRIC_ROW_ORDER.forEach(function(metricKey, i) {
+      var data = CHART_DATA[metricKey];
+      if (!data) return;
+      // 在 CHART_DATA.dates 中查找 <= endDate 的最近一天
+      var idx = data.dates.indexOf(endDate);
+      if (idx < 0) {
+        for (var j = data.dates.length - 1; j >= 0; j--) {
+          if (data.dates[j] <= endDate) { idx = j; break; }
+        }
+      }
+      if (idx < 0) return;
+
+      var ctrl = data.ctrl[idx];
+      var expA = data.exp1[idx];
+      var expB = data.exp2[idx];
+      var fmt = METRIC_FMT[metricKey];
+      var val = function(v) { return v.toFixed(fmt.dec) + fmt.suffix; };
+      var diffA = (expA - ctrl) / ctrl * 100;
+      var diffB = (expB - ctrl) / ctrl * 100;
+
+      // 多组对比：tds[1]=ctrl均值, tds[2]=expA均值, tds[3]=A vs 对照, tds[4]=expB均值, tds[5]=B vs 对照
+      var mRow = multiRows[i];
+      if (mRow) {
+        var mTds = mRow.querySelectorAll('td');
+        if (mTds[1]) mTds[1].textContent = val(ctrl);
+        if (mTds[2]) mTds[2].textContent = val(expA);
+        if (mTds[3]) _setDiffSpan(mTds[3].querySelector('.diff-cell > span'), diffA);
+        if (mTds[4]) mTds[4].textContent = val(expB);
+        if (mTds[5]) _setDiffSpan(mTds[5].querySelector('.diff-cell > span'), diffB);
+      }
+
+      // 详细对比：tds[1]=基准均值, tds[3]=对比均值, tds[5]=相对变化
+      var dRow = detailRows[i];
+      if (dRow) {
+        var dTds = dRow.querySelectorAll('td');
+        if (dTds[1]) dTds[1].textContent = val(ctrl);
+        if (dTds[3]) dTds[3].textContent = val(expA);
+        if (dTds[5]) _setDiffSpan(dTds[5].querySelector('.diff-cell > span'), diffA);
+      }
+    });
   }
 
   /* ══════════════════════
@@ -2580,10 +2752,19 @@
   }
 
   function confirmDirectEnd() {
+    var dir = document.getElementById('endConclusionDir').value;
+    var text = document.getElementById('endConclusionText').value;
     closeEndModal();
     updateStatusBadge('已结束', 'stopped');
     showToast('实验已结束', '🔴');
     disableEndButtons();
+    showBizConclusion({
+      source: '直接结束',
+      version: '',
+      ugList: [],
+      dir: dir,
+      text: text
+    });
   }
 
   /* ── 结束并铺开 ── */
@@ -2665,10 +2846,67 @@
       return;
     }
     document.getElementById('rolloutUGErr').style.display = 'none';
+    var dir = document.getElementById('rolloutConclusionDir').value;
+    var text = document.getElementById('rolloutConclusionText').value;
+    var ugList = Array.from(ugChecked).map(function(cb){ return cb.parentElement.textContent.trim(); });
     closeRolloutModal();
     updateStatusBadge('已铺开', 'paused');
     showToast('实验已结束并铺开', '🚀');
     disableEndButtons();
+    showBizConclusion({
+      source: '结束并铺开',
+      version: ver,
+      ugList: ugList,
+      dir: dir,
+      text: text
+    });
+  }
+
+  /* ── 渲染业务结论 ── */
+  function showBizConclusion(data) {
+    var versionMap = { expA: '实验组A', expB: '实验组B' };
+    var dirMap = { positive: '正向', negative: '负向', neutral: '波动' };
+
+    var verEl = document.getElementById('bizRolloutVersion');
+    if (data.version) {
+      verEl.textContent = versionMap[data.version] || data.version;
+      verEl.classList.remove('muted');
+    } else {
+      verEl.textContent = '未铺开';
+      verEl.classList.add('muted');
+    }
+
+    var ugEl = document.getElementById('bizRolloutUG');
+    if (data.ugList && data.ugList.length) {
+      ugEl.textContent = data.ugList.join('、');
+      ugEl.classList.remove('muted');
+    } else {
+      ugEl.textContent = '未铺开';
+      ugEl.classList.add('muted');
+    }
+
+    var dirEl = document.getElementById('bizConclusionDir');
+    var dirKey = data.dir || 'neutral';
+    dirEl.innerHTML = '<span class="biz-conclusion-dir-tag ' + dirKey + '">' + (dirMap[dirKey] || '波动') + '</span>';
+
+    var txtEl = document.getElementById('bizConclusionText');
+    if (data.text && data.text.trim()) {
+      txtEl.textContent = data.text.trim();
+      txtEl.classList.remove('muted');
+    } else {
+      txtEl.textContent = '未填写';
+      txtEl.classList.add('muted');
+    }
+
+    document.getElementById('bizConclusionSource').textContent = data.source || '';
+
+    var now = new Date();
+    var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+    document.getElementById('bizConclusionTime').textContent =
+      '记录时间：' + now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate())
+      + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+    document.getElementById('bizConclusion').style.display = '';
   }
 
   document.addEventListener('keydown', function(e) {
@@ -2997,5 +3235,3 @@
 
 </body>
 </html>
-
-    
